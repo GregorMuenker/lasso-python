@@ -8,7 +8,7 @@ from pytype.tools.annotate_ast import annotate_ast
 import inspect
 
 
-# annotate would actually happen in analyzer
+# annotate would actually happen in analyzer?
 def annotate(source):
     source = textwrap.dedent(source.lstrip('\n'))
     # pytype_options = config.Options.create(python_version=self.python_version)
