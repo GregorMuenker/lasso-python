@@ -1,17 +1,26 @@
 import pandas as pd
 import types
 from functools import partial
+import os
 
-# read in excel and interpret it as stimulus sheet
-def get_stimulus_sheet(path):
-    df = pd.read_excel(path, header=None)
+# read in excel/csv and return stimulus sheet in DataFrame format
+def get_stimulus_sheet(path) -> pd.DataFrame:
+    _, file_extension = os.path.splitext(path)
     
+    # read in file based on its extension
+    if file_extension in ['.xls', '.xlsx', '.xlsm', '.xlsb']:
+        df = pd.read_excel(path, header=None)
+    elif file_extension in ['.csv']:
+        df = pd.read_csv(path, header=None, sep=';')
+    else:
+        raise ValueError("Unsupported file type")
+        
     # combine all input param columns into one list and drop null entries
-    #input_params = pd.DataFrame(df.apply(lambda row: row[3:].tolist(), axis=1)) # also include empty params here
     input_params = pd.DataFrame(df.apply(lambda row: [x for x in row[3:] if pd.notnull(x)], axis=1))
 
-    df = df.drop(df.columns[3:], axis=1) # drop all separate input_param columns
-    df = pd.concat([df, input_params], axis=1) # concat with combined input_param column
+    # drop all separate input_param columns and concat remaining df with combined input_param column
+    df = df.drop(df.columns[3:], axis=1)
+    df = pd.concat([df, input_params], axis=1)
 
     # create headers/column labels
     df.columns = ['output_param', 'method_name', 'instance_param', 'input_params']
@@ -27,7 +36,7 @@ class StimulusResponseMatrix:
     def add_implementation(self, name, code) -> None:
         self.implementations[name] = code
 
-    def add_test(self, name, stimulus_sheet):
+    def add_test(self, name, stimulus_sheet) -> None:
         self.tests[name] = stimulus_sheet
 
     def visualize_stimulus_matrix(self) -> None:
@@ -65,7 +74,7 @@ class StimulusResponseMatrix:
               # loop through all rows in a stimulus sheet
               for _, row in test_df.iterrows():
                   method_name = row['method_name']
-                  input_params = row['input_params'] # TODO better support for kwargs
+                  input_params = row['input_params'] # TODO better support for reordering kwargs
                   # execute method found in row with parameters
                   row_result = self.find_and_execute_callable(callables, method_name, input_params)
                   test_results.append(row_result)
@@ -73,7 +82,7 @@ class StimulusResponseMatrix:
               # Store the result for implementation-test-pair TODO pyignite?
               self.results[(impl_name, test_name)] = test_results
     
-    # helper method needed to identify all callables,
+    # helper method needed to identify all callables in a code string,
     # works for both functions and classes with methods
     def get_callables_from_code(self, code) -> dict:
         # dynamically execute code
@@ -113,10 +122,10 @@ class StimulusResponseMatrix:
             return None
 
 
-# Example: create StimulusResponseMatrix from 2 stimulus sheets and two implementations
-# and run tests on all implementations
-stimulus_sheet1 = get_stimulus_sheet("calc1.xlsx")
+# Example: create StimulusResponseMatrix from stimulus sheets and implementations and run all implementation-test pairs
+stimulus_sheet1 = get_stimulus_sheet("calc1.csv")
 stimulus_sheet2 = get_stimulus_sheet("calc2.xlsx")
+print(stimulus_sheet1)
 implementation_code1 = """
 class Calculator:
     def add(self, a, b):
@@ -136,10 +145,27 @@ implementation_code3 = """
 add = lambda a, b: a + b
 subtract = lambda a, b: a - b
 """
-matrix = StimulusResponseMatrix({'s': implementation_code1, 'm1': implementation_code2, 'm2': implementation_code3})
+matrix = StimulusResponseMatrix({'c': implementation_code1, 'm1': implementation_code2, 'm2': implementation_code3})
 matrix.add_test(name="t1", stimulus_sheet=stimulus_sheet1)
 matrix.add_test(name="t2", stimulus_sheet=stimulus_sheet2)
 matrix.add_test(name="t3", stimulus_sheet=stimulus_sheet2)
 matrix.visualize_stimulus_matrix()
 matrix.run_tests()
 matrix.visualize_results()
+
+# not used up until now
+# interface_python = """
+# class Calculator:
+#     def add(self, a, b):
+#         pass
+
+#     def subtract(self, a, b):
+#         pass
+# """
+
+# interface_lql = """
+# Calculator {
+#   add(int, int)->int
+#   subtract(int, int)->int
+# }
+# """
