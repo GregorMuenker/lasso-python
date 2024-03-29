@@ -1,31 +1,7 @@
 import pandas as pd
 import types
-from functools import partial
-import os
-
-# read in excel/csv and return stimulus sheet in DataFrame format
-def get_stimulus_sheet(path) -> pd.DataFrame:
-    _, file_extension = os.path.splitext(path)
-    
-    # read in file based on its extension
-    if file_extension in ['.xls', '.xlsx', '.xlsm', '.xlsb']:
-        df = pd.read_excel(path, header=None)
-    elif file_extension in ['.csv']:
-        df = pd.read_csv(path, header=None, sep=';')
-    else:
-        raise ValueError("Unsupported file type")
-        
-    # combine all input param columns into one list and drop null entries
-    input_params = pd.DataFrame(df.apply(lambda row: [x for x in row[3:] if pd.notnull(x)], axis=1))
-
-    # drop all separate input_param columns and concat remaining df with combined input_param column
-    df = df.drop(df.columns[3:], axis=1)
-    df = pd.concat([df, input_params], axis=1)
-
-    # create headers/column labels
-    df.columns = ['output_param', 'method_name', 'instance_param', 'input_params']
-
-    return df
+from stimulus_sheet_reader import get_stimulus_sheet
+from test_data import CALCULATOR_CLASS, CALCULATOR_FUNCTIONS, CALCULATOR_LAMBDAS
 
 class StimulusResponseMatrix:
     def __init__(self, implementations) -> None:
@@ -85,9 +61,8 @@ class StimulusResponseMatrix:
     # helper method needed to identify all callables in a code string,
     # works for both functions and classes with methods
     def get_callables_from_code(self, code) -> dict:
-        # dynamically execute code
         local_namespace = {}
-        # TODO safety of calling directly with exec?
+        # dynamically execute code TODO safety of this?
         exec(code, globals(), local_namespace)
 
         callables = {}
@@ -122,50 +97,16 @@ class StimulusResponseMatrix:
             return None
 
 
-# Example: create StimulusResponseMatrix from stimulus sheets and implementations and run all implementation-test pairs
-stimulus_sheet1 = get_stimulus_sheet("calc1.csv")
-stimulus_sheet2 = get_stimulus_sheet("calc2.xlsx")
-print(stimulus_sheet1)
-implementation_code1 = """
-class Calculator:
-    def add(self, a, b):
-        return a + b
+# Example usage: create StimulusResponseMatrix from stimulus sheets and implementations and run all implementation-test pairs
+if __name__ == "__main__":
+    stimulus_sheet1 = get_stimulus_sheet("calc1.csv")
+    stimulus_sheet2 = get_stimulus_sheet("calc2.xlsx")
+    print(stimulus_sheet1)
 
-    def subtract(self, a, b):
-        return a - b
-"""
-implementation_code2 = """
-def add(a, b):
-    return a + b
-
-def subtract(a, b):
-    return a - b
-"""
-implementation_code3 = """
-add = lambda a, b: a + b
-subtract = lambda a, b: a - b
-"""
-matrix = StimulusResponseMatrix({'c': implementation_code1, 'm1': implementation_code2, 'm2': implementation_code3})
-matrix.add_test(name="t1", stimulus_sheet=stimulus_sheet1)
-matrix.add_test(name="t2", stimulus_sheet=stimulus_sheet2)
-matrix.add_test(name="t3", stimulus_sheet=stimulus_sheet2)
-matrix.visualize_stimulus_matrix()
-matrix.run_tests()
-matrix.visualize_results()
-
-# not used up until now
-# interface_python = """
-# class Calculator:
-#     def add(self, a, b):
-#         pass
-
-#     def subtract(self, a, b):
-#         pass
-# """
-
-# interface_lql = """
-# Calculator {
-#   add(int, int)->int
-#   subtract(int, int)->int
-# }
-# """
+    matrix = StimulusResponseMatrix({'c': CALCULATOR_CLASS, 'm1': CALCULATOR_FUNCTIONS, 'm2': CALCULATOR_LAMBDAS})
+    matrix.add_test(name="t1", stimulus_sheet=stimulus_sheet1)
+    matrix.add_test(name="t2", stimulus_sheet=stimulus_sheet2)
+    matrix.add_test(name="t3", stimulus_sheet=stimulus_sheet2)
+    matrix.visualize_stimulus_matrix()
+    matrix.run_tests()
+    matrix.visualize_results()
