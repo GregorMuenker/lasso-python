@@ -1,1 +1,3 @@
 pysolr
+flask 
+gunicorn
