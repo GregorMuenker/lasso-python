@@ -13,5 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 8000
 
 # Run app.py when the container launches
-CMD ["python", "app.py"]
-#CMD ["gunicorn","--config", "gunicorn_config.py", "app:app"]
+#CMD ["python", "app.py"]
+CMD ["gunicorn","--config", "gunicorn_config.py", "app:app"]
