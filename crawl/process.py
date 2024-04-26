@@ -6,7 +6,7 @@ def unpack_all():
     workingdir = os.path.dirname(__file__)
     archivedir = os.path.join(workingdir, "archive")
     files = [file for file in os.listdir(archivedir) if file.endswith(".tar.gz") and file[:-7] not in os.listdir("packages")]
-    print(files)
+    # print(files)
     for file in files:
         filepath = os.path.join(archivedir, file)
         destination = os.path.join(workingdir, "packages")
