@@ -10,6 +10,7 @@ def get_all_packages():
     contents = urllib.request.urlopen('https://pypi.org/simple/').read().decode('utf-8')
     pattern = re.compile(r'>([^<]+)</a>')
     package_list = [match[1] for match in re.finditer(pattern, contents)]
+    # print(package_list)
     print(f'Total of {len(package_list):,} packages\n')
     return package_list
 
@@ -19,12 +20,16 @@ def download(package):
         try:
             page = client.get_project_page(package)
             pkg = page.packages[-1]
+            if pkg.filename in os.listdir("archive"):
+                print(f"{pkg.filename} already downloaded")
+                return
             workingdir = os.path.dirname(__file__)
             destination = os.path.join(workingdir, "archive", pkg.filename)
             client.download_package(
                 pkg, path=destination, progress=tqdm_progress_factory(),
             )
         except:
+            print(f"Couldn't find any package files for {package}")
             pass
 
 
