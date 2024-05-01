@@ -162,3 +162,7 @@ cython_debug/
 # Project-specific
 crawl/archive/
 crawl/packages/
+
+.DS_Store
+numpy-*
+pysolr-*
