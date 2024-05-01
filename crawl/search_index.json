@@ -1,0 +1,121 @@
+[
+  {
+    "module": "calculator.base_functions",
+    "name": "add",
+    "dependend_class": null,
+    "function_calls": [],
+    "arguments": [
+      {
+        "name": "a",
+        "datatype": null
+      },
+      {
+        "name": "b",
+        "datatype": null
+      }
+    ],
+    "source_code": "def add(a, b):\n    return a + b"
+  },
+  {
+    "module": "calculator.base_functions",
+    "name": "subtract",
+    "dependend_class": null,
+    "function_calls": [],
+    "arguments": [
+      {
+        "name": "a",
+        "datatype": null
+      },
+      {
+        "name": "b",
+        "datatype": null
+      }
+    ],
+    "source_code": "def subtract(a, b):\n    return a - b"
+  },
+  {
+    "module": "calculator.base_functions",
+    "name": "multiply",
+    "dependend_class": null,
+    "function_calls": [
+      "add"
+    ],
+    "arguments": [
+      {
+        "name": "a",
+        "datatype": null
+      },
+      {
+        "name": "b",
+        "datatype": null
+      }
+    ],
+    "source_code": "def multiply(a, b):\n    product = 0\n    for _ in range(b):\n        product = add(product, a)\n    return product"
+  },
+  {
+    "module": "calculator.list_functions",
+    "name": "__init__",
+    "dependend_class": "CalcList",
+    "function_calls": [],
+    "arguments": [
+      {
+        "name": "self",
+        "datatype": null
+      },
+      {
+        "name": "list",
+        "datatype": null
+      }
+    ],
+    "source_code": "def __init__(self, list=None):\n        if list == None:\n            self.list = []\n        else:\n            self.list = list"
+  },
+  {
+    "module": "calculator.list_functions",
+    "name": "append",
+    "dependend_class": "CalcList",
+    "function_calls": [
+      "self.list.append"
+    ],
+    "arguments": [
+      {
+        "name": "self",
+        "datatype": null
+      },
+      {
+        "name": "element",
+        "datatype": null
+      }
+    ],
+    "source_code": "def append(self, element):\n        self.list.append(element)"
+  },
+  {
+    "module": "calculator.list_functions",
+    "name": "sum",
+    "dependend_class": "CalcList",
+    "function_calls": [
+      "base_functions.add"
+    ],
+    "arguments": [
+      {
+        "name": "self",
+        "datatype": null
+      }
+    ],
+    "source_code": "def sum(self):\n        sum = 0\n        for element in self.list:\n            sum = base_functions.add(sum, element)\n        return sum"
+  },
+  {
+    "module": "calculator.list_functions",
+    "name": "avg",
+    "dependend_class": "CalcList",
+    "function_calls": [
+      "numpy.core.fromnumeric.mean"
+    ],
+    "arguments": [
+      {
+        "name": "self",
+        "datatype": null
+      }
+    ],
+    "source_code": "def avg(self):\n        return numpy.core.fromnumeric.mean(self.list)"
+  }
+]

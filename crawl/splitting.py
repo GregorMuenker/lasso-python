@@ -3,6 +3,7 @@ from _ast import *
 import ast
 from os import listdir
 from os.path import isfile, join, isdir
+import json
 
 # TODO: Handle imported Classes
 
@@ -25,6 +26,7 @@ def get_function_calls(element):
                 function_calls.append(trace_node.id)
     return function_calls
 
+
 def get_function_args(element):
     args = []
     for arg in element.args.args:
@@ -34,6 +36,7 @@ def get_function_args(element):
         })
     return args
 
+
 def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class=None):
     index = []
     for element in tree.body:
@@ -41,13 +44,11 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
             source_code = ast.get_source_segment(source, element)
             index_element = {
                 "module": prefix + sub_module_name,
-                "type": "function",
                 "name": element.name,
                 "dependend_class": depended_class,
                 "function_calls": get_function_calls(element),
                 "arguments": get_function_args(element),
                 "source_code": source_code,
-                "ast": element,
             }
             index.append(index_element)
         elif type(element) == ClassDef:
@@ -69,4 +70,8 @@ def get_module_index(module_name, path):
     return index
 
 
-index = get_module_index("calculator", "./packages/calculator-0.0.1/calculator")
+index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
+
+
+with open('search_index.json', 'w') as fp:
+    json.dump(index, fp)
