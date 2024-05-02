@@ -37,4 +37,4 @@ def remove_except_python(directory):
 
 if __name__ == '__main__':
     unpack_all()
-    remove_except_python('packages')
+    # remove_except_python('packages')

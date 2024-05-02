@@ -7,7 +7,7 @@ if __name__ == '__main__':
     packages = get_most_downloaded()
     packages = packages[:50]
     create_table(packages)
-    for package in packages:
-        download(package)
-    unpack_all()
+    # for package in packages:
+    #     download(package)
+    # unpack_all()
     # remove_except_python("packages")

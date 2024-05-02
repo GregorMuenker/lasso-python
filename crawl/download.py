@@ -56,6 +56,20 @@ def get_dependencies(package):
         return deps
 
 
+def get_info(folder):
+    path = f"packages/{folder}/PKG-INFO"
+    file = open(path, "r", encoding="utf-8")
+    dependencies = []
+    for line in file:
+        if line.startswith("Name: "):
+            name = line.split(":")[1].strip()
+        if line.startswith("Version: "):
+            version = line.split(":")[1].strip()
+        if line.startswith("Requires-Dist: "):
+            dependencies.append(line.split(":")[1].strip())
+    return name, version, dependencies
+
+
 def create_table(package_list, download_count=False):
     with PyPISimple() as client:
         info = []
@@ -70,14 +84,17 @@ def create_table(package_list, download_count=False):
                     package = {"project": pkg.project, "version": pkg.version, "package_type": pkg.package_type}
                     if pkg.requires_python:
                         package["requires_python"] = pkg.requires_python
+                    package["requires_dist"] = None
                     if pkg.has_metadata:
                         src = client.get_package_metadata(pkg)
                         md, _ = parse_email(src)
                         package["requires_dist"] = md.get("requires_dist")
                     info.append(package)
         df = pd.DataFrame(info)
-        # df.to_pickle("info")
-        df.to_csv("info.csv")
+
+        if not os.path.exists("info.csv"):
+            # df.to_pickle("info")
+            df.to_csv("info.csv")
 
 
 def get_most_downloaded(download_count=False):
@@ -101,6 +118,8 @@ if __name__ == '__main__':
     # package_list = package_list[-200:]
     # print(packages[-5:])
     package_list = get_most_downloaded()
-    package_list = package_list[:50]
-    create_table(package_list)
+    package_list = package_list[:20]
+    for package in package_list:
+        download(package)
+    # create_table(package_list)
     # print(get_most_downloaded())
