@@ -1,0 +1,23 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+cache_dir = "/tmp/pytest_aiobotocore_cache"
+markers = [
+    "moto",
+    "config_kwargs",
+    "patch_attributes",
+]
+
+[tool.isort]
+profile = "black"
+line_length = 79
+honor_noqa = true
+src_paths = ["aiobotocore", "tests"]
+
+[tool.black]
+line-length = 79
+skip_string_normalization = true
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING",
+]
