@@ -37,17 +37,26 @@ def create_permutations(interfaceSpecification, classUnderTest):
         
         for interfaceMethod in interfaceSpecification.methods:
             
-            if interfaceMethod.methodName != classMethod.methodName and not (hasattr(classInstance, interfaceMethod.methodName)):
-                print(f"Adaptating {classMethod.methodName} to {interfaceMethod.methodName}")
+            if interfaceMethod.parameterTypes.__len__() != classMethod.parameterTypes.__len__():
+                print(f"Checking interface {interfaceMethod.methodName} against {classMethod.methodName}: Parameter counts do not match")
+                print(interfaceMethod.parameterTypes.__len__, interfaceMethod.parameterTypes.__len__)
+                continue
+
+            if interfaceMethod.parameterTypes != classMethod.parameterTypes:
+                print("Parameter types do not match")
+                # TODO: Check if the types can be converted
+
+            if interfaceMethod.methodName != classMethod.methodName:
+                print("Method names do not match")
+                adapt_method_name(classInstance, classMethod.methodName, interfaceMethod.methodName)
                 adaptedMethod = True
-                classInstance = adapt_method_name(classInstance, classMethod.methodName, interfaceMethod.methodName)
-                break
-            
-            # if interfaceMethod.returnType != classMethod.returnType:
-            #     adaptationNeeded = True
-            
-            # if interfaceMethod.parameterTypes != classMethod.parameterTypes:
-            #     adaptationNeeded = True
+
+
+            # if interfaceMethod.methodName != classMethod.methodName and not (hasattr(classInstance, interfaceMethod.methodName)):
+            #     print(f"Adaptating {classMethod.methodName} to {interfaceMethod.methodName}")
+            #     adaptedMethod = True
+            #     classInstance = adapt_method_name(classInstance, classMethod.methodName, interfaceMethod.methodName)
+            #     break
             
     if (adaptedMethod):
         permutations.append(classInstance)
@@ -62,6 +71,24 @@ def adapt_method_name(class_instance, existing_method_name, new_method_name):
     
     setattr(class_instance, new_method_name, original_method)
     return class_instance
+
+# return list
+def execute(stimulus_sheet, classUnderTest):
+    for index, row in stimulus_sheet.iterrows():
+        method_name = row['method_name']
+        instance_param = row['instance_param']
+        input_params = row['input_params']
+        output_param = row['output_param']
+
+        if instance_param:
+            class_instance = classUnderTest.classInstance
+            method = getattr(class_instance, method_name)
+        else:
+            method = getattr(classUnderTest.classInstance, method_name)
+
+        result = method(*input_params)
+        print(result)
+        assert result == output_param
 
 
 def adapt_method(class_instance, original_method_name, adapted_method_name, param_order, param_types=None):
@@ -94,11 +121,12 @@ if __name__ == "__main__":
     add = MethodSignature("add", "int", ["int", "int"])
     subtract = MethodSignature("subtract", "int", ["int", "int"])
     classUnderTest = ClassUnderTest("Calculator", CALCULATOR_CLASS, [add, subtract])
-
     permutations = create_permutations(interfaceSpecification, classUnderTest)
     print(permutations)
 
-    print(permutations[0].minus(1, 2))
+    #print(permutations[0].minus(1, 2))
+
+    
 
     # adapt_method(class_instance, 'add', 'plus', [1, 0], [float, float])
     # print(class_instance.plus('10', '5'))
