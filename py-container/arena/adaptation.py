@@ -1,5 +1,10 @@
-from test_data import CALCULATOR_CLASS, CALCULATOR_FUNCTIONS, CALCULATOR_LAMBDAS
 import copy
+import pandas as pd
+import queue
+import itertools
+from stimulus_sheet_reader import get_stimulus_sheet
+from test_data import CALCULATOR_CLASS
+from class_parser import parse_class
 
 class InterfaceSpecification:
     def __init__(self, className, constructors, methods) -> None:
@@ -7,61 +12,116 @@ class InterfaceSpecification:
         self.constructors = constructors
         self.methods = methods
 
+class ClassUnderTest:
+    def __init__(self, className, codeString, methods) -> None:
+        self.className = className
+        self.codeString = codeString
+        self.className = className
+        self.methods = methods # List of MethodSignature objects
+        self.classInstance = None
+        
+        local_namespace = {}
+        exec(codeString, globals(), local_namespace)
+        self.classInstance = next(iter(local_namespace.values()))()
+
 class MethodSignature:
     def __init__(self, methodName, returnType, parameterTypes) -> None:
         self.methodName = methodName
         self.returnType = returnType
         self.parameterTypes = parameterTypes
 
-class ClassUnderTest:
-    def __init__(self, className, code, methods) -> None:
-        self.className = className
-        self.code = code
-        self.className = className
-        self.methods = methods
-        self.classInstance = None
+class AdaptationHandler:
+    def __init__(self, interfaceSpecification, classUnderTest):
+        self.interfaceMethods = {}
+        for method in interfaceSpecification.methods:
+            self.interfaceMethods[method.methodName] = method
         
-        local_namespace = {}
-        exec(code, globals(), local_namespace)
-        for name, obj in local_namespace.items():
-            if isinstance(obj, type):
-                self.classInstance = obj()
-
-def create_permutations(interfaceSpecification, classUnderTest):
-    permutations = []
-
-    adaptedMethod = False
-    classInstance = copy.deepcopy(classUnderTest.classInstance)
-
-    for classMethod in classUnderTest.methods:
+        self.classMethods = {}
+        for method in classUnderTest.methods:
+            self.classMethods[method.methodName] = method
         
-        for interfaceMethod in interfaceSpecification.methods:
+        self.adaptations = {}
+
+        self.mappings = []
+
+        self.classInstances = []
+
+    def identifyAdaptations(self):
+        for interfaceMethodId, interfaceMethod in self.interfaceMethods.items():
+            for classMethodId, classMethod in self.classMethods.items():
+
+                self.adaptations[(interfaceMethod.methodName, classMethod.methodName)] = []
+                
+                if interfaceMethod.parameterTypes.__len__() != classMethod.parameterTypes.__len__():
+                    self.adaptations[(interfaceMethod.methodName, classMethod.methodName)] = None
+                    continue
+                
+                if interfaceMethod.methodName != classMethod.methodName:
+                    self.adaptations[(interfaceMethod.methodName, classMethod.methodName)].append("Name")
+
+                if interfaceMethod.parameterTypes != classMethod.parameterTypes:
+                    self.adaptations[(interfaceMethod.methodName, classMethod.methodName)].append("Params")
+                
+                if interfaceMethod.returnType != classMethod.returnType:
+                    self.adaptations[(interfaceMethod.methodName, classMethod.methodName)].append("Return")
+
+    def visualizeAdaptations(self) -> None:
+        df = pd.DataFrame(columns=list(self.classMethods.keys()), index=list(self.interfaceMethods.keys()))
+
+        for key, value in self.adaptations.items():
+            interfaceMethodName, classMethodName = key
+            df.at[interfaceMethodName, classMethodName] = value
+
+        print("\n", df, "\n")
+
+    def generateMappings(self):
+        classMethodIds = list(self.classMethods.keys())
+        allPermutations = itertools.permutations(classMethodIds)
+                
+        for permutation in allPermutations:
+            q = queue.Queue()
+            for classMethodId in permutation:
+                q.put(classMethodId)
             
-            if interfaceMethod.parameterTypes.__len__() != classMethod.parameterTypes.__len__():
-                print(f"Checking interface {interfaceMethod.methodName} against {classMethod.methodName}: Parameter counts do not match")
-                print(interfaceMethod.parameterTypes.__len__, interfaceMethod.parameterTypes.__len__)
-                continue
+            potentialMapping = []
 
-            if interfaceMethod.parameterTypes != classMethod.parameterTypes:
-                print("Parameter types do not match")
-                # TODO: Check if the types can be converted
-
-            if interfaceMethod.methodName != classMethod.methodName:
-                print("Method names do not match")
-                adapt_method_name(classInstance, classMethod.methodName, interfaceMethod.methodName)
-                adaptedMethod = True
-
-
-            # if interfaceMethod.methodName != classMethod.methodName and not (hasattr(classInstance, interfaceMethod.methodName)):
-            #     print(f"Adaptating {classMethod.methodName} to {interfaceMethod.methodName}")
-            #     adaptedMethod = True
-            #     classInstance = adapt_method_name(classInstance, classMethod.methodName, interfaceMethod.methodName)
-            #     break
+            for interfaceMethodId in self.interfaceMethods.keys():
+                maxIterations = q.qsize()
+                iteration = 0
+                while (not q.empty()) & (iteration < maxIterations):
+                    iteration += 1
+                    currentClassMethodId = q.get()
+                    if self.adaptations[(interfaceMethodId, currentClassMethodId)] == None:
+                        q.put(currentClassMethodId)
+                    else:
+                        mappingIdentifier = (interfaceMethodId, currentClassMethodId)
+                        potentialMapping.append(mappingIdentifier)
+                        break
             
-    if (adaptedMethod):
-        permutations.append(classInstance)
+            if potentialMapping not in self.mappings and potentialMapping.__len__() == self.interfaceMethods.keys().__len__():
+                self.mappings.append(potentialMapping)
+        
+        print(f"Generated {self.mappings.__len__()} mappings: {self.mappings}")
+    
+    def generateClassInstances(self, _classInstance):
+        for mapping in self.mappings:
+            classInstance = copy.deepcopy(_classInstance)
+            for identifier in mapping:
+                interfaceMethodId, classMethodId = identifier
+                neededAdaptations = self.adaptations[(interfaceMethodId, classMethodId)]
+                
+                if "Name" in neededAdaptations:
+                    adapt_method_name(classInstance, classMethodId, interfaceMethodId)
+                
+                if "Params" in neededAdaptations:
+                    pass
+
+                if "Return" in neededAdaptations:
+                    pass
             
-    return permutations
+            self.classInstances.append(classInstance)
+        print(f"Generated {self.classInstances.__len__()} class instances")
+            
 
 def adapt_method_name(class_instance, existing_method_name, new_method_name):
     original_method = getattr(class_instance, existing_method_name)
@@ -70,26 +130,21 @@ def adapt_method_name(class_instance, existing_method_name, new_method_name):
         raise AttributeError(f"The method '{existing_method_name}' does not exist on the provided object.")
     
     setattr(class_instance, new_method_name, original_method)
-    return class_instance
 
-# return list
-def execute(stimulus_sheet, classUnderTest):
-    for index, row in stimulus_sheet.iterrows():
+def execute_test(stimulus_sheet, classInstance):
+    results = []
+    
+    for _, row in stimulus_sheet.iterrows():
         method_name = row['method_name']
-        instance_param = row['instance_param']
         input_params = row['input_params']
-        output_param = row['output_param']
 
-        if instance_param:
-            class_instance = classUnderTest.classInstance
-            method = getattr(class_instance, method_name)
-        else:
-            method = getattr(classUnderTest.classInstance, method_name)
+        method = getattr(classInstance, method_name)
 
-        result = method(*input_params)
-        print(result)
-        assert result == output_param
-
+        instruction = f"{method_name}({input_params})"
+        return_value = method(*input_params)
+        results.append((instruction, return_value))
+    
+    print(results)
 
 def adapt_method(class_instance, original_method_name, adapted_method_name, param_order, param_types=None):
     # Get the original method from the object
@@ -114,19 +169,23 @@ def adapt_method(class_instance, original_method_name, adapted_method_name, para
     setattr(class_instance, adapted_method_name, wrapper)
 
 if __name__ == "__main__":
-    plus = MethodSignature("plus", "float", ["int", "float"])
-    minus = MethodSignature("minus", "float", ["float", "int"])
-    interfaceSpecification = InterfaceSpecification("Calculator", [], [plus, minus])
-
-    add = MethodSignature("add", "int", ["int", "int"])
-    subtract = MethodSignature("subtract", "int", ["int", "int"])
-    classUnderTest = ClassUnderTest("Calculator", CALCULATOR_CLASS, [add, subtract])
-    permutations = create_permutations(interfaceSpecification, classUnderTest)
-    print(permutations)
-
-    #print(permutations[0].minus(1, 2))
-
+    plus = MethodSignature("iplus", "int", ["Any", "int", "int"])
+    minus = MethodSignature("iminus", "float", ["Any", "float", "float"])
+    times = MethodSignature("itimes", "float", ["Any", "float", "float", "float"])
+    interfaceSpecification = InterfaceSpecification("Calculator", [], [plus, minus, times])
     
+    classUnderTest = parse_class(CALCULATOR_CLASS)
+
+    adaptationHandler = AdaptationHandler(interfaceSpecification, classUnderTest)
+    adaptationHandler.identifyAdaptations()
+    adaptationHandler.visualizeAdaptations()
+    adaptationHandler.generateMappings()
+    adaptationHandler.generateClassInstances(classUnderTest.classInstance)
+
+    stimulusSheet = get_stimulus_sheet("calc3.csv")
+    for classInstance in adaptationHandler.classInstances:
+        execute_test(stimulusSheet, classInstance)
+
 
     # adapt_method(class_instance, 'add', 'plus', [1, 0], [float, float])
     # print(class_instance.plus('10', '5'))
