@@ -59,11 +59,11 @@ class AdaptationHandler:
                 if interfaceMethod.methodName != classMethod.methodName:
                     self.adaptations[(interfaceMethod.methodName, classMethod.methodName)].append("Name")
 
-                if interfaceMethod.parameterTypes != classMethod.parameterTypes:
-                    self.adaptations[(interfaceMethod.methodName, classMethod.methodName)].append("Params")
-                
                 if interfaceMethod.returnType != classMethod.returnType:
                     self.adaptations[(interfaceMethod.methodName, classMethod.methodName)].append("Return")
+
+                if interfaceMethod.parameterTypes != classMethod.parameterTypes:
+                    self.adaptations[(interfaceMethod.methodName, classMethod.methodName)].append("Params")
 
     def visualizeAdaptations(self) -> None:
         df = pd.DataFrame(columns=list(self.classMethods.keys()), index=list(self.interfaceMethods.keys()))
@@ -112,11 +112,11 @@ class AdaptationHandler:
                 
                 if "Name" in neededAdaptations:
                     adapt_method_name(classInstance, classMethodId, interfaceMethodId)
-                
-                if "Params" in neededAdaptations:
-                    pass
 
                 if "Return" in neededAdaptations:
+                    adapt_return_type(classInstance, interfaceMethodId, self.interfaceMethods[interfaceMethodId].returnType)
+
+                if "Params" in neededAdaptations:
                     pass
             
             self.classInstances.append(classInstance)
@@ -130,6 +130,25 @@ def adapt_method_name(class_instance, existing_method_name, new_method_name):
         raise AttributeError(f"The method '{existing_method_name}' does not exist on the provided object.")
     
     setattr(class_instance, new_method_name, original_method)
+
+def adapt_return_type(class_instance, method_name, new_return_type):
+    method = getattr(class_instance, method_name)
+    
+    if method is None:
+        raise AttributeError(f"The method '{method_name}' does not exist on the provided object.")
+
+    def wrapper(*args, **kwargs):
+        result = method(*args, **kwargs) 
+        if new_return_type == "float":
+            # print("Converting return value to float")
+            return float(result)
+        else:
+            # print("Unsupported return type conversion, returning original value.")
+            return result
+
+    # Set the wrapper function as the new method of the class instance
+    setattr(class_instance, method_name, wrapper)
+
 
 def execute_test(stimulus_sheet, classInstance):
     results = []
@@ -185,6 +204,8 @@ if __name__ == "__main__":
     stimulusSheet = get_stimulus_sheet("calc3.csv")
     for classInstance in adaptationHandler.classInstances:
         execute_test(stimulusSheet, classInstance)
+    
+    print(adaptationHandler.classInstances[0].itimes(1, 2, 3))
 
 
     # adapt_method(class_instance, 'add', 'plus', [1, 0], [float, float])
