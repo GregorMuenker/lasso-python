@@ -1,6 +1,5 @@
 import copy
 import pandas as pd
-import queue
 import itertools
 from stimulus_sheet_reader import get_stimulus_sheet
 from test_data import CALCULATOR_CLASS
@@ -72,33 +71,24 @@ class AdaptationHandler:
             interfaceMethodName, classMethodName = key
             df.at[interfaceMethodName, classMethodName] = value
 
-        print("\n", df, "\n")
+        print("\n", df, "\n")      
 
     def generateMappings(self):
         classMethodIds = list(self.classMethods.keys())
-        allPermutations = itertools.permutations(classMethodIds)
-                
-        for permutation in allPermutations:
-            q = queue.Queue()
-            for classMethodId in permutation:
-                q.put(classMethodId)
-            
+        allClassMethodPermutations = itertools.permutations(classMethodIds, self.interfaceMethods.keys().__len__())
+
+        for classMethodPermutation in allClassMethodPermutations:
             potentialMapping = []
 
             for interfaceMethodId in self.interfaceMethods.keys():
-                maxIterations = q.qsize()
-                iteration = 0
-                while (not q.empty()) & (iteration < maxIterations):
-                    iteration += 1
-                    currentClassMethodId = q.get()
-                    if self.adaptations[(interfaceMethodId, currentClassMethodId)] == None:
-                        q.put(currentClassMethodId)
-                    else:
-                        mappingIdentifier = (interfaceMethodId, currentClassMethodId)
-                        potentialMapping.append(mappingIdentifier)
-                        break
+                classMethodId = classMethodPermutation[0]
+                classMethodPermutation = classMethodPermutation[1:]
+                if (self.adaptations[(interfaceMethodId, classMethodId)] != None):
+                    potentialMapping.append((interfaceMethodId, classMethodId))
+                else:
+                    break
             
-            if potentialMapping not in self.mappings and potentialMapping.__len__() == self.interfaceMethods.keys().__len__():
+            if potentialMapping.__len__() == self.interfaceMethods.keys().__len__():
                 self.mappings.append(potentialMapping)
         
         print(f"Generated {self.mappings.__len__()} mappings: {self.mappings}")
@@ -193,7 +183,7 @@ if __name__ == "__main__":
     times = MethodSignature("itimes", "float", ["Any", "float", "float", "float"])
     interfaceSpecification = InterfaceSpecification("Calculator", [], [plus, minus, times])
     
-    classUnderTest = parse_class(CALCULATOR_CLASS)
+    classUnderTest = parse_class(CALCULATOR_CLASS) # analyzer from Zhihang should actually do this
 
     adaptationHandler = AdaptationHandler(interfaceSpecification, classUnderTest)
     adaptationHandler.identifyAdaptations()
