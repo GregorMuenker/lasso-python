@@ -6,19 +6,17 @@ from packaging.metadata import parse_email
 from io import StringIO
 from tokenize import generate_tokens
 import os
+import json
 
 from download import get_latest_tar
 
 
-def create_table(package_list, download_count=False):
+def create_table(package_list):
     with PyPISimple() as client:
         info = []
         for package in tqdm(package_list, desc="Updating Info Table"):
             page = client.get_project_page(package)
-            # print(page)
             if page.packages:
-                # pkg = page.packages[-1]
-                # print(pkg)
                 pkg = get_latest_tar(page)
                 if pkg:
                     if pkg.project and pkg.version:
@@ -64,6 +62,18 @@ def group_dependencies():
     info = pd.read_csv("info.csv", sep=";")  # TODO: Class instead?
     remain = info[info["can_run"] == False]["remain"].to_list()
     print(remain)
+    # TODO: Merge Dictionaries
+    # Simple Approach
+    merged = {}
+    for dict in remain:
+        print(type(dict))
+        # FIXME: str to dict
+        for project, requirements in dict.items():
+            if project in merged:
+                merged[project].append(requirements)
+            else:
+                merged[project] = requirements
+    return merged
 
 
 def get_info(folder):
@@ -90,27 +100,27 @@ def get_local_versions(project):
 
 
 def check_dependencies(dependencies):
-    remain = []
+    remain = {}
     dependencies = reformat_dependencies(dependencies)
-    for dependency in dependencies:
-        project, versions = check_dependency(dependency)
+    for project, requirements in dependencies.items():
+        project, versions = check_dependency(project, requirements)
         versions = [key for key, value in versions.items() if value]
         if not versions:
-            remain.append(dependency)
+            remain[project] = requirements
     return remain
 
 
-def check_dependency(dependency):
-    local_versions = get_local_versions(dependency["project"])
+def check_dependency(project, requirements):
+    local_versions = get_local_versions(project)
     result = {}
     for local_version in local_versions:
         result[local_version] = True
-        for operator, version in dependency["requirements"]:
+        for operator, version in requirements:
             comparison = compare_versions(local_version, operator, version)
             if not comparison:
                 result[local_version] = False
                 break
-    return dependency["project"], result
+    return project, result
 
 
 def tokenize(string):
@@ -123,7 +133,7 @@ def tokenize(string):
 
 
 def reformat_dependencies(dependencies):
-    result = []
+    result = {}
     for dep in dependencies:
         if ";" in dep:
             pass
@@ -139,11 +149,7 @@ def reformat_dependencies(dependencies):
                 operator = tokens[0]
                 version = "".join(tokens[1:])
                 tuples.append((operator, version))
-            dic = {
-                "project": project,
-                "requirements": tuples,
-            }
-            result.append(dic)
+            result[project] = tuples
     return result
 
 
@@ -161,4 +167,4 @@ if __name__ == '__main__':
     #                 'aioitertools<1.0.0,>=0.5.1', 'awscli<1.32.70,>=1.32.41; extra == "awscli"',
     #                 'boto3<1.34.70,>=1.34.41; extra == "boto3"']
     # print(check_dependencies(dependencies))
-    group_dependencies()
+    print(group_dependencies())
