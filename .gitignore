@@ -162,6 +162,9 @@ cython_debug/
 # Project-specific
 crawl/archive/
 crawl/packages/
+example_packages
+crawl/test.ipynb
+crawl/info.csv
 
 .DS_Store
 numpy-*

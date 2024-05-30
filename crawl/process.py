@@ -18,6 +18,7 @@ def unpack_targz(archive_file, destination_path):
         tar.extractall(destination_path)
 
 
+# TODO: Even Useful?
 def remove_except_python(directory):
     for root, dirs, files in os.walk(directory):
         for item in list(dirs) + list(files):  # Create a copy of lists to avoid modification errors
@@ -37,4 +38,4 @@ def remove_except_python(directory):
 
 if __name__ == '__main__':
     unpack_all()
-    remove_except_python('packages')
+    # remove_except_python('packages')
