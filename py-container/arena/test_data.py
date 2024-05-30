@@ -5,6 +5,12 @@ class Calculator:
 
     def subtract(self, a, b):
         return a - b
+    
+    def multiply(self, a, b, c):
+        return a * b * c
+
+    def divide(self, a, b):
+        return a / b
 """
 CALCULATOR_FUNCTIONS = """
 def add(a, b):
