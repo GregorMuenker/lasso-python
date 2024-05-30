@@ -10,7 +10,11 @@ class Calculator:
         return a * b * c
 
     def divide(self, a, b):
+        x = self.add(1, 2)
         return a / b
+    
+    def test(self, a, b):
+        return a + b
 """
 CALCULATOR_FUNCTIONS = """
 def add(a, b):
