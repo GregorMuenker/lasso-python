@@ -1,9 +1,15 @@
 import builtins
+import importlib
+import inspect
+import pkgutil
 from _ast import *
 import ast
 from os import listdir
 from os.path import isfile, join, isdir
 import json
+
+from crawl import run
+
 
 # TODO: Handle imported Classes
 
@@ -34,6 +40,8 @@ def get_function_args(element):
             "name": arg.arg,
             "datatype": arg.annotation
         })
+        if arg.annotation is not None:
+            print(arg.annotation)
     return args
 
 
@@ -56,22 +64,41 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
     return index
 
 
-def get_module_index(module_name, path):
+def get_module_index(module_name, path=None):
+    if "array_api" in module_name:
+        return []
     index = []
-    prefix = module_name + "."
-    for element in sorted(listdir(path)):
-        if isfile(join(path, element)):
-            sub_module_name = element.split(".py")[0]
-            source = open(join(path, element), "r").read()
-            tree = ast.parse(source)
-            index += get_functions_from_ast(tree, source, prefix, sub_module_name)
-        elif isdir(join(path, element)):
-            index += get_module_index(prefix + element, join(path, element))
-    return index
+    if path is None:
+        module = importlib.import_module(module_name)
+        prefix = module_name + "."
+        for importer, sub_module_name, ispkg in pkgutil.iter_modules(module.__path__):
+            if not ispkg and sub_module_name[0] != "_":
+                try:
+                    sub_module = importlib.import_module(prefix + sub_module_name)
+                    source = inspect.getsource(sub_module)
+                    tree = ast.parse(source)
+                    index += get_functions_from_ast(tree, source, prefix, sub_module_name)
+                except:
+                    pass
+            elif ispkg:
+                index += get_module_index(prefix + sub_module_name)
+        return index
+    else:
+        prefix = module_name + "."
+        for element in sorted(listdir(path)):
+            if isfile(join(path, element)):
+                sub_module_name = element.split(".py")[0]
+                source = open(join(path, element), "r").read()
+                tree = ast.parse(source)
+                index += get_functions_from_ast(tree, source, prefix, sub_module_name)
+            elif isdir(join(path, element)):
+                index += get_module_index(prefix + element, join(path, element))
+        return index
 
 
-index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
+# index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
+#run.move("numpy")
+index = get_module_index("numpy")
 
-
-with open('search_index.json', 'w') as fp:
-    json.dump(index, fp)
+fp = open('search_index.json', 'w')
+json.dump(index, fp)
