@@ -2,7 +2,7 @@ import copy
 import pandas as pd
 import itertools
 from stimulus_sheet_reader import get_stimulus_sheet
-from test_data import CALCULATOR_CLASS, CALCULATOR_MODULE
+from test_data import CALCULATOR_CLASS, CALCULATOR_MODULE, code_string
 from class_parser import parse_class
 from module_parser import parse_code
 
@@ -176,13 +176,18 @@ if __name__ == "__main__":
     times = MethodSignature("itimes", "float", ["float", "float", "float"])
     interfaceSpecification = InterfaceSpecification("Calculator", [], [plus, minus, times])
     
-    moduleUnderTest = parse_code(CALCULATOR_MODULE)
+    moduleUnderTest = parse_code(code_string)
 
     adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest)
     adaptationHandler.identifyAdaptations()
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
     
+    import numpy as np
+    method = getattr(np, 'asmatrix')
+
+    
+    setattr(np, 'asmatrix', method)
     # generate_instances(adaptationHandler, moduleUnderTest.instance)
     
 
