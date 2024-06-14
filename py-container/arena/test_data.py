@@ -27,3 +27,21 @@ CALCULATOR_LAMBDAS = """
 add = lambda a, b: a + b
 subtract = lambda a, b: a - b
 """
+
+CALCULATOR_MODULE = """
+class Calculator:
+    def __init__(self):
+        pass
+    
+    def add(self, a, b):
+        return a + b
+
+    def subtract(self, a, b):
+        return a - b
+    
+def multiply(a, b, c):
+    return a * b * c
+
+def divide( a, b):
+    return a / b
+"""
