@@ -1,6 +1,8 @@
 import builtins
+import copy
 import importlib
 import inspect
+import pickle
 import pkgutil
 from _ast import *
 import ast
@@ -9,9 +11,12 @@ from os.path import isfile, join, isdir
 import json
 
 from crawl import run
+from crawl.install import install
 
 
 # TODO: Handle imported Classes
+# TODO: Check if function calls are further needed
+
 
 def get_function_calls(element):
     function_calls = []
@@ -28,7 +33,7 @@ def get_function_calls(element):
                         function_trace = "{}.".format(trace_node.id) + function_trace
                         break
                 function_calls.append(function_trace)
-            elif trace_node.id not in dir(builtins):
+            elif hasattr(trace_node, 'id') and trace_node.id not in dir(builtins):
                 function_calls.append(trace_node.id)
     return function_calls
 
@@ -36,12 +41,18 @@ def get_function_calls(element):
 def get_function_args(element):
     args = []
     for arg in element.args.args:
+        datatype = arg.annotation
+        if type(datatype) is Name:
+            datatype = datatype.id
+        if type(datatype) is Attribute:
+            datatype = "{}.{}".format(datatype.attr, datatype.value.id)
+        elif datatype is not None and type(datatype) is not str:
+            print(datatype)
+            datatype = None
         args.append({
             "name": arg.arg,
-            "datatype": arg.annotation
+            "datatype": datatype
         })
-        if arg.annotation is not None:
-            print(arg.annotation)
     return args
 
 
@@ -49,14 +60,14 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
     index = []
     for element in tree.body:
         if type(element) == FunctionDef:
-            source_code = ast.get_source_segment(source, element)
+            # source_code = ast.get_source_segment(source, element)
             index_element = {
                 "module": prefix + sub_module_name,
                 "name": element.name,
                 "dependend_class": depended_class,
-                "function_calls": get_function_calls(element),
+                # "function_calls": get_function_calls(element),
                 "arguments": get_function_args(element),
-                "source_code": source_code,
+                # "source_code": source_code,
             }
             index.append(index_element)
         elif type(element) == ClassDef:
@@ -67,18 +78,35 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
 def get_module_index(module_name, path=None):
     if "array_api" in module_name:
         return []
+    elif "test" in module_name:
+        return []
     index = []
     if path is None:
+        # try:
         module = importlib.import_module(module_name)
+        # except ImportError as e:
+        #     if type(e) == ModuleNotFoundError:
+        #         missing_pkg = [e.name]
+        #     else:
+        #         missing_pkg = [x.split(":")[0] for x in e.args[0].split("\n")[1:]]
+        #     print(missing_pkg)
+        #     for pkg in missing_pkg:
+        #         install(pkg)
+        #         run.move(pkg)
+        #     module = importlib.import_module(module_name)
         prefix = module_name + "."
         for importer, sub_module_name, ispkg in pkgutil.iter_modules(module.__path__):
-            if not ispkg and sub_module_name[0] != "_":
+            if not ispkg and sub_module_name[0] != "_" and "test" not in sub_module_name:
                 try:
                     sub_module = importlib.import_module(prefix + sub_module_name)
                     source = inspect.getsource(sub_module)
                     tree = ast.parse(source)
                     index += get_functions_from_ast(tree, source, prefix, sub_module_name)
-                except:
+                except ModuleNotFoundError as e:
+                    print(sub_module_name, e)
+                    pass
+                except OSError as e:
+                    print(sub_module_name, e)
                     pass
             elif ispkg:
                 index += get_module_index(prefix + sub_module_name)
@@ -97,8 +125,7 @@ def get_module_index(module_name, path=None):
 
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
-#run.move("numpy")
+# run.move("pandas")
 index = get_module_index("numpy")
-
 fp = open('search_index.json', 'w')
 json.dump(index, fp)
