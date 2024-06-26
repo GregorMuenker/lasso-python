@@ -42,7 +42,15 @@ class Calculator:
 def multiply(a, b, c):
     return a * b * c
 
-def divide( a, b):
+def divide(a, b):
+    return a / b
+"""
+
+PARAM_ORDER = """
+def multiply(a: int, b: int, c: int):
+    return a * b * c
+
+def divide(a: float, b: int):
     return a / b
 """
 

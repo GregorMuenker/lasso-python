@@ -1,10 +1,12 @@
-import copy
 import pandas as pd
 import itertools
 from stimulus_sheet_reader import get_stimulus_sheet
-from test_data import CALCULATOR_CLASS, CALCULATOR_MODULE, code_string
-from class_parser import parse_class
+from test_data import CALCULATOR_CLASS, CALCULATOR_MODULE, PARAM_ORDER, code_string
 from module_parser import parse_code
+from collections import Counter
+import types
+import importlib
+import builtins
 
 class InterfaceSpecification:
     def __init__(self, className, constructors, methods) -> None:
@@ -35,20 +37,20 @@ class FunctionSignature:
         self.parentClass = parentClass
 
 class AdaptationHandler:
-    def __init__(self, interfaceSpecification, moduleUnderTest):
+    def __init__(self, interfaceSpecification, moduleUnderTest, excludeClasses = False):
         self.interfaceMethods = {}
         for method in interfaceSpecification.methods:
             self.interfaceMethods[method.methodName] = method
         
         self.moduleFunctions = {}
         for function in moduleUnderTest.functions:
+            if (function.parentClass != None and excludeClasses == True):
+                continue
             self.moduleFunctions[function.functionName] = function
         
         self.adaptations = {}
 
         self.mappings = []
-
-        # self.instances = [] # TODO remove
 
     def identifyAdaptations(self):
         for interfaceMethodName, interfaceMethod in self.interfaceMethods.items():
@@ -57,7 +59,7 @@ class AdaptationHandler:
                 self.adaptations[(interfaceMethodName, moduleFunctionName)] = []
                 
                 if interfaceMethod.parameterTypes.__len__() != moduleFunction.parameterTypes.__len__():
-                    self.adaptations[(interfaceMethodName, moduleFunctionName)] = None
+                    self.adaptations[(interfaceMethodName, moduleFunctionName)] = None # no adaptation possible
                     continue
                 
                 if interfaceMethodName != moduleFunctionName:
@@ -67,7 +69,10 @@ class AdaptationHandler:
                     self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Return")
 
                 if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
-                    self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Params")
+                    if (Counter(interfaceMethod.parameterTypes) == Counter(moduleFunction.parameterTypes)):
+                        self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Param permutation")
+                    else:
+                        self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Param conversion")
 
     def visualizeAdaptations(self) -> None:
         df = pd.DataFrame(columns=list(self.moduleFunctions.keys()), index=list(self.interfaceMethods.keys()))
@@ -100,103 +105,137 @@ class AdaptationHandler:
         for mapping in self.mappings:
             print(mapping)
     
-def generate_instances(adaptationHandler, instance):
-    instances = []
+def create_adapted_module(adaptationHandler, module_name):    
+    module = importlib.import_module(module_name)
+    # print(module.__file__) # print the path of the module
+
+    successes = 0
+    failed_functions = []
+    all_submodules_metadata = []
     for mapping in adaptationHandler.mappings:
-        instance = copy.deepcopy(instance)
-        function_dict = {}
+        success = True
+        print(f"\n----------------------\nTRYING ADAPTATION FOR MAPPING {mapping}.\n----------------------")
+        submodule_name = "adaptation" + str(successes)
+        submodule = types.ModuleType(submodule_name)
+        setattr(module, submodule_name, submodule)
+
+        submodule_metadata = {}
         for identifier in mapping:
             interfaceMethodName, moduleFunctionName = identifier
-            neededAdaptations = adaptationHandler.adaptations[(interfaceMethodName, moduleFunctionName)]
-            class_instance = None
-            # goal: create dictionary with functions/methods names as keys and the obquect as values
-
-            if (moduleFunctionName.contains('.')):
-                class_name, method_name = moduleFunctionName.split('.')
-                class_instance = instance[class_name]()
-
-            if "Name" in neededAdaptations:
-                adapt_method_name(instance, moduleFunctionName, interfaceMethodName)
-
-            if "Return" in neededAdaptations:
-                adapt_return_type(instance, interfaceMethodName, adaptationHandler.interfaceMethods[interfaceMethodName].returnType)
-
-            if "Params" in neededAdaptations:
-                pass
-        
-        instances.append(instance)
-    print(f"Generated {instances.__len__()} instances")
+            submodule_metadata[interfaceMethodName] = moduleFunctionName
             
+            if (moduleFunctionName) in failed_functions:
+                print(f"Cancelling adaptation for mapping {mapping} as {moduleFunctionName} failed previously.")
+                success = False
+                break
 
-def adapt_method_name(instance, existing_method_name, new_method_name):
-    original_method = getattr(instance, existing_method_name)
+            neededAdaptations = adaptationHandler.adaptations[(interfaceMethodName, moduleFunctionName)]
+            
+            function = None
+            
+            #sys.modules[module.__name__ + '.' + submodule_name] = submodule
+
+            try:
+                function = getattr(module, moduleFunctionName)
+            except AttributeError:
+                failed_functions.append(moduleFunctionName)
+                print(f"The function '{moduleFunctionName}' does not exist in the provided module, cancel adaptation for this mapping.")
+                success = False
+                break
+            else:
+                # function was found in the module, continue with adaptation
+                # strategy: create a submodule that contains the adapted function
+                new_function = function
+                setattr(submodule, moduleFunctionName, new_function) # Add the new function to the submodule
+
+                if "Name" in neededAdaptations:
+                    adapt_function_name(submodule, new_function, interfaceMethodName)
+
+                if "Return" in neededAdaptations:
+                    adapt_return_type(submodule, new_function, interfaceMethodName, adaptationHandler.interfaceMethods[interfaceMethodName].returnType)
+
+                if "Param" in neededAdaptations:
+                    pass
+                    
+        if (success):
+            print(f"\033[92mAdaptation with id {successes} successful.\033[0m")
+            all_submodules_metadata.append(submodule_metadata)
+            successes += 1
+
+       
+    print(f"\n{successes}/{adaptationHandler.mappings.__len__()} adapted mappings.")
+    return (module, successes, all_submodules_metadata)
+
+def adapt_function_name(module, function, new_function_name):
+    setattr(module, new_function_name, function)
+    print(f"Adapted name of {function} to {new_function_name}.")
+
+def adapt_return_type(module, function, function_name, new_return_type):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            result = None
+            try:
+                result = func(*args, **kwargs)
+                return getattr(builtins, new_return_type)(result)
+            except (AttributeError, ValueError, TypeError) as e:
+                #print(f"Error when trying to adapt return type: {e}. Returning original result.")
+                return result 
+        return wrapper
     
-    if original_method is None:
-        raise AttributeError(f"The method '{existing_method_name}' does not exist on the provided object.")
+    setattr(module, function_name, decorator(function))
+    print(f"Adapted return type of {function} to {new_return_type}.")
+
+
+def execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodules_metadata):
+    all_results = []
+    for i in range(number_of_submodules):
+        results = []
+        results.append(f"{i}")
+        results.append(f"{submodules_metadata[i]}\t\t")
+        submodule = getattr(adapted_module, "adaptation" + str(i))
+
+        for _, row in stimulus_sheet.iterrows():
+            method_name = row['method_name']
+            input_params = row['input_params']
+
+            method = getattr(submodule, method_name)
+
+            input_params_string = ', '.join(map(str, input_params))
+
+            instruction = f"{method_name}({input_params_string})"
+            return_value = method(*input_params)
+
+            results.append((instruction, return_value))
+        all_results.append(results)
     
-    setattr(instance, new_method_name, original_method)
+    print("\n\nResults from executing stimulus sheet:")
 
-def adapt_return_type(instance, method_name, new_return_type):
-    method = getattr(instance, method_name)
-    
-    if method is None:
-        raise AttributeError(f"The method '{method_name}' does not exist on the provided object.")
-
-    def wrapper(*args, **kwargs):
-        result = method(*args, **kwargs) 
-        if new_return_type == "float":
-            # print("Converting return value to float")
-            return float(result)
-        else:
-            # print("Unsupported return type conversion, returning original value.")
-            return result
-
-    # Set the wrapper function as the new method of the instance
-    setattr(instance, method_name, wrapper)
-
-
-def execute_test(stimulus_sheet, classInstance):
-    results = []
-    
-    for _, row in stimulus_sheet.iterrows():
-        method_name = row['method_name']
-        input_params = row['input_params']
-
-        method = getattr(classInstance, method_name)
-
-        instruction = f"{method_name}({input_params})"
-        return_value = method(*input_params)
-        results.append((instruction, return_value))
-    
-    print(results)
+    for results in all_results:
+        print(' '.join(map(str, results)))
 
 if __name__ == "__main__":
-    plus = MethodSignature("iplus", "int", ["int", "int"])
-    minus = MethodSignature("iminus", "float", ["float", "float"])
-    times = MethodSignature("itimes", "float", ["float", "float", "float"])
-    interfaceSpecification = InterfaceSpecification("Calculator", [], [plus, minus, times])
-    
-    moduleUnderTest = parse_code(code_string)
+    icubed = MethodSignature("icubed", "int", ["int"])
+    iminus = MethodSignature("iminus", "float", ["float", "float"])
 
-    adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest)
+    interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
+
+    # TODO adjust this path
+    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"
+    with open(path, 'r') as file:
+        file_content = file.read()  # Read the entire content of the file
+        moduleUnderTest = parse_code(file_content)
+
+    adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest, excludeClasses=True)
     adaptationHandler.identifyAdaptations()
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
-    
-    import numpy as np
-    method = getattr(np, 'asmatrix')
+        
+    (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, 'numpy')
 
-    
-    setattr(np, 'asmatrix', method)
-    # generate_instances(adaptationHandler, moduleUnderTest.instance)
-    
+    stimulus_sheet = get_stimulus_sheet("calc3.csv")
+    execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodules_metadata)
 
-    # stimulusSheet = get_stimulus_sheet("calc3.csv")
-    # for classInstance in adaptationHandler.classInstances:
-    #     execute_test(stimulusSheet, classInstance)
-    
-    # print(adaptationHandler.classInstances[0].itimes(1, 2, 3))
-
-
-    # adapt_method(class_instance, 'add', 'plus', [1, 0], [float, float])
-    # print(class_instance.plus('10', '5'))
+    # TESTING STUFF
+    # print(adapted_module.adaptation0.sqrt(2))
+    # test = getattr(adapted_module, "adaptation6")
+    #print(inspect.getmembers(test, inspect.isfunction))
