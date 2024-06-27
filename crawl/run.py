@@ -11,6 +11,7 @@ def move(package):
     for folder in folders:
         # Copy package folder to user-specific site-packages
         user_site_packages_path = site.USER_SITE
+        # print(user_site_packages_path)
         if not os.path.exists(user_site_packages_path):
             os.makedirs(user_site_packages_path)
         destination_path = os.path.join(user_site_packages_path, folder)
