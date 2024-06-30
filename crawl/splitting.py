@@ -44,7 +44,7 @@ def get_function_args(element):
         datatype = arg.annotation
         if type(datatype) is Name:
             datatype = datatype.id
-        if type(datatype) is Attribute:
+        elif type(datatype) is Attribute:
             datatype = "{}.{}".format(datatype.attr, datatype.value.id)
         elif datatype is not None and type(datatype) is not str:
             print(datatype)
@@ -97,6 +97,7 @@ def get_module_index(module_name, path=None):
         prefix = module_name + "."
         for importer, sub_module_name, ispkg in pkgutil.iter_modules(module.__path__):
             if not ispkg and sub_module_name[0] != "_" and "test" not in sub_module_name:
+            #if not ispkg and sub_module_name[0] != "_":
                 try:
                     sub_module = importlib.import_module(prefix + sub_module_name)
                     source = inspect.getsource(sub_module)
