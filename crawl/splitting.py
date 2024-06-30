@@ -37,24 +37,45 @@ def get_function_calls(element):
                 function_calls.append(trace_node.id)
     return function_calls
 
+def get_arg_datatype(datatype):
+    if type(datatype) is Name:
+        datatype = [datatype.id]
+    elif type(datatype) is Attribute:
+        datatype = ["{}.{}".format(datatype.attr, datatype.value.id)]
+    elif type(datatype) is BinOp:
+        datatype = get_arg_datatype(datatype.left) + get_arg_datatype(datatype.right)
+    elif type(datatype) is Constant and datatype.value is None:
+        datatype = [None]
+    elif datatype is not None and type(datatype) is not str:
+        print(datatype)
+        datatype = [None]
+    return datatype
 
-def get_function_args(element):
+def get_arg_datatype_code(arg, source):
+    if arg.annotation is not None:
+        arg_source = ast.get_source_segment(source, arg)
+        datatype = arg_source.split(": ")[1]
+    else:
+        datatype = None
+    return datatype
+
+def get_function_args(element, source):
     args = []
     for arg in element.args.args:
-        datatype = arg.annotation
-        if type(datatype) is Name:
-            datatype = datatype.id
-        elif type(datatype) is Attribute:
-            datatype = "{}.{}".format(datatype.attr, datatype.value.id)
-        elif datatype is not None and type(datatype) is not str:
-            print(datatype)
-            datatype = None
+        datatype = get_arg_datatype_code(arg, source)
         args.append({
             "name": arg.arg,
-            "datatype": datatype
+            "datatype": datatype,
+            "keyword-arg": False
+        })
+    for arg in element.args.kwonlyargs:
+        datatype = get_arg_datatype_code(arg, source)
+        args.append({
+            "name": arg.arg,
+            "datatype": datatype,
+            "keyword-arg": False
         })
     return args
-
 
 def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class=None):
     index = []
@@ -66,7 +87,7 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
                 "name": element.name,
                 "dependend_class": depended_class,
                 # "function_calls": get_function_calls(element),
-                "arguments": get_function_args(element),
+                "arguments": get_function_args(element, source),
                 # "source_code": source_code,
             }
             index.append(index_element)
@@ -110,7 +131,16 @@ def get_module_index(module_name, path=None):
                     print(sub_module_name, e)
                     pass
             elif ispkg:
-                index += get_module_index(prefix + sub_module_name)
+                try:
+                    importlib.import_module(prefix + sub_module_name)
+                    index += get_module_index(prefix + sub_module_name)
+                except ModuleNotFoundError as e:
+                    print(sub_module_name, e)
+                    pass
+                except OSError as e:
+                    print(sub_module_name, e)
+                    pass
+
         return index
     else:
         prefix = module_name + "."
@@ -124,9 +154,16 @@ def get_module_index(module_name, path=None):
                 index += get_module_index(prefix + element, join(path, element))
         return index
 
-
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
-# run.move("pandas")
-index = get_module_index("numpy")
-fp = open('search_index.json', 'w')
-json.dump(index, fp)
+if __name__ == "__main__":
+    package_name = "urllib3"
+    try:
+        folders = run.move(package_name)
+    except FileNotFoundError:
+        install(package_name)
+        folders = run.move(package_name)
+    index = get_module_index(package_name)
+    run.remove(folders)
+
+#fp = open('search_index.json', 'w')
+#json.dump(index, fp)
