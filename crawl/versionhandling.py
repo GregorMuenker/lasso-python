@@ -174,4 +174,4 @@ if __name__ == '__main__':
     #                 'boto3<1.34.70,>=1.34.41; extra == "boto3"']
     # print(check_dependencies(dependencies))
     # print(group_dependencies())
-    print(get_info("urllib3/urllib3-2.2.1.dist-info", True))
+    print(get_info("urllib3/urllib3-2.2.2.dist-info", "installed"))
