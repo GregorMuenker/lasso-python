@@ -21,13 +21,11 @@ class MethodSignature:
         self.parameterTypes = parameterTypes
 
 class ModuleUnderTest:
-    def __init__(self, moduleName, codeString, functions) -> None:
-        self.moduleName = moduleName
-        self.codeString = codeString
+    def __init__(self, moduleName, functions) -> None:
         self.moduleName = moduleName
         self.functions = functions # List of FunctionSignature objects
-        self.classes = []
-        self.constructors = []
+        self.classes = {} # This stores class names (keys) and list of their constructors as FunctionSignature objects (values)
+        self.constructors = [] # TODO this is actually unused so far
 
 class FunctionSignature:
     def __init__(self, functionName, returnType, parameterTypes, parentClass) -> None:
@@ -47,6 +45,10 @@ class AdaptationHandler:
             if (function.parentClass != None and excludeClasses == True):
                 continue
             self.moduleFunctions[function.functionName] = function
+
+        self.classes = {}
+        if excludeClasses == False:
+            self.classes = moduleUnderTest.classes
         
         self.adaptations = {}
 
@@ -101,7 +103,7 @@ class AdaptationHandler:
             if potentialMapping.__len__() == self.interfaceMethods.keys().__len__():
                 self.mappings.append(potentialMapping)
         
-        print(f"Generated {self.mappings.__len__()} mappings:")
+        print(f"Generated {self.mappings.__len__()} potential mappings:")
         for mapping in self.mappings:
             print(mapping)
     
@@ -120,6 +122,7 @@ def create_adapted_module(adaptationHandler, module_name):
         setattr(module, submodule_name, submodule)
 
         submodule_metadata = {}
+        instantiated_classes = {}
         for identifier in mapping:
             interfaceMethodName, moduleFunctionName = identifier
             submodule_metadata[interfaceMethodName] = moduleFunctionName
@@ -133,13 +136,37 @@ def create_adapted_module(adaptationHandler, module_name):
             
             function = None
             
-            #sys.modules[module.__name__ + '.' + submodule_name] = submodule
-
             try:
-                function = getattr(module, moduleFunctionName)
-            except AttributeError:
+                parent_class_name = adaptationHandler.moduleFunctions[moduleFunctionName].parentClass
+
+                # function is a class method => instantiate the class
+                if parent_class_name:
+                    
+                    if parent_class_name in instantiated_classes:
+                        print(f"Using already instantiated class {parent_class_name}.")
+                        parent_class_instance = instantiated_classes[parent_class_name]
+                    else:
+                        print(f"Trying to instantiate class {parent_class_name}.")
+                        if adaptationHandler.classes[parent_class_name].__len__() == 0:
+                            print(f"No constructors found for class {parent_class_name}.")
+                        else:
+                            print(f"Contructor(s) found for class {parent_class_name}.")
+                        
+                        parent_class = getattr(module, parent_class_name)
+                        parent_class_instance = parent_class()
+                        instantiated_classes[parent_class_name] = parent_class_instance
+                    
+                    # Remove the class name from the function name and get the function object
+                    parts = moduleFunctionName.split('.', 1)
+                    function = getattr(parent_class_instance, parts[1])
+
+                # function is a standalone function
+                else:
+                    function = getattr(module, moduleFunctionName)
+
+            except (TypeError, AttributeError) as e:
                 failed_functions.append(moduleFunctionName)
-                print(f"The function '{moduleFunctionName}' does not exist in the provided module, cancel adaptation for this mapping.")
+                print(f"The function '{moduleFunctionName}' throws an error: {e}.")
                 success = False
                 break
             else:
@@ -220,7 +247,7 @@ if __name__ == "__main__":
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
 
     # TODO adjust this path
-    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"
+    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" #function_base #user_array #numpy/matrixlib/defmatrix.py
     with open(path, 'r') as file:
         file_content = file.read()  # Read the entire content of the file
         moduleUnderTest = parse_code(file_content)
@@ -238,4 +265,4 @@ if __name__ == "__main__":
     # TESTING STUFF
     # print(adapted_module.adaptation0.sqrt(2))
     # test = getattr(adapted_module, "adaptation6")
-    #print(inspect.getmembers(test, inspect.isfunction))
+    # print(inspect.getmembers(test, inspect.isfunction))
