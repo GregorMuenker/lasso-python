@@ -7,6 +7,12 @@ from collections import Counter
 import types
 import importlib
 import builtins
+import sys
+from run import move, remove
+
+# sys.path.insert(0, "../../lasso/lib/python3.10/site-packages")
+sys.path.insert(0, "runtime")
+
 
 class InterfaceSpecification:
     def __init__(self, className, constructors, methods) -> None:
@@ -213,14 +219,9 @@ def execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodule
     for results in all_results:
         print(' '.join(map(str, results)))
 
-if __name__ == "__main__":
-    icubed = MethodSignature("icubed", "int", ["int"])
-    iminus = MethodSignature("iminus", "float", ["float", "float"])
-
-    interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
-
-    # TODO adjust this path
-    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"
+def main(interfaceSpecification: InterfaceSpecification, path, module, stimulus_sheet):
+    # path = f"../../lasso/lib/python3.10/site-packages/{path}"
+    path = f"runtime/{path}"
     with open(path, 'r') as file:
         file_content = file.read()  # Read the entire content of the file
         moduleUnderTest = parse_code(file_content)
@@ -229,13 +230,53 @@ if __name__ == "__main__":
     adaptationHandler.identifyAdaptations()
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
-        
-    (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, 'numpy')
 
-    stimulus_sheet = get_stimulus_sheet("calc3.csv")
+    (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, module)
+
+    stimulus_sheet = get_stimulus_sheet(stimulus_sheet)
     execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodules_metadata)
+
+
+if __name__ == "__main__":
+    folders = move("urllib3", "2.2.2")
+    
+    # icubed = MethodSignature("icubed", "int", ["int"])
+    # iminus = MethodSignature("iminus", "float", ["float", "float"])
+    byte_conversion = MethodSignature("byte_conversion", "str", ["str", "str", "str"])
+
+    # interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
+    interfaceSpecification = InterfaceSpecification("Utilities", [], [byte_conversion])
+
+    # TODO adjust this path
+    # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"
+    # path = "../../lasso/lib/python3.10/site-packages/numpy/scimath.py"
+    # path = "../../crawl/test_packages/calculator-0.0.1/calculator/base_functions.py"
+    path = "urllib3/util/util.py"
+    # with open(path, 'r') as file:
+    #     file_content = file.read()  # Read the entire content of the file
+    #     moduleUnderTest = parse_code(file_content)
+
+    # adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest, excludeClasses=True)
+    # adaptationHandler.identifyAdaptations()
+    # adaptationHandler.visualizeAdaptations()
+    # adaptationHandler.generateMappings()
+        
+    # (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, 'numpy')
+    # (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, '../../crawl/test_packages/calculator-0.0.1/calculator')
+    # (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, 'urllib3.util.util')
+
+
+    # stimulus_sheet = get_stimulus_sheet("calc3.csv")
+    # stimulus_sheet = get_stimulus_sheet("util1.csv")
+    # execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodules_metadata)
 
     # TESTING STUFF
     # print(adapted_module.adaptation0.sqrt(2))
     # test = getattr(adapted_module, "adaptation6")
     #print(inspect.getmembers(test, inspect.isfunction))
+
+    module = "urllib3.util.util"
+    stimulus_sheet = "util1.csv"
+    main(interfaceSpecification, path, module, stimulus_sheet)
+
+    remove(folders)

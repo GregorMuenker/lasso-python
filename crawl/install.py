@@ -46,6 +46,6 @@ def install(package):
 
 
 if __name__ == "__main__":
-    install("six")
+    install("urllib3")
     # dependency = "pysocks!=1.5.7,<2.0,>=1.5.6"
     # install(dependency)
