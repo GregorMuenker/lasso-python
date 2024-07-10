@@ -167,6 +167,7 @@ example_packages
 crawl/test.ipynb
 crawl/info.csv
 lasso-python.code-workspace
+py-container/arena/runtime/
 
 .DS_Store
 numpy-*

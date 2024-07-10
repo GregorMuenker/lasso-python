@@ -54,7 +54,7 @@ def parse_code(code_string):
     tree = ast.parse(code_string)
     moduleName = 'parsed_module'
     functions = []
-    classes = []
+    classes = {}
     constructors = []
     
     for node in tree.body:
@@ -62,11 +62,11 @@ def parse_code(code_string):
             functions.append(parse_function(node))
         elif isinstance(node, ast.ClassDef):
             className, class_functions, class_constructors = parse_class(node)
-            classes.append(className)
+            classes[className] = class_constructors
             functions.extend(class_functions)
             constructors.extend(class_constructors)
     
-    module = ModuleUnderTest(moduleName, code_string, functions)
+    module = ModuleUnderTest(moduleName, functions)
     module.classes = classes
     module.constructors = constructors
 
@@ -87,6 +87,34 @@ def multiply(a: int, b: int, c: int):
 
 def divide(a: float, b: int):
     return a / b
+
+class Test:
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+    
+    def __init__(self):
+        pass
+
+    def add(self, a: int, b: int):
+        return self.x + self.y + a + b
+
+    def subtract(self, a: int, b: int):
+        return self.x + self.y - a - b
+
+class Hello:
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+    
+    def __init__(self):
+        pass
+
+    def add(self, a: int, b: int):
+        return self.x + self.y + a + b
+
+    def subtract(self, a: int, b: int):
+        return self.x + self.y - a - b
 """
 
     module = parse_code(code_string)
