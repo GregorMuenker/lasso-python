@@ -14,10 +14,6 @@ from crawl import run
 from crawl.install import install
 
 
-# TODO: Handle imported Classes
-# TODO: Check if function calls are further needed
-
-
 def get_function_calls(element):
     function_calls = []
     for node in ast.walk(element):
@@ -63,6 +59,12 @@ def get_function_args(element, source):
     args = []
     for arg in element.args.args:
         datatype = get_arg_datatype_code(arg, source)
+        if datatype:
+            datatype = datatype.replace("\n", "")
+            datatype = datatype.replace(" ", "")
+            datatype = datatype.split("|")
+        if type(datatype) != list:
+            datatype = [datatype]
         args.append({
             "name": arg.arg,
             "datatype": datatype,
@@ -70,10 +72,16 @@ def get_function_args(element, source):
         })
     for arg in element.args.kwonlyargs:
         datatype = get_arg_datatype_code(arg, source)
+        if datatype:
+            datatype = datatype.replace("\n", "")
+            datatype = datatype.replace(" ", "")
+            datatype = datatype.split("|")
+        if type(datatype) != list:
+            datatype = [datatype]
         args.append({
             "name": arg.arg,
             "datatype": datatype,
-            "keyword-arg": False
+            "keyword-arg": True
         })
     return args
 
@@ -124,20 +132,14 @@ def get_module_index(module_name, path=None):
                     source = inspect.getsource(sub_module)
                     tree = ast.parse(source)
                     index += get_functions_from_ast(tree, source, prefix, sub_module_name)
-                except ModuleNotFoundError as e:
-                    print(sub_module_name, e)
-                    pass
-                except OSError as e:
+                except Exception as e:
                     print(sub_module_name, e)
                     pass
             elif ispkg:
                 try:
                     importlib.import_module(prefix + sub_module_name)
                     index += get_module_index(prefix + sub_module_name)
-                except ModuleNotFoundError as e:
-                    print(sub_module_name, e)
-                    pass
-                except OSError as e:
+                except Exception as e:
                     print(sub_module_name, e)
                     pass
 
@@ -156,7 +158,7 @@ def get_module_index(module_name, path=None):
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
-    package_name = "urllib3"
+    package_name = "numpy"
     try:
         folders = run.move(package_name)
     except FileNotFoundError:
