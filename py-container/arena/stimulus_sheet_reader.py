@@ -12,7 +12,11 @@ def get_stimulus_sheet(path) -> pd.DataFrame:
         df = pd.read_csv(path, header=None, sep=';')
     else:
         raise ValueError("Unsupported file type")
-        
+    
+    if df.iloc[0].astype(str).str.contains("create").any():
+        # Drop the first row if it contains the create statement
+        df = df.drop(df.index[0])
+
     # combine all input param columns into one list and drop null entries
     input_params = pd.DataFrame(df.apply(lambda row: [x for x in row[3:] if pd.notnull(x)], axis=1))
 
