@@ -24,7 +24,7 @@ class Test:
     def square(self, a: int):
         return a*a
     
-    def add(self, a: float, b: float):
+    def add(self, a: int, b: str):
         return a + b
 
     def subtract(self, a: float, b: float):

@@ -6,6 +6,7 @@ from module_parser import parse_code
 from collections import Counter
 import types
 import importlib
+from collections import defaultdict
 
 # ANSI escape codes for colored output
 RED = "\033[91m"
@@ -82,7 +83,7 @@ class AdaptationHandler:
                     self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Return")
 
                 if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
-                    if (Counter(interfaceMethod.parameterTypes) == Counter(moduleFunction.parameterTypes)):
+                    if (Counter(interfaceMethod.parameterTypes) == Counter(moduleFunction.parameterTypes) and not all(dataType == "Any" for dataType in moduleFunction.parameterTypes)):
                         self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Param permutation")
                     else:
                         self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Param conversion")
@@ -202,17 +203,31 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
                 new_function = function
                 setattr(submodule, moduleFunctionName, new_function) # Add the new function to the submodule
 
-                if "Return" in neededAdaptations:
-                    new_function = adapt_return_type(new_function, adaptationHandler.interfaceMethods[interfaceMethodName].returnType)
-                    print(f"Adapted return type of {new_function} to {adaptationHandler.interfaceMethods[interfaceMethodName].returnType}.")
+                if (len(neededAdaptations) > 0):
 
-                if "Param conversion" in neededAdaptations:
-                    new_function = adapt_parameter_types(new_function, adaptationHandler.moduleFunctions[moduleFunctionName].parameterTypes)
-                    print(f"Adapted parameter types of {new_function} to {adaptationHandler.interfaceMethods[interfaceMethodName].parameterTypes}.")
+                    new_return_type = None
+                    convert_to_types = None
+                    current_param_order= None
+                    new_param_order = None
 
-                if "Name" in neededAdaptations:
-                    setattr(submodule, interfaceMethodName, new_function)
-                    print(f"Adapted name of function {new_function} to {interfaceMethodName}.")
+                    if "Return" in neededAdaptations:
+                        new_return_type = adaptationHandler.interfaceMethods[interfaceMethodName].returnType
+                        print(f"Trying to adapt return type of {new_function} to {new_return_type}.")
+
+                    if "Param conversion" in neededAdaptations:
+                        convert_to_types = adaptationHandler.moduleFunctions[moduleFunctionName].parameterTypes
+                        print(f"Trying to adapt parameter types of {new_function} to {convert_to_types}.")
+
+                    if "Param permutation" in neededAdaptations:
+                        current_param_order = adaptationHandler.moduleFunctions[moduleFunctionName].parameterTypes
+                        new_param_order = adaptationHandler.interfaceMethods[interfaceMethodName].parameterTypes
+                        print(f"{RED}Trying to adapt parameter order of {new_function}{RESET}.")
+                    
+                    new_function = adapt_function(new_function, new_return_type, convert_to_types, current_param_order, new_param_order)
+
+                    if "Name" in neededAdaptations:
+                        setattr(submodule, interfaceMethodName, new_function)
+                        print(f"Adapted name of function {new_function} to {interfaceMethodName}.")
                     
         if (success):
             print(f"{GREEN}Adaptation with id {successes} successful.{RESET}")
@@ -266,34 +281,42 @@ def instantiate_class(module, parent_class_name, use_constructor_default_values,
     
     return successful_instantiation, parent_class_instance
 
-def adapt_return_type(function, new_return_type):
+def adapt_function(function, new_return_type = None, convert_to_types = None, current_param_order= None, new_param_order = None):
     def decorator(func):
         def wrapper(*args, **kwargs):
             result = None
             try:
+                # Adapt parameter order
+                if (current_param_order and new_param_order):
+                    type_value_dict = defaultdict(list)
+                    for data_type, value in zip(current_param_order, args):
+                        type_value_dict[data_type].append(value)
+                    
+                    reordered_args = []
+                    for data_type in new_param_order:
+                        if type_value_dict[data_type]:
+                            reordered_args.append(type_value_dict[data_type].pop(0))
+                    
+                    args = reordered_args
+
+                # Adapt parameter types
+                if (convert_to_types):
+                    target_types = [type_mapping.get(type_name, int) for type_name in convert_to_types]
+                    args = [target_type(arg) for arg, target_type in zip(args, target_types)]
+
                 result = func(*args, **kwargs)
-                return type_mapping.get(new_return_type, int)(result) # TODO handling of unknown types
-                # alternative without type_mapping dict: getattr(builtins, new_return_type)(result)
+                
+                # Adapt return type
+                if (new_return_type):
+                    result = type_mapping.get(new_return_type, int)(result) # TODO handling of unknown types, alternative without type_mapping dict: getattr(builtins, new_return_type)(result)
+                
+                return result
             except Exception as e:
-                print(f"Error when trying to adapt return type (returning original result): {e}. .")
+                print(f"Error when trying to adapt function {function} (result without adaptations will be returned): {e}.")
                 return result
         return wrapper
     
-    return decorator(function)  
-
-def adapt_parameter_types(function, parameter_types):
-    target_types = [type_mapping.get(type_name, int) for type_name in parameter_types] # TODO handling of unknown types
-    # TODO does this make sense? In which direction does the conversion happen?
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            try:
-                adapted_args = [target_type(arg) for arg, target_type in zip(args, target_types)]
-                return func(*adapted_args, **kwargs)
-            except Exception as e:
-                print(f"Error when trying to adapt parameter types (executing function without adapting param types): {e}.")
-                return func(*args, **kwargs)
-        return wrapper
-    
+    print("Created adapted wrapper function.")
     return decorator(function)
 
 def execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodules_metadata):
@@ -371,7 +394,7 @@ type_mapping = {
 
 if __name__ == "__main__":
     icubed = MethodSignature("icubed", "str", ["int"])
-    iminus = MethodSignature("iminus", "str", ["str", "str"])
+    iminus = MethodSignature("iminus", "str", ["str", "int"])
 
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
 
@@ -388,6 +411,8 @@ if __name__ == "__main__":
     adaptationHandler.identifyAdaptations()
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
+
+    adaptationHandler.adaptations.get(("test", "test"))
         
     (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, 'numpy.lib.scimath', use_constructor_default_values=True)
 
