@@ -24,6 +24,10 @@ def parse_function(node, parentClass=None):
     returnType = get_type_annotation(node.returns)
     parameterTypes = []
 
+    # Index of the first parameter with a default value (parameters with values are always at the end of the signature)
+    firstDefault = len(node.args.args) # set to one element behind the last index by default (out of range)
+    firstDefault = len(node.args.args) - len(node.args.defaults)
+
     for arg in node.args.args:
         if arg.annotation:
             param_type = get_type_annotation(arg.annotation)
@@ -34,8 +38,9 @@ def parse_function(node, parentClass=None):
     # remove first parameter (self) for class methods
     if parentClass:
         parameterTypes = parameterTypes[1:]
+        firstDefault -= 1 # as self is not counted, the index of the first default parameter is reduced by 1
     
-    return FunctionSignature(functionName, returnType, parameterTypes, parentClass)
+    return FunctionSignature(functionName, returnType, parameterTypes, parentClass, firstDefault)
 
 def parse_class(node):
     className = node.name
@@ -43,7 +48,7 @@ def parse_class(node):
     constructors = []
     for item in node.body:
         if isinstance(item, ast.FunctionDef):
-            if item.name == '__init__':
+            if item.name == '__init__' or item.name == '__new__':
                 constructors.append(parse_function(item, parentClass=className))
             else:
                 functions.append(parse_function(item, parentClass=className))
@@ -73,16 +78,16 @@ def parse_code(code_string):
     print(f"Module Name: {module.moduleName}")
     print(f"Classes: {module.classes}")
     for func in module.constructors:
-        print(f"Constructor Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}")
+        print(f"Constructor Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}, First Default: {func.firstDefault}")
     for func in module.functions:
-        print(f"Function Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}")
+        print(f"Function Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}, First Default: {func.firstDefault}")
     
     return module
 
 # Example usage
 if __name__ == "__main__":
     code_string = """
-def multiply(a: int, b: int, c: int):
+def multiply(a: int, b: int, c: int, d=1):
     return a * b * c
 
 def divide(a: float, b: int):
@@ -96,7 +101,7 @@ class Test:
     def __init__(self):
         pass
 
-    def add(self, a: int, b: int):
+    def add(self, a: int, b: int, c=1):
         return self.x + self.y + a + b
 
     def subtract(self, a: int, b: int):

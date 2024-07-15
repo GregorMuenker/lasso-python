@@ -195,7 +195,8 @@ def install(package):
 
 
 if __name__ == "__main__":
+    install("urllib3")
     # install("python-dateutil")
-    install('hypothesis>=6.46.1; extra == "test"')
+    # install('hypothesis>=6.46.1; extra == "test"')
     # dependency = "pysocks!=1.5.7,<2.0,>=1.5.6"
     # install(dependency)
