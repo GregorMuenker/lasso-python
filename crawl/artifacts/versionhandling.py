@@ -9,7 +9,7 @@ import os
 import json
 import site
 
-from download import get_latest_tar
+from crawl.artifacts.download import get_latest_tar
 
 
 def create_table(package_list):
