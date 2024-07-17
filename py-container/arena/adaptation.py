@@ -7,6 +7,7 @@ from collections import Counter
 import types
 import importlib
 from collections import defaultdict
+import math
 
 # ANSI escape codes for colored output
 RED = "\033[91m"
@@ -63,10 +64,10 @@ class AdaptationHandler:
             self.classes = moduleUnderTest.classes
         
         self.adaptations = {}
-
+        self.numOfAdapter = []
         self.mappings = []
 
-    def identifyAdaptations(self):
+    def identifyAdaptations(self, maxParamPermutationTries = 2):
         for interfaceMethodName, interfaceMethod in self.interfaceMethods.items():
             for moduleFunctionName, moduleFunction in self.moduleFunctions.items():
                 
@@ -76,17 +77,28 @@ class AdaptationHandler:
                     self.adaptations[(interfaceMethodName, moduleFunctionName)] = None # no adaptation possible
                     continue
                 
-                if interfaceMethodName != moduleFunctionName:
-                    self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Name")
+                numOfPermutations = math.factorial(moduleFunction.parameterTypes.__len__())
+                iterations = min(maxParamPermutationTries, numOfPermutations)
 
-                if interfaceMethod.returnType != moduleFunction.returnType:
-                    self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Return")
+                for i in range(0, iterations):
+                    adaptationCandidates = []
 
-                if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
-                    if (Counter(interfaceMethod.parameterTypes) == Counter(moduleFunction.parameterTypes) and not all(dataType == "Any" for dataType in moduleFunction.parameterTypes)):
-                        self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Param permutation")
-                    else:
-                        self.adaptations[(interfaceMethodName, moduleFunctionName)].append("Param conversion")
+                    if interfaceMethodName != moduleFunctionName:
+                        adaptationCandidates.append("Name")
+
+                    if interfaceMethod.returnType != moduleFunction.returnType:
+                        adaptationCandidates.append("Return")
+
+                    if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
+                        if (Counter(interfaceMethod.parameterTypes) == Counter(moduleFunction.parameterTypes) and not all(dataType == "Any" for dataType in moduleFunction.parameterTypes)):
+                            adaptationCandidates.append("Param permutation")
+                        # elif (all(dataType in possible_conversions.get(moduleFunction.parameterTypes[i], []) for i, dataType in enumerate(interfaceMethod.parameterTypes))):
+                        #    TODO logic for random permuations
+                        else:
+                            adaptationCandidates.append("Param conversion")
+
+                    self.adaptations[(interfaceMethodName, moduleFunctionName)].append(adaptationCandidates)
+                    self.numOfAdapter.append((moduleFunctionName, i))
 
     def visualizeAdaptations(self) -> None:
         df = pd.DataFrame(columns=list(self.moduleFunctions.keys()), index=list(self.interfaceMethods.keys()))
@@ -98,29 +110,28 @@ class AdaptationHandler:
         print("\n", df, "\n")      
 
     def generateMappings(self):
-        # Generate all possible permutations (with length = number of interface methods) of the module functions
-        moduleFunctionIds = list(self.moduleFunctions.keys())
-        allFunctionPermutations = itertools.permutations(moduleFunctionIds, self.interfaceMethods.keys().__len__())
-
+        # Generate all possible permutations (with length = number of interface methods) of all adapters of the module functions
+        allFunctionPermutations = itertools.permutations(self.numOfAdapter, self.interfaceMethods.keys().__len__())
+        
         for functionPermutation in allFunctionPermutations:
-            potentialMapping = []
+            potentialMappings = []
 
             # Try to adapt each module function in the permutation to the corresponding interface method
             for interfaceMethodId in self.interfaceMethods.keys():
                 # Iterate through the permutation by taking the first element and removing it from the functionPermutation list
-                moduleFunctionId = functionPermutation[0]
+                (moduleFunctionId, adaptationId) = functionPermutation[0]
                 functionPermutation = functionPermutation[1:]
 
                 if (self.adaptations[(interfaceMethodId, moduleFunctionId)] != None):
                     # The current module function can be adapted, add it to the potential mapping
-                    potentialMapping.append((interfaceMethodId, moduleFunctionId))
+                    potentialMappings.append((interfaceMethodId, moduleFunctionId, adaptationId))
                 else:
                     # At least one module function in the permutation is not adaptable
                     break
             
             # Check if the potential mapping is complete (i.e. length = number of interface methods)
-            if potentialMapping.__len__() == self.interfaceMethods.keys().__len__():
-                self.mappings.append(potentialMapping)
+            if potentialMappings.__len__() == self.interfaceMethods.keys().__len__():
+                self.mappings.append(potentialMappings)
         
         print(f"Generated {self.mappings.__len__()} potential mappings:")
         for mapping in self.mappings:
@@ -150,15 +161,15 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
         submodule_metadata = {}
         instantiated_classes = {}
         for identifier in mapping:
-            interfaceMethodName, moduleFunctionName = identifier
-            submodule_metadata[interfaceMethodName] = moduleFunctionName
+            interfaceMethodName, moduleFunctionName, numOfAdapter = identifier
+            submodule_metadata[interfaceMethodName] = (moduleFunctionName, numOfAdapter)
             
             if (moduleFunctionName) in failed_functions:
                 print(f"Cancelling adaptation for mapping {mapping} as {moduleFunctionName} failed previously.")
                 success = False
                 break
 
-            neededAdaptations = adaptationHandler.adaptations[(interfaceMethodName, moduleFunctionName)]
+            neededAdaptations = adaptationHandler.adaptations[(interfaceMethodName, moduleFunctionName)][numOfAdapter]
             
             function = None
             
@@ -392,6 +403,24 @@ type_mapping = {
     'memoryview': memoryview
 }
 
+possible_conversions = {
+    'bool': ['str', 'int', 'float', 'complex', 'range', 'bytes', 'bytearray'],
+    'bytearray': ['str', 'list', 'tuple', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'memoryview'],
+    'bytes': ['str', 'list', 'tuple', 'dict', 'set', 'frozenset', 'bool', 'bytearray', 'memoryview'],
+    'complex': ['str', 'bool'],
+    'dict': ['str', 'list', 'tuple', 'set', 'frozenset', 'bool', 'bytes', 'bytearray'],
+    'float': ['str', 'int', 'complex', 'bool'],
+    'frozenset': ['str', 'list', 'tuple', 'dict', 'set', 'bool', 'bytes', 'bytearray'],
+    'int': ['str', 'float', 'complex', 'range', 'bool', 'bytes', 'bytearray'],
+    'list': ['str', 'tuple', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'bytearray'],
+    'memoryview': [],
+    'range': [],
+    'set': ['str', 'list', 'tuple', 'dict', 'frozenset', 'bool', 'bytes', 'bytearray'],
+    'str': ['list', 'tuple', 'dict', 'set', 'frozenset', 'bool'],
+    'tuple': ['str', 'list', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'bytearray']
+}
+
+
 if __name__ == "__main__":
     icubed = MethodSignature("icubed", "str", ["int"])
     iminus = MethodSignature("iminus", "str", ["str", "int"])
@@ -408,11 +437,9 @@ if __name__ == "__main__":
         moduleUnderTest = parse_code(file_content)
 
     adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest, excludeClasses=False, useFunctionDefaultValues=True)
-    adaptationHandler.identifyAdaptations()
+    adaptationHandler.identifyAdaptations(maxParamPermutationTries=1)
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
-
-    adaptationHandler.adaptations.get(("test", "test"))
         
     (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, 'numpy.lib.scimath', use_constructor_default_values=True)
 
