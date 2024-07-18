@@ -1,5 +1,5 @@
 import unittest
-from adaptation import adapt_function
+from adaptation import adapt_function, can_convert_params, can_convert_type
 
 class ExampleFunctions:
     
@@ -27,6 +27,24 @@ class TestAdaptation(unittest.TestCase):
         adapted_result = adapted_function(4, 10)
         self.assertEqual(result, int(adapted_result))
         self.assertIsInstance(adapted_result, str)
+
+    def test_can_convert_params(self):
+        source_types_1 = ['int', 'float']
+        target_types_1 = ['float', 'int']
+        self.assertTrue(can_convert_params(source_types_1, target_types_1))
+
+        source_types_2 = ['int', 'float', 'str']
+        target_types_2 = ['float', 'int', 'Any']
+        self.assertFalse(can_convert_params(source_types_2, target_types_2))
+
+    def test_can_convert_type(self):
+        source_type_1 = 'int'
+        target_type_1 = 'str'
+        self.assertTrue(can_convert_type(source_type_1, target_type_1))
+
+        source_type_2 = 'str'
+        target_type_2 = 'Any'
+        self.assertFalse(can_convert_type(source_type_2, target_type_2))
 
 
 if __name__ == '__main__':

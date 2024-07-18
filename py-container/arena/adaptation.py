@@ -8,6 +8,7 @@ import types
 import importlib
 from collections import defaultdict
 import math
+import copy
 
 # ANSI escape codes for colored output
 RED = "\033[91m"
@@ -64,10 +65,10 @@ class AdaptationHandler:
             self.classes = moduleUnderTest.classes
         
         self.adaptations = {}
-        self.numOfAdapter = []
+        self.adaptationsMetadata = []
         self.mappings = []
 
-    def identifyAdaptations(self, maxParamPermutationTries = 2):
+    def identifyAdaptations(self, maxParamPermutationTries = 1):
         for interfaceMethodName, interfaceMethod in self.interfaceMethods.items():
             for moduleFunctionName, moduleFunction in self.moduleFunctions.items():
                 
@@ -77,28 +78,31 @@ class AdaptationHandler:
                     self.adaptations[(interfaceMethodName, moduleFunctionName)] = None # no adaptation possible
                     continue
                 
-                numOfPermutations = math.factorial(moduleFunction.parameterTypes.__len__())
-                iterations = min(maxParamPermutationTries, numOfPermutations)
+                adaptationCandidate = []
 
-                for i in range(0, iterations):
-                    adaptationCandidates = []
+                if interfaceMethodName != moduleFunctionName:
+                    adaptationCandidate.append("Name")
 
-                    if interfaceMethodName != moduleFunctionName:
-                        adaptationCandidates.append("Name")
+                if interfaceMethod.returnType != moduleFunction.returnType:
+                        adaptationCandidate.append("Return") # TODO type strictness check
 
-                    if interfaceMethod.returnType != moduleFunction.returnType:
-                        adaptationCandidates.append("Return")
+                adaptationCandidateCopy = copy.deepcopy(adaptationCandidate)
 
-                    if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
-                        if (Counter(interfaceMethod.parameterTypes) == Counter(moduleFunction.parameterTypes) and not all(dataType == "Any" for dataType in moduleFunction.parameterTypes)):
-                            adaptationCandidates.append("Param permutation")
-                        # elif (all(dataType in possible_conversions.get(moduleFunction.parameterTypes[i], []) for i, dataType in enumerate(interfaceMethod.parameterTypes))):
-                        #    TODO logic for random permuations
-                        else:
-                            adaptationCandidates.append("Param conversion")
-
-                    self.adaptations[(interfaceMethodName, moduleFunctionName)].append(adaptationCandidates)
-                    self.numOfAdapter.append((moduleFunctionName, i))
+                if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
+                    if (Counter(interfaceMethod.parameterTypes) == Counter(moduleFunction.parameterTypes)):
+                        adaptationCandidate.append("Permutation")
+                    else: # TODO type strictness check
+                        adaptationCandidate.append("Conversion")
+                
+                score = -len(adaptationCandidate) # TODO refine this score, currently this only gives a penalty for each needed adaptation (e.g., name + return = -2)
+                self.adaptations[(interfaceMethodName, moduleFunctionName)].append(adaptationCandidate)
+                self.adaptationsMetadata.append((interfaceMethodName, moduleFunctionName, 0, score)) # This is needed later to generate the mappings
+                
+                numOfParamPermutations = math.factorial(moduleFunction.parameterTypes.__len__())
+                iterations = min(maxParamPermutationTries, numOfParamPermutations)
+                for i in range(1, iterations):
+                    self.adaptations[(interfaceMethodName, moduleFunctionName)].append(adaptationCandidateCopy)
+                    self.adaptationsMetadata.append((interfaceMethodName, moduleFunctionName, i, score))
 
     def visualizeAdaptations(self) -> None:
         df = pd.DataFrame(columns=list(self.moduleFunctions.keys()), index=list(self.interfaceMethods.keys()))
@@ -111,27 +115,30 @@ class AdaptationHandler:
 
     def generateMappings(self):
         # Generate all possible permutations (with length = number of interface methods) of all adapters of the module functions
-        allFunctionPermutations = itertools.permutations(self.numOfAdapter, self.interfaceMethods.keys().__len__())
+        allFunctionPermutations = itertools.permutations(self.adaptationsMetadata, self.interfaceMethods.keys().__len__())
         
         for functionPermutation in allFunctionPermutations:
-            potentialMappings = []
+            potentialMapping = []
+            totalScore = 0
 
             # Try to adapt each module function in the permutation to the corresponding interface method
-            for interfaceMethodId in self.interfaceMethods.keys():
+            for interfaceMethodName in self.interfaceMethods.keys():
                 # Iterate through the permutation by taking the first element and removing it from the functionPermutation list
-                (moduleFunctionId, adaptationId) = functionPermutation[0]
+                (interfaceMethodId, moduleFunctionId, adaptationId, score) = functionPermutation[0]
                 functionPermutation = functionPermutation[1:]
-
-                if (self.adaptations[(interfaceMethodId, moduleFunctionId)] != None):
+                
+                if (self.adaptations[(interfaceMethodName, moduleFunctionId)] != None and interfaceMethodName == interfaceMethodId): # TODO is last check needed?
                     # The current module function can be adapted, add it to the potential mapping
-                    potentialMappings.append((interfaceMethodId, moduleFunctionId, adaptationId))
+                    potentialMapping.append((interfaceMethodName, moduleFunctionId, adaptationId, score))
+                    totalScore += score
                 else:
                     # At least one module function in the permutation is not adaptable
                     break
             
             # Check if the potential mapping is complete (i.e. length = number of interface methods)
-            if potentialMappings.__len__() == self.interfaceMethods.keys().__len__():
-                self.mappings.append(potentialMappings)
+            if potentialMapping.__len__() == self.interfaceMethods.keys().__len__():
+                self.mappings.append(potentialMapping)
+                # TODO potentially add totalScore to the mapping (sum of scores for interface method/module function pairs)
         
         print(f"Generated {self.mappings.__len__()} potential mappings:")
         for mapping in self.mappings:
@@ -161,7 +168,7 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
         submodule_metadata = {}
         instantiated_classes = {}
         for identifier in mapping:
-            interfaceMethodName, moduleFunctionName, numOfAdapter = identifier
+            interfaceMethodName, moduleFunctionName, numOfAdapter, score = identifier
             submodule_metadata[interfaceMethodName] = (moduleFunctionName, numOfAdapter)
             
             if (moduleFunctionName) in failed_functions:
@@ -225,11 +232,11 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
                         new_return_type = adaptationHandler.interfaceMethods[interfaceMethodName].returnType
                         print(f"Trying to adapt return type of {new_function} to {new_return_type}.")
 
-                    if "Param conversion" in neededAdaptations:
+                    if "Conversion" in neededAdaptations:
                         convert_to_types = adaptationHandler.moduleFunctions[moduleFunctionName].parameterTypes
                         print(f"Trying to adapt parameter types of {new_function} to {convert_to_types}.")
 
-                    if "Param permutation" in neededAdaptations:
+                    if "Permutation" in neededAdaptations:
                         current_param_order = adaptationHandler.moduleFunctions[moduleFunctionName].parameterTypes
                         new_param_order = adaptationHandler.interfaceMethods[interfaceMethodName].parameterTypes
                         print(f"{RED}Trying to adapt parameter order of {new_function}{RESET}.")
@@ -404,22 +411,35 @@ type_mapping = {
 }
 
 possible_conversions = {
-    'bool': ['str', 'int', 'float', 'complex', 'range', 'bytes', 'bytearray'],
-    'bytearray': ['str', 'list', 'tuple', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'memoryview'],
-    'bytes': ['str', 'list', 'tuple', 'dict', 'set', 'frozenset', 'bool', 'bytearray', 'memoryview'],
-    'complex': ['str', 'bool'],
-    'dict': ['str', 'list', 'tuple', 'set', 'frozenset', 'bool', 'bytes', 'bytearray'],
-    'float': ['str', 'int', 'complex', 'bool'],
-    'frozenset': ['str', 'list', 'tuple', 'dict', 'set', 'bool', 'bytes', 'bytearray'],
-    'int': ['str', 'float', 'complex', 'range', 'bool', 'bytes', 'bytearray'],
-    'list': ['str', 'tuple', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'bytearray'],
-    'memoryview': [],
-    'range': [],
-    'set': ['str', 'list', 'tuple', 'dict', 'frozenset', 'bool', 'bytes', 'bytearray'],
-    'str': ['list', 'tuple', 'dict', 'set', 'frozenset', 'bool'],
-    'tuple': ['str', 'list', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'bytearray']
+    'bool': ['bool', 'str', 'int', 'float', 'complex', 'range', 'bytes', 'bytearray'],
+    'bytearray': ['bytearray', 'str', 'list', 'tuple', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'memoryview'],
+    'bytes': ['bytes', 'str', 'list', 'tuple', 'dict', 'set', 'frozenset', 'bool', 'bytearray', 'memoryview'],
+    'complex': ['complex', 'str', 'bool'],
+    'dict': ['dict', 'str', 'list', 'tuple', 'set', 'frozenset', 'bool', 'bytes', 'bytearray'],
+    'float': ['float', 'str', 'int', 'complex', 'bool'],
+    'frozenset': ['frozenset', 'str', 'list', 'tuple', 'dict', 'set', 'bool', 'bytes', 'bytearray'],
+    'int': ['int', 'str', 'float', 'complex', 'range', 'bool', 'bytes', 'bytearray'],
+    'list': ['list', 'str', 'tuple', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'bytearray'],
+    'memoryview': ['memoryview'],
+    'range': ['range'],
+    'set': ['set', 'str', 'list', 'tuple', 'dict', 'frozenset', 'bool', 'bytes', 'bytearray'],
+    'str': ['str', 'list', 'tuple', 'dict', 'set', 'frozenset', 'bool'],
+    'tuple': ['tuple', 'str', 'list', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'bytearray']
 }
 
+def can_convert_params(source_types, target_types):
+    if len(source_types) != len(target_types):
+        return False
+    
+    for source, target in zip(source_types, target_types):
+        # Check if conversion is possible
+        if target not in possible_conversions.get(source, []):
+            return False
+
+    return True
+
+def can_convert_type(source_type, target_type):
+    return target_type in possible_conversions.get(source_type, [])
 
 if __name__ == "__main__":
     icubed = MethodSignature("icubed", "str", ["int"])
@@ -437,7 +457,7 @@ if __name__ == "__main__":
         moduleUnderTest = parse_code(file_content)
 
     adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest, excludeClasses=False, useFunctionDefaultValues=True)
-    adaptationHandler.identifyAdaptations(maxParamPermutationTries=1)
+    adaptationHandler.identifyAdaptations(maxParamPermutationTries=2)
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
         
