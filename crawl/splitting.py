@@ -1,5 +1,6 @@
 import builtins
 import copy
+import hashlib
 import importlib
 import inspect
 import pickle
@@ -33,6 +34,7 @@ def get_function_calls(element):
                 function_calls.append(trace_node.id)
     return function_calls
 
+
 def get_arg_datatype(datatype):
     if type(datatype) is Name:
         datatype = [datatype.id]
@@ -47,6 +49,7 @@ def get_arg_datatype(datatype):
         datatype = [None]
     return datatype
 
+
 def get_arg_datatype_code(arg, source):
     if arg.annotation is not None:
         arg_source = ast.get_source_segment(source, arg)
@@ -54,6 +57,7 @@ def get_arg_datatype_code(arg, source):
     else:
         datatype = None
     return datatype
+
 
 def get_function_args(element, source):
     args = []
@@ -68,7 +72,7 @@ def get_function_args(element, source):
         args.append({
             "name": arg.arg,
             "datatype": datatype,
-            "keyword-arg": False
+            "keyword_arg": False
         })
     for arg in element.args.kwonlyargs:
         datatype = get_arg_datatype_code(arg, source)
@@ -81,9 +85,10 @@ def get_function_args(element, source):
         args.append({
             "name": arg.arg,
             "datatype": datatype,
-            "keyword-arg": True
+            "keyword_arg": True
         })
     return args
+
 
 def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class=None):
     index = []
@@ -98,6 +103,7 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
                 "arguments": get_function_args(element, source),
                 # "source_code": source_code,
             }
+            index_element["id"] = hashlib.md5(json.dumps(index_element).encode("utf-8")).hexdigest()
             index.append(index_element)
         elif type(element) == ClassDef:
             index += get_functions_from_ast(element, source, prefix, sub_module_name, depended_class=element.name)
@@ -126,7 +132,7 @@ def get_module_index(module_name, path=None):
         prefix = module_name + "."
         for importer, sub_module_name, ispkg in pkgutil.iter_modules(module.__path__):
             if not ispkg and sub_module_name[0] != "_" and "test" not in sub_module_name:
-            #if not ispkg and sub_module_name[0] != "_":
+                #if not ispkg and sub_module_name[0] != "_":
                 try:
                     sub_module = importlib.import_module(prefix + sub_module_name)
                     source = inspect.getsource(sub_module)
@@ -155,6 +161,7 @@ def get_module_index(module_name, path=None):
             elif isdir(join(path, element)):
                 index += get_module_index(prefix + element, join(path, element))
         return index
+
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":

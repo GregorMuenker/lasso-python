@@ -1,2 +1,2 @@
-def add(el1: str, el2: int):
+def add(el1: tuple, el2: str):
     return el1 + el2
