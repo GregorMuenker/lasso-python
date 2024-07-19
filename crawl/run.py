@@ -50,6 +50,20 @@ def remove(folders):
         shutil.rmtree(destination_path)
 
 
+def move_active(package):
+    active_package_folder = "./active"
+    print(f"Moving package {package} and depencies")
+    shutil.copytree(f"installed/{package}", active_package_folder, dirs_exist_ok=True)
+    if active_package_folder not in sys.path:
+        sys.path.append(active_package_folder)
+
+def remove_active():
+    print(f"Removing active packages")
+    active_package_folder = "./active"
+    shutil.rmtree(active_package_folder)
+    if active_package_folder in sys.path:
+        sys.path.remove(active_package_folder)
+
 def run(package, path, function, parameters):
     folders = move(package)
     module = importlib.import_module(path)

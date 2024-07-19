@@ -55,13 +55,15 @@ def get_arg_datatype_code(arg, source):
         arg_source = ast.get_source_segment(source, arg)
         datatype = arg_source.split(": ")[1]
     else:
-        datatype = None
+        datatype = "None"
     return datatype
 
 
 def get_function_args(element, source):
     args = []
-    for arg in element.args.args:
+    element_args = element.args
+
+    def append_arg(arg, keyword_arg):
         datatype = get_arg_datatype_code(arg, source)
         if datatype:
             datatype = datatype.replace("\n", "")
@@ -72,22 +74,27 @@ def get_function_args(element, source):
         args.append({
             "name": arg.arg,
             "datatype": datatype,
-            "keyword_arg": False
+            "keyword_arg": keyword_arg,
+            "has_default_val": False,
+            "default_val": "NODEFAULT"
         })
-    for arg in element.args.kwonlyargs:
-        datatype = get_arg_datatype_code(arg, source)
-        if datatype:
-            datatype = datatype.replace("\n", "")
-            datatype = datatype.replace(" ", "")
-            datatype = datatype.split("|")
-        if type(datatype) != list:
-            datatype = [datatype]
-        args.append({
-            "name": arg.arg,
-            "datatype": datatype,
-            "keyword_arg": True
-        })
-    return args
+
+    for arg in element_args.args:
+        append_arg(arg, False)
+    if len(element_args.defaults) > 0:
+        default_index = len(element_args.args) - len(element_args.defaults)
+    else:
+        default_index = None
+    for i, default_val in enumerate(element_args.defaults):
+        args[default_index + i]["default_val"] = ast.get_source_segment(source, default_val)
+        args[default_index + i]["has_default_val"] = True
+    for arg in element_args.kwonlyargs:
+        append_arg(arg, True)
+    for i, default_val in enumerate(element_args.kw_defaults):
+        if default_val:
+            args[len(element_args.args) + i]["default_val"] = ast.get_source_segment(source, default_val)
+            args[len(element_args.args) + i]["has_default_val"] = True
+    return args, default_index
 
 
 def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class=None):
@@ -95,12 +102,14 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
     for element in tree.body:
         if type(element) == FunctionDef:
             # source_code = ast.get_source_segment(source, element)
+            args, default_index = get_function_args(element, source)
             index_element = {
                 "module": prefix + sub_module_name,
                 "name": element.name,
                 "dependend_class": depended_class,
                 # "function_calls": get_function_calls(element),
-                "arguments": get_function_args(element, source),
+                "arguments": args,
+                "default_index": default_index
                 # "source_code": source_code,
             }
             index_element["id"] = hashlib.md5(json.dumps(index_element).encode("utf-8")).hexdigest()
@@ -167,12 +176,12 @@ def get_module_index(module_name, path=None):
 if __name__ == "__main__":
     package_name = "numpy"
     try:
-        folders = run.move(package_name)
+        run.move_active(package_name)
     except FileNotFoundError:
         install(package_name)
-        folders = run.move(package_name)
+        run.move_active(package_name)
     index = get_module_index(package_name)
-    run.remove(folders)
+    run.remove_active()
 
 #fp = open('search_index.json', 'w')
 #json.dump(index, fp)
