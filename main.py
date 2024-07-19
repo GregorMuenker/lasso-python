@@ -11,4 +11,4 @@ def index_package(name):
 
 
 if __name__ == "__main__":
-    index_package("numpy")
+    index_package("urllib3")

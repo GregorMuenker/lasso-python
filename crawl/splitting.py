@@ -55,7 +55,7 @@ def get_arg_datatype_code(arg, source):
         arg_source = ast.get_source_segment(source, arg)
         datatype = arg_source.split(": ")[1]
     else:
-        datatype = "None"
+        datatype = "Any"
     return datatype
 
 
@@ -96,8 +96,14 @@ def get_function_args(element, source):
             args[len(element_args.args) + i]["has_default_val"] = True
     return args, default_index
 
+def get_return_type(element, source):
+    return_type = ast.get_source_segment(source, element.returns)
+    if return_type:
+        return return_type
+    else:
+        return "Any"
 
-def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class=None):
+def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class="None"):
     index = []
     for element in tree.body:
         if type(element) == FunctionDef:
@@ -109,7 +115,11 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
                 "dependend_class": depended_class,
                 # "function_calls": get_function_calls(element),
                 "arguments": args,
-                "default_index": default_index
+                "return_types": get_return_type(element, source),
+                "default_index": default_index,
+                "count_positional_args": len([x for x in args if not x["keyword_arg"]]),
+                "count_positional_non_default_args": len([x for x in args if not x["has_default_val"] and not x["keyword_arg"]]),
+                "count_kw_args": len([x for x in args if x["keyword_arg"]])
                 # "source_code": source_code,
             }
             index_element["id"] = hashlib.md5(json.dumps(index_element).encode("utf-8")).hexdigest()
