@@ -54,10 +54,9 @@ def parse_class(node):
                 functions.append(parse_function(item, parentClass=className))
     return className, functions, constructors
 
-def parse_code(code_string):
+def parse_code(code_string, module_name):
     from adaptation import ModuleUnderTest
     tree = ast.parse(code_string)
-    moduleName = 'parsed_module'
     functions = []
     classes = {}
     constructors = []
@@ -71,7 +70,7 @@ def parse_code(code_string):
             functions.extend(class_functions)
             constructors.extend(class_constructors)
     
-    module = ModuleUnderTest(moduleName, functions)
+    module = ModuleUnderTest(module_name, functions)
     module.classes = classes
     module.constructors = constructors
 

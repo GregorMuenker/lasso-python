@@ -32,11 +32,14 @@ class MethodSignature:
         self.parameterTypes = parameterTypes
 
 class ModuleUnderTest:
-    def __init__(self, moduleName, functions) -> None:
+    def __init__(self, moduleName, functions, classes = None) -> None:
         self.moduleName = moduleName
         self.functions = functions # List of FunctionSignature objects
         self.classes = {} # This stores class names (keys) and list of their constructors as FunctionSignature objects (values)
         self.constructors = [] # TODO this is actually unused so far
+    
+    def __repr__(self) -> str:
+        return (f"moduleName='{self.moduleName}',\nfunctions='{self.functions}',\n"f"classes={self.classes})")
 
 class FunctionSignature:
     def __init__(self, functionName, returnType, parameterTypes, parentClass, firstDefault) -> None:
@@ -45,6 +48,11 @@ class FunctionSignature:
         self.parameterTypes = parameterTypes
         self.parentClass = parentClass
         self.firstDefault = firstDefault
+    
+    def __repr__(self) -> str:
+        return (f"FunctionSignature(functionName='{self.functionName}', returnType='{self.returnType}', "
+                f"parameterTypes={self.parameterTypes}, parentClass='{self.parentClass}', "
+                f"firstDefault={self.firstDefault})")
 
 class AdaptationHandler:
     def __init__(self, interfaceSpecification, moduleUnderTest, excludeClasses = False, useFunctionDefaultValues = False):
@@ -148,7 +156,7 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
     module = importlib.import_module(module_name)
     # print(module.__file__) # print the path of the module
     
-    # TODO import library from file
+    # TODO uncomment to import code from a single file
     # spec = importlib.util.spec_from_file_location(module_name, "/Users/florianruhle/Studium/Master/FSS24/Project/lasso-python/py-container/arena/test_data_file.py")
     # module = importlib.util.module_from_spec(spec)
     # spec.loader.exec_module(module)
@@ -448,20 +456,28 @@ if __name__ == "__main__":
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
 
     # TODO adjust this path
-    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" #function_base #user_array #scimath
-    # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
+    # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" #function_base #user_array #scimath
+    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/array_api/_array_object.py"
     # path = "/Users/florianruhle/Studium/Master/FSS24/Project/lasso-python/py-container/arena/test_data_file.py"
     with open(path, 'r') as file:
         file_content = file.read()  # Read the entire content of the file
-        moduleUnderTest = parse_code(file_content)
+        moduleUnderTest = parse_code(file_content, "numpy.matrixlib.defmatrix")
 
-    adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest, excludeClasses=False, useFunctionDefaultValues=True)
-    adaptationHandler.identifyAdaptations(maxParamPermutationTries=2)
+    # TODO comment above and uncomment below to use Solr response data
+    # import json
+    # from solr_parser import parse_solr_response
+    # path = "/Users/florianruhle/Studium/Master/FSS24/Project/lasso-python/py-container/arena/numpy_query.json"
+    # with open(path, 'r') as file:
+    #     file_content = json.load(file)
+    #     moduleUnderTest = parse_solr_response(file_content)
+
+    adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest, excludeClasses=False, useFunctionDefaultValues=False)
+    adaptationHandler.identifyAdaptations(maxParamPermutationTries=1)
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
         
-    (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, 'numpy.lib.scimath', use_constructor_default_values=True)
+    (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, moduleUnderTest.moduleName, use_constructor_default_values=True)
 
     stimulus_sheet = get_stimulus_sheet("calc3.csv")
     execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodules_metadata)
