@@ -165,7 +165,7 @@ crawl/packages/
 example_packages
 crawl/test.ipynb
 crawl/info.csv
-
+crawl/installed
 .DS_Store
 numpy-*
 pysolr-*
