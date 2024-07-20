@@ -20,7 +20,11 @@ def parse_solr_response(response):
         if parentClass:
             if parentClass not in classes:
                 classes[parentClass] = []
-        
+        parameterNames = doc.get('arguments.name', [])
+        if parameterNames[0] == "self":
+            parameterTypes = parameterTypes[1:]
+            firstDefault -= 1
+
         functionSignature = FunctionSignature(functionName, returnType, parameterTypes, parentClass, firstDefault)
 
         if functionName == "__init__" or functionName == "__new__":
