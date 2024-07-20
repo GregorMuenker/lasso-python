@@ -9,7 +9,6 @@ def parse_solr_response(response):
             moduleName = doc.get('module', [None])[0]
         
         functionName = doc.get('name', None)[0]
-        simpleName = functionName
         returnType = 'Any'  # TODO
         parameterTypes = doc.get('arguments.datatype', [])
         parentClass = doc.get('dependend_class', [None])[0]
@@ -21,13 +20,10 @@ def parse_solr_response(response):
         if parentClass:
             if parentClass not in classes:
                 classes[parentClass] = []
-            
-            functionName = parentClass + "." + functionName
         
         functionSignature = FunctionSignature(functionName, returnType, parameterTypes, parentClass, firstDefault)
 
-        
-        if simpleName == "__init__" or simpleName == "__new__":
+        if functionName == "__init__" or functionName == "__new__":
                 classes[parentClass].append(functionSignature)
         else:
             functionSignatures.append(functionSignature)

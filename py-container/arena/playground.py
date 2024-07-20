@@ -62,3 +62,12 @@ ndarray_instance = ndarray_class((2, 2), buffer=buffer, dtype=np.int32)
 
 # Print the initialized ndarray instance
 print(ndarray_instance)
+
+
+import itertools
+list_of_strings = ["apple", "banana", "cherry", "date", "Any"]
+lst = list(range(len(list_of_strings)))
+all_permutations = list(itertools.permutations(lst))
+all_permutations = all_permutations[1:4]
+print(all_permutations)
+

@@ -1,7 +1,6 @@
 import pandas as pd
 import itertools
 from stimulus_sheet_reader import get_stimulus_sheet
-from test_data import CALCULATOR_CLASS, CALCULATOR_MODULE, PARAM_ORDER, code_string
 from module_parser import parse_code
 from collections import Counter
 import types
@@ -9,6 +8,7 @@ import importlib
 from collections import defaultdict
 import math
 import copy
+import random
 
 # ANSI escape codes for colored output
 RED = "\033[91m"
@@ -22,7 +22,7 @@ RESET = "\033[0m"
 class InterfaceSpecification:
     def __init__(self, className, constructors, methods) -> None:
         self.className = className
-        self.constructors = constructors
+        self.constructors = constructors # TODO remove this?
         self.methods = methods
 
 class MethodSignature:
@@ -48,14 +48,70 @@ class FunctionSignature:
         self.parameterTypes = parameterTypes
         self.parentClass = parentClass
         self.firstDefault = firstDefault
+        if (self.parentClass):
+            self.qualName = f"{self.parentClass}.{self.functionName}"
+        else:
+            self.qualName = self.functionName
     
     def __repr__(self) -> str:
         return (f"FunctionSignature(functionName='{self.functionName}', returnType='{self.returnType}', "
                 f"parameterTypes={self.parameterTypes}, parentClass='{self.parentClass}', "
                 f"firstDefault={self.firstDefault})")
 
+class AdaptationInstruction:
+    def __init__(self, interfaceMethodName, moduleFunctionQualName, iteration) -> None:
+        self.identifier = (interfaceMethodName, moduleFunctionQualName, iteration)
+        self.nameAdaptation = None
+        self.returnTypeAdaptation = None
+        self.parameterOrderAdaptation = None
+        self.blindParameterOrderAdaptation = None
+        self.parameterTypeConversion = None
+        self.score = 0
+    
+    def areAdaptationsNeeded(self) -> bool:
+        return self.nameAdaptation or self.returnTypeAdaptation or self.parameterOrderAdaptation or self.blindParameterOrderAdaptation or self.parameterTypeConversion
+    
+    def calculateScore(self) -> int:
+        return random.randint(1, 10) # TODO work on score calculation
+    
+    def __repr__(self) -> str:
+        result = ""
+        if (self.nameAdaptation):
+            result += "N"
+        if (self.returnTypeAdaptation):
+            result += "R"
+        if (self.parameterOrderAdaptation):
+            result += "P"
+        if (self.blindParameterOrderAdaptation):
+            result += "Pb"
+        if (self.parameterTypeConversion):
+            result += "C"
+        return result
+    
+class Mapping:
+    def __init__(self) -> None:
+        self.totalScore = 0
+        self.adaptationIds = [] # list of tuples (interfaceMethodName, moduleFunctionQualName, iteration)
+
+    def __repr__(self) -> str:
+        result = ""
+        for adaptationId in self.adaptationIds:
+            result += str(adaptationId)
+        result += f" | score={self.totalScore}"
+        return result
+
 class AdaptationHandler:
     def __init__(self, interfaceSpecification, moduleUnderTest, excludeClasses = False, useFunctionDefaultValues = False):
+        """
+        The constructor for AdaptationHandler.
+
+        Parameters:
+        interfaceSpecification (InterfaceSpecification): Interface specification provided by the user that mainly comprises a list of MethodSignature objects.
+        moduleUnderTest (ModuleUnderTest): The parameterized Python module that will be used to implement the interface methods.
+        excludeClasses (bool): If true, all functions in the moduleUnderTest with a parent class will be ignored.
+        useFunctionDefaultValues (bool): If true, the adaptationHandler will assume that the default parameters of functions will be used with their default values and won't consider them for adaptation.
+        """
+
         self.interfaceMethods = {}
         for method in interfaceSpecification.methods:
             self.interfaceMethods[method.methodName] = method
@@ -64,99 +120,137 @@ class AdaptationHandler:
         for function in moduleUnderTest.functions:
             if (function.parentClass != None and excludeClasses == True):
                 continue
-            self.moduleFunctions[function.functionName] = function
+            self.moduleFunctions[function.qualName] = function
             if useFunctionDefaultValues:
-                self.moduleFunctions[function.functionName].parameterTypes = function.parameterTypes[:function.firstDefault]
+                self.moduleFunctions[function.qualName].parameterTypes = function.parameterTypes[:function.firstDefault]
 
         self.classes = {}
         if excludeClasses == False:
             self.classes = moduleUnderTest.classes
         
         self.adaptations = {}
-        self.adaptationsMetadata = []
+        self.adaptationsList = [] # needed to generate mappings later, contains the same adaptationInstruction objects as the adaptations dict
         self.mappings = []
 
     def identifyAdaptations(self, maxParamPermutationTries = 1):
+        """
+        Identifies all possible adaptations between all interface method/module function pairs.
+
+        Parameters:
+        maxParamPermutationTries (int): The maximum number of adaptations for any given interface method/module function pair.
+        """
+        print(f"\n{MAGENTA}-----------------\nIDENTIFY MAPPINGS\n-----------------{RESET}")
         for interfaceMethodName, interfaceMethod in self.interfaceMethods.items():
-            for moduleFunctionName, moduleFunction in self.moduleFunctions.items():
+            for moduleFunctionQualName, moduleFunction in self.moduleFunctions.items():
                 
-                self.adaptations[(interfaceMethodName, moduleFunctionName)] = []
+                self.adaptations[(interfaceMethodName, moduleFunctionQualName)] = []
                 
                 if interfaceMethod.parameterTypes.__len__() != moduleFunction.parameterTypes.__len__():
-                    self.adaptations[(interfaceMethodName, moduleFunctionName)] = None # no adaptation possible
+                    self.adaptations[(interfaceMethodName, moduleFunctionQualName)] = None # no adaptation possible
                     continue
                 
-                adaptationCandidate = []
+                adaptationInstruction = AdaptationInstruction(interfaceMethodName, moduleFunctionQualName, 0)
 
-                if interfaceMethodName != moduleFunctionName:
-                    adaptationCandidate.append("Name")
+                if interfaceMethodName != moduleFunctionQualName:
+                    adaptationInstruction.nameAdaptation = interfaceMethodName
 
                 if interfaceMethod.returnType != moduleFunction.returnType:
-                        adaptationCandidate.append("Return") # TODO type strictness check
+                        adaptationInstruction.returnTypeAdaptation = interfaceMethod.returnType
 
-                adaptationCandidateCopy = copy.deepcopy(adaptationCandidate)
+                adaptationInstructionCopy = copy.deepcopy(adaptationInstruction) # create copy that can be used for blind parameter permutations
 
                 if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
                     if (Counter(interfaceMethod.parameterTypes) == Counter(moduleFunction.parameterTypes)):
-                        adaptationCandidate.append("Permutation")
+                        adaptationInstruction.parameterOrderAdaptation = "TODO stores no instruction"
+
                     else: # TODO type strictness check
-                        adaptationCandidate.append("Conversion")
+                        adaptationInstruction.parameterTypeConversion = moduleFunction.parameterTypes
                 
-                score = -len(adaptationCandidate) # TODO refine this score, currently this only gives a penalty for each needed adaptation (e.g., name + return = -2)
-                self.adaptations[(interfaceMethodName, moduleFunctionName)].append(adaptationCandidate)
-                self.adaptationsMetadata.append((interfaceMethodName, moduleFunctionName, 0, score)) # This is needed later to generate the mappings
+                self.adaptations[(interfaceMethodName, moduleFunctionQualName)].append(adaptationInstruction)
+                self.adaptationsList.append(adaptationInstruction)
                 
+                # Blind parameter permutations, i.e. just permutate them without caring about types
                 numOfParamPermutations = math.factorial(moduleFunction.parameterTypes.__len__())
                 iterations = min(maxParamPermutationTries, numOfParamPermutations)
+                orderedList = list(range(moduleFunction.parameterTypes.__len__()))
+                allPermutations = list(itertools.permutations(orderedList))
                 for i in range(1, iterations):
-                    self.adaptations[(interfaceMethodName, moduleFunctionName)].append(adaptationCandidateCopy)
-                    self.adaptationsMetadata.append((interfaceMethodName, moduleFunctionName, i, score))
+                    adaptationInstructionBlindPermutation = copy.deepcopy(adaptationInstructionCopy)
+                    adaptationInstructionBlindPermutation.identifier = (interfaceMethodName, moduleFunctionQualName, i)
+                    adaptationInstructionBlindPermutation.blindParameterOrderAdaptation = allPermutations[i] # TODO ensure that another permuation is used than in iteration 0
+                    self.adaptations[(interfaceMethodName, moduleFunctionQualName)].append(adaptationInstructionBlindPermutation)
+                    self.adaptationsList.append(adaptationInstructionBlindPermutation)
 
     def visualizeAdaptations(self) -> None:
+        """
+        Visualizes all adaptations between the interface methods and the module functions, will only show values after using identifyAdaptations first.
+        """
         df = pd.DataFrame(columns=list(self.moduleFunctions.keys()), index=list(self.interfaceMethods.keys()))
 
         for key, value in self.adaptations.items():
-            interfaceMethodName, moduleFunctionName = key
-            df.at[interfaceMethodName, moduleFunctionName] = value
+            interfaceMethodName, moduleFunctionQualName = key
+            df.at[interfaceMethodName, moduleFunctionQualName] = value
 
         print("\n", df, "\n")      
 
-    def generateMappings(self):
+    def generateMappings(self, onlyKeepTopN = None):
+        """
+        Generates all possibilities of implementing the interface methods with the adapted module functions, will only work after using identifyAdaptations first.
+        """
         # Generate all possible permutations (with length = number of interface methods) of all adapters of the module functions
-        allFunctionPermutations = itertools.permutations(self.adaptationsMetadata, self.interfaceMethods.keys().__len__())
+        adaptationIdentifiers = (adaptationInstruction.identifier for adaptationInstruction in self.adaptationsList)
+        allFunctionPermutations = itertools.permutations(adaptationIdentifiers, self.interfaceMethods.keys().__len__())
         
         for functionPermutation in allFunctionPermutations:
-            potentialMapping = []
-            totalScore = 0
+            potentialMapping = Mapping()
 
             # Try to adapt each module function in the permutation to the corresponding interface method
             for interfaceMethodName in self.interfaceMethods.keys():
                 # Iterate through the permutation by taking the first element and removing it from the functionPermutation list
-                (interfaceMethodId, moduleFunctionId, adaptationId, score) = functionPermutation[0]
+                (interfaceMethodId, moduleFunctionId, iteration) = functionPermutation[0]
                 functionPermutation = functionPermutation[1:]
                 
-                if (self.adaptations[(interfaceMethodName, moduleFunctionId)] != None and interfaceMethodName == interfaceMethodId): # TODO is last check needed?
+                if (self.adaptations[(interfaceMethodName, moduleFunctionId)] != None and interfaceMethodName == interfaceMethodId): # TODO last check ensures that adapter is actually intended for the interfaceMethod
                     # The current module function can be adapted, add it to the potential mapping
-                    potentialMapping.append((interfaceMethodName, moduleFunctionId, adaptationId, score))
-                    totalScore += score
+                    potentialMapping.adaptationIds.append((interfaceMethodName, moduleFunctionId, iteration))
+                    potentialMapping.totalScore += self.adaptations[(interfaceMethodId, moduleFunctionId)][iteration].calculateScore()
                 else:
                     # At least one module function in the permutation is not adaptable
                     break
             
             # Check if the potential mapping is complete (i.e. length = number of interface methods)
-            if potentialMapping.__len__() == self.interfaceMethods.keys().__len__():
+            if potentialMapping.adaptationIds.__len__() == self.interfaceMethods.keys().__len__():
                 self.mappings.append(potentialMapping)
-                # TODO potentially add totalScore to the mapping (sum of scores for interface method/module function pairs)
         
-        print(f"Generated {self.mappings.__len__()} potential mappings:")
+        print(f"Generated {self.mappings.__len__()} potential mappings.")
+        
+        self.mappings = sorted(self.mappings, key=lambda mapping: mapping.totalScore, reverse=True)
+
+        if (onlyKeepTopN and onlyKeepTopN <= len(self.mappings)):
+            print(f"Keeping only the top {onlyKeepTopN} mappings.")
+            self.mappings = self.mappings[:onlyKeepTopN]
+        
         for mapping in self.mappings:
             print(mapping)
+
     
 def create_adapted_module(adaptationHandler, module_name, use_constructor_default_values = False):
+    """
+    Creates an adapted module using information provided by the adaptationHandler object. The adapted module can be used to execute stimulus sheets.
+    The adapted module comprises multiple submodules (mapping0, mapping1, ...) that contain different sets of adapted functions (terminology: one submodule contains one "mapping").
+
+    Parameters:
+    adaptationHandler (AdaptationHandler): The AdaptationHandler object containing all necessary information on how to adapt functions/how many submodules to create.
+    module_name (str): The name of the module that is used for importing the module via importlib.
+    use_constructor_default_values (bool): If true, the constructor of a class will be instantiated with all available default values instead of explicitly providing these constructor parameters.
+
+    Returns:
+    (module: module, successes: int, all_submodules_metadata: list): A tuple containing the adapted module, the number of successful adaptations, and a list of dictionaries containing metadata for each submodule.
+    """
     module = importlib.import_module(module_name)
     # print(module.__file__) # print the path of the module
     
-    # TODO uncomment to import code from a single file
+    # TODO uncomment to import module from a single file, only for testing
     # spec = importlib.util.spec_from_file_location(module_name, "/Users/florianruhle/Studium/Master/FSS24/Project/lasso-python/py-container/arena/test_data_file.py")
     # module = importlib.util.module_from_spec(spec)
     # spec.loader.exec_module(module)
@@ -169,36 +263,36 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
 
         success = True
         print(f"\n-----------------------------\nTRYING ADAPTATION FOR MAPPING {mapping}.\n-----------------------------")
-        submodule_name = "adaptation" + str(successes)
+        submodule_name = "mapping" + str(successes)
         submodule = types.ModuleType(submodule_name)
         setattr(module, submodule_name, submodule)
 
         submodule_metadata = {}
         instantiated_classes = {}
-        for identifier in mapping:
-            interfaceMethodName, moduleFunctionName, numOfAdapter, score = identifier
-            submodule_metadata[interfaceMethodName] = (moduleFunctionName, numOfAdapter)
+        for adaptationId in mapping.adaptationIds:
+            interfaceMethodName, moduleFunctionQualName, iteration = adaptationId
             
-            if (moduleFunctionName) in failed_functions:
-                print(f"Cancelling adaptation for mapping {mapping} as {moduleFunctionName} failed previously.")
+            if (moduleFunctionQualName) in failed_functions:
+                print(f"Cancelling adaptation for mapping {mapping} as {moduleFunctionQualName} failed previously.")
                 success = False
                 break
 
-            neededAdaptations = adaptationHandler.adaptations[(interfaceMethodName, moduleFunctionName)][numOfAdapter]
+            adaptationInstruction = adaptationHandler.adaptations[(interfaceMethodName, moduleFunctionQualName)][iteration]
+            submodule_metadata[interfaceMethodName] = (moduleFunctionQualName, iteration, adaptationInstruction)
             
             function = None
             
             try:
-                parent_class_name = adaptationHandler.moduleFunctions[moduleFunctionName].parentClass
+                parent_class_name = adaptationHandler.moduleFunctions[moduleFunctionQualName].parentClass
 
                 # function is a class method that has already been instantiated
                 if parent_class_name and parent_class_name in instantiated_classes:
                     print(f"Using already instantiated class {parent_class_name}.")
                     parent_class_instance = instantiated_classes[parent_class_name]
                     
-                    # remove the class name from the function name and get the function object
-                    parts = moduleFunctionName.split('.', 1)
-                    function = getattr(parent_class_instance, parts[1])
+                    # use the simple function name (without the class as prefix) to get the function object
+                    simple_function_name = adaptationHandler.moduleFunctions[moduleFunctionQualName].functionName
+                    function = getattr(parent_class_instance, simple_function_name)
                 
                 # function is a class method that has not been instantiated yet
                 elif parent_class_name:
@@ -206,57 +300,62 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
                     if (successful_instantiation):
                         instantiated_classes[parent_class_name] = parent_class_instance
                 
-                        # remove the class name from the function name and get the function object
-                        parts = moduleFunctionName.split('.', 1)
-                        function = getattr(parent_class_instance, parts[1])
+                        # use the simple function name (without the class as prefix) to get the function object
+                        simple_function_name = adaptationHandler.moduleFunctions[moduleFunctionQualName].functionName
+                        function = getattr(parent_class_instance, simple_function_name)
                     else:
-                        failed_functions.append(moduleFunctionName)
+                        failed_functions.append(moduleFunctionQualName)
                         print(f"Failed to instantiate class {parent_class_name}.")
                         success = False
                         break
 
                 # function is a standalone function
                 else:
-                    function = getattr(module, moduleFunctionName)
+                    function = getattr(module, moduleFunctionQualName)
 
             except Exception as e:
-                failed_functions.append(moduleFunctionName)
-                print(f"For function '{moduleFunctionName}' there is an error: {e}.")
+                failed_functions.append(moduleFunctionQualName)
+                print(f"For function '{moduleFunctionQualName}' there is an error: {e}.")
                 success = False
                 break
             else:
                 # function was found in the module, continue with adaptation: create a submodule that contains the adapted function
                 new_function = function
-                setattr(submodule, moduleFunctionName, new_function) # Add the new function to the submodule
+                setattr(submodule, moduleFunctionQualName, new_function) # Add the new function to the submodule
 
-                if (len(neededAdaptations) > 0):
+                if adaptationInstruction.areAdaptationsNeeded():
 
                     new_return_type = None
                     convert_to_types = None
                     current_param_order= None
                     new_param_order = None
+                    blind_new_param_order = None
 
-                    if "Return" in neededAdaptations:
-                        new_return_type = adaptationHandler.interfaceMethods[interfaceMethodName].returnType
+                    if adaptationInstruction.returnTypeAdaptation:
+                        new_return_type = adaptationInstruction.returnTypeAdaptation
                         print(f"Trying to adapt return type of {new_function} to {new_return_type}.")
 
-                    if "Conversion" in neededAdaptations:
-                        convert_to_types = adaptationHandler.moduleFunctions[moduleFunctionName].parameterTypes
+                    if adaptationInstruction.parameterTypeConversion:
+                        convert_to_types = adaptationInstruction.parameterTypeConversion
                         print(f"Trying to adapt parameter types of {new_function} to {convert_to_types}.")
 
-                    if "Permutation" in neededAdaptations:
-                        current_param_order = adaptationHandler.moduleFunctions[moduleFunctionName].parameterTypes
+                    if adaptationInstruction.parameterOrderAdaptation:
+                        current_param_order = adaptationHandler.moduleFunctions[moduleFunctionQualName].parameterTypes
                         new_param_order = adaptationHandler.interfaceMethods[interfaceMethodName].parameterTypes
                         print(f"{RED}Trying to adapt parameter order of {new_function}{RESET}.")
-                    
-                    new_function = adapt_function(new_function, new_return_type, convert_to_types, current_param_order, new_param_order)
 
-                    if "Name" in neededAdaptations:
+                    if adaptationInstruction.blindParameterOrderAdaptation:
+                        blind_new_param_order = adaptationInstruction.blindParameterOrderAdaptation
+                        print(f"{RED}Trying to blindly adapt parameter order of {new_function}{RESET}.")
+                    
+                    new_function = adapt_function(new_function, new_return_type, convert_to_types, current_param_order, new_param_order, blind_new_param_order)
+
+                    if adaptationInstruction.nameAdaptation:
                         setattr(submodule, interfaceMethodName, new_function)
                         print(f"Adapted name of function {new_function} to {interfaceMethodName}.")
                     
         if (success):
-            print(f"{GREEN}Adaptation with id {successes} successful.{RESET}")
+            print(f"{GREEN}Successful creation of submodule {successes} for this mapping.{RESET}")
             all_submodules_metadata.append(submodule_metadata)
             successes += 1
 
@@ -265,6 +364,18 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
     return (module, successes, all_submodules_metadata)
 
 def instantiate_class(module, parent_class_name, use_constructor_default_values, constructors):
+    """
+    Instantiates a class from a given module.
+
+    Parameters:
+    module (module): The module that contains the class to be instantiated, e.g., numpy.
+    parent_class_name (str): The name of the class that the function tries to instantiate.
+    use_constructor_default_values (bool): If true, the constructor of a class will be instantiated with all available default values instead of explicitly providing these constructor parameters.
+    constructors (dict): A dictionary with key = class name and values = list of FunctionSignature objects that represent the constructors of the class.
+
+    Returns:
+    (successful_instantiation: bool, parent_class_instance: object): A tuple containing a boolean indicating whether the instantiation was successful and the instance of the parent class.
+    """
     print(f"Trying to instantiate class {parent_class_name}.")
     parent_class = getattr(module, parent_class_name)
     parent_class_instance = None
@@ -285,7 +396,7 @@ def instantiate_class(module, parent_class_name, use_constructor_default_values,
                     parameterTypes = parameterTypes[:constructor.firstDefault]
                     print(f"Using default values for constructor parameters, last {len(constructor.parameterTypes) - len(parameterTypes)} parameters were dropped.")
 
-                # Strategy: get standard values for each data type (defined somewhere below) and try to instantiate the class with them, if datatype is unknown use value 1
+                # Strategy: get standard values for each data type (standard_constructor_values dict) and try to instantiate the class with them, if datatype is unknown use value 1
                 parameters = tuple(standard_constructor_values.get(parameterType, 1) for parameterType in parameterTypes)
 
                 if parameters.__len__() > 0:
@@ -297,7 +408,7 @@ def instantiate_class(module, parent_class_name, use_constructor_default_values,
                     parent_class_instance = parent_class()
                     print(f"Produced class instance: {parent_class_instance}.")
 
-            except (TypeError, ValueError) as e:
+            except Exception as e:
                 print(f"Constructor {constructor.functionName} failed: {e}.")
                 continue
             
@@ -307,12 +418,25 @@ def instantiate_class(module, parent_class_name, use_constructor_default_values,
     
     return successful_instantiation, parent_class_instance
 
-def adapt_function(function, new_return_type = None, convert_to_types = None, current_param_order= None, new_param_order = None):
+def adapt_function(function, new_return_type = None, convert_to_types = None, current_param_order= None, new_param_order = None, blind_new_param_order = None):
+    """
+    Adapts a function by using a decorator and wrapper.
+
+    Parameters:
+    function (object): The function object to adapt.
+    new_return_type (str): A string that represents the new return type of the function.
+    convert_to_types (list): A list of strings that represent the target types of the parameters, e.g., ["int", "str", "float"]
+    current_param_order (list): A list of strings that represent the current order of parameters, e.g., ["int", "int", "str"]
+    new_param_order (list): A list of strings that represent the new order of parameters, e.g., ["str", "int", "int"]
+
+    Returns:
+    object: The adapted function object.
+    """
     def decorator(func):
         def wrapper(*args, **kwargs):
             result = None
             try:
-                # Adapt parameter order
+                # Adapt parameter order in a smart way by matching the parameter types
                 if (current_param_order and new_param_order):
                     type_value_dict = defaultdict(list)
                     for data_type, value in zip(current_param_order, args):
@@ -324,6 +448,10 @@ def adapt_function(function, new_return_type = None, convert_to_types = None, cu
                             reordered_args.append(type_value_dict[data_type].pop(0))
                     
                     args = reordered_args
+
+                # Adapt parameter order blindly by using a given order
+                if (blind_new_param_order):
+                    args = [args[i] for i in blind_new_param_order]
 
                 # Adapt parameter types
                 if (convert_to_types):
@@ -346,13 +474,27 @@ def adapt_function(function, new_return_type = None, convert_to_types = None, cu
     return decorator(function)
 
 def execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodules_metadata):
+    """
+    Adapts a function by using a decorator and wrapper.
+
+    Parameters:
+    function (object): The function object to adapt.
+    new_return_type (str): A string that represents the new return type of the function.
+    convert_to_types (list): A list of strings that represent the target types of the parameters, e.g., ["int", "str", "float"]
+    current_param_order (list): A list of strings that represent the current order of parameters, e.g., ["int", "int", "str"]
+    new_param_order (list): A list of strings that represent the new order of parameters, e.g., ["str", "int", "int"]
+
+    Returns:
+    object: The adapted function object.
+    """
+    
     print(f"\nExecuting stimulus sheet on {adapted_module.__name__}")
     all_results = []
     for i in range(number_of_submodules):
         results = []
         results.append(f"{i}")
         results.append(f"{submodules_metadata[i]}\t\t")
-        submodule = getattr(adapted_module, "adaptation" + str(i))
+        submodule = getattr(adapted_module, "mapping" + str(i))
 
         for _, row in stimulus_sheet.iterrows():
             method_name = row['method_name']
@@ -451,32 +593,24 @@ def can_convert_type(source_type, target_type):
 
 if __name__ == "__main__":
     icubed = MethodSignature("icubed", "str", ["int"])
-    iminus = MethodSignature("iminus", "str", ["str", "int"])
+    iminus = MethodSignature("iminus", "str", ["float", "int"])
 
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
 
     # TODO adjust this path
-    # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" #function_base #user_array #scimath
-    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
+    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" #function_base #user_array #scimath
+    # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/array_api/_array_object.py"
-    # path = "/Users/florianruhle/Studium/Master/FSS24/Project/lasso-python/py-container/arena/test_data_file.py"
+    # path = "./test_data_file.py"
     with open(path, 'r') as file:
         file_content = file.read()  # Read the entire content of the file
-        moduleUnderTest = parse_code(file_content, "numpy.matrixlib.defmatrix")
-
-    # TODO comment above and uncomment below to use Solr response data
-    # import json
-    # from solr_parser import parse_solr_response
-    # path = "/Users/florianruhle/Studium/Master/FSS24/Project/lasso-python/py-container/arena/numpy_query.json"
-    # with open(path, 'r') as file:
-    #     file_content = json.load(file)
-    #     moduleUnderTest = parse_solr_response(file_content)
+        moduleUnderTest = parse_code(file_content, "numpy.lib.scimath")
 
     adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest, excludeClasses=False, useFunctionDefaultValues=False)
     adaptationHandler.identifyAdaptations(maxParamPermutationTries=1)
     adaptationHandler.visualizeAdaptations()
-    adaptationHandler.generateMappings()
-        
+    adaptationHandler.generateMappings(onlyKeepTopN=10)
+
     (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, moduleUnderTest.moduleName, use_constructor_default_values=True)
 
     stimulus_sheet = get_stimulus_sheet("calc3.csv")

@@ -19,8 +19,6 @@ def get_type_annotation(annotation):
 def parse_function(node, parentClass=None):
     from adaptation import FunctionSignature
     functionName = node.name
-    if parentClass:
-        functionName = f"{parentClass}.{functionName}"
     returnType = get_type_annotation(node.returns)
     parameterTypes = []
 
@@ -35,7 +33,7 @@ def parse_function(node, parentClass=None):
             param_type = "Any"
         parameterTypes.append(param_type)
     
-    # remove first parameter (self) for class methods
+    # remove first parameter (self) for class methods TODO check if function is static (static = no self parameter)
     if parentClass:
         parameterTypes = parameterTypes[1:]
         firstDefault -= 1 # as self is not counted, the index of the first default parameter is reduced by 1
