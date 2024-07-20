@@ -468,17 +468,13 @@ def adapt_function(function, new_return_type = None, convert_to_types = None, ne
 
 def execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodules_metadata):
     """
-    Adapts a function by using a decorator and wrapper.
+    Executes a stimulus sheet based on a provided module and prints out the results.
 
     Parameters:
-    function (object): The function object to adapt.
-    new_return_type (str): A string that represents the new return type of the function.
-    convert_to_types (list): A list of strings that represent the target types of the parameters, e.g., ["int", "str", "float"]
-    current_param_order (list): A list of strings that represent the current order of parameters, e.g., ["int", "int", "str"]
-    new_param_order (list): A list of strings that represent the new order of parameters, e.g., ["str", "int", "int"]
-
-    Returns:
-    object: The adapted function object.
+    stimulus_sheet (pandas DataFrame): The stimulus sheet that contains the instructions for the test.
+    adapted_module (module): The module that contains the adapted functions in 1 or more submodules (mapping1, mapping2, ...).
+    number_of_submodules (int): The number of submodules in the adapted module.
+    submodules_metadata (list): A list of dictionaries containing metadata for each submodule, this is created by the function create_adapted_module.
     """
     
     print(f"\nExecuting stimulus sheet on {adapted_module.__name__}")
