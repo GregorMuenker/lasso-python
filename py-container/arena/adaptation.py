@@ -5,7 +5,6 @@ from module_parser import parse_code
 from collections import Counter
 import types
 import importlib
-from collections import defaultdict
 import math
 import copy
 import random
@@ -161,7 +160,7 @@ class AdaptationHandler:
 
                 if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
                     if (Counter(interfaceMethod.parameterTypes) == Counter(moduleFunction.parameterTypes)):
-                        adaptationInstruction.parameterOrderAdaptation = "TODO stores no instruction"
+                        adaptationInstruction.parameterOrderAdaptation = find_permutation(moduleFunction.parameterTypes, interfaceMethod.parameterTypes)
 
                     else: # TODO type strictness check
                         adaptationInstruction.parameterTypeConversion = moduleFunction.parameterTypes
@@ -174,10 +173,14 @@ class AdaptationHandler:
                 iterations = min(maxParamPermutationTries, numOfParamPermutations)
                 orderedList = list(range(moduleFunction.parameterTypes.__len__()))
                 allPermutations = list(itertools.permutations(orderedList))
+                
                 for i in range(1, iterations):
                     adaptationInstructionBlindPermutation = copy.deepcopy(adaptationInstructionCopy)
                     adaptationInstructionBlindPermutation.identifier = (interfaceMethodName, moduleFunctionQualName, i)
-                    adaptationInstructionBlindPermutation.blindParameterOrderAdaptation = allPermutations[i] # TODO ensure that another permuation is used than in iteration 0
+                    
+                    # TODO handling of the case that the same permuation is used as in iteration 0
+                    adaptationInstructionBlindPermutation.blindParameterOrderAdaptation = allPermutations[i] 
+                    
                     self.adaptations[(interfaceMethodName, moduleFunctionQualName)].append(adaptationInstructionBlindPermutation)
                     self.adaptationsList.append(adaptationInstructionBlindPermutation)
 
@@ -340,15 +343,14 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
                         print(f"Trying to adapt parameter types of {new_function} to {convert_to_types}.")
 
                     if adaptationInstruction.parameterOrderAdaptation:
-                        current_param_order = adaptationHandler.moduleFunctions[moduleFunctionQualName].parameterTypes
-                        new_param_order = adaptationHandler.interfaceMethods[interfaceMethodName].parameterTypes
+                        new_param_order = adaptationInstruction.parameterOrderAdaptation
                         print(f"{RED}Trying to adapt parameter order of {new_function}{RESET}.")
 
                     if adaptationInstruction.blindParameterOrderAdaptation:
                         blind_new_param_order = adaptationInstruction.blindParameterOrderAdaptation
                         print(f"{RED}Trying to blindly adapt parameter order of {new_function}{RESET}.")
                     
-                    new_function = adapt_function(new_function, new_return_type, convert_to_types, current_param_order, new_param_order, blind_new_param_order)
+                    new_function = adapt_function(new_function, new_return_type, convert_to_types, new_param_order, blind_new_param_order)
 
                     if adaptationInstruction.nameAdaptation:
                         setattr(submodule, interfaceMethodName, new_function)
@@ -418,7 +420,7 @@ def instantiate_class(module, parent_class_name, use_constructor_default_values,
     
     return successful_instantiation, parent_class_instance
 
-def adapt_function(function, new_return_type = None, convert_to_types = None, current_param_order= None, new_param_order = None, blind_new_param_order = None):
+def adapt_function(function, new_return_type = None, convert_to_types = None, new_param_order = None, blind_new_param_order = None):
     """
     Adapts a function by using a decorator and wrapper.
 
@@ -437,19 +439,10 @@ def adapt_function(function, new_return_type = None, convert_to_types = None, cu
             result = None
             try:
                 # Adapt parameter order in a smart way by matching the parameter types
-                if (current_param_order and new_param_order):
-                    type_value_dict = defaultdict(list)
-                    for data_type, value in zip(current_param_order, args):
-                        type_value_dict[data_type].append(value)
-                    
-                    reordered_args = []
-                    for data_type in new_param_order:
-                        if type_value_dict[data_type]:
-                            reordered_args.append(type_value_dict[data_type].pop(0))
-                    
-                    args = reordered_args
-
-                # Adapt parameter order blindly by using a given order
+                if (new_param_order):
+                    args = [args[i] for i in new_param_order]
+                
+                # Adapt parameter order blindly by using a given order TODO this could be merged with the previous step
                 if (blind_new_param_order):
                     args = [args[i] for i in blind_new_param_order]
 
@@ -577,6 +570,27 @@ possible_conversions = {
     'tuple': ['tuple', 'str', 'list', 'dict', 'set', 'frozenset', 'bool', 'bytes', 'bytearray']
 }
 
+def find_permutation(source, target):
+    # Create a dictionary to map each type in the target list to its indices
+    target_indices = {}
+    for i, t in enumerate(target):
+        if t in target_indices:
+            target_indices[t].append(i)
+        else:
+            target_indices[t] = [i]
+    
+    # Create the permutation list
+    permutation = [0] * len(source)
+    
+    # Iterate through the source list and find the corresponding indices
+    for i, s in enumerate(source):
+        if s in target_indices and target_indices[s]:
+            permutation[i] = target_indices[s].pop(0)
+        else:
+            raise ValueError(f"No matching target type for source type '{s}'")
+    
+    return permutation
+
 def can_convert_params(source_types, target_types):
     if len(source_types) != len(target_types):
         return False
@@ -607,7 +621,7 @@ if __name__ == "__main__":
         moduleUnderTest = parse_code(file_content, "numpy.lib.scimath")
 
     adaptationHandler = AdaptationHandler(interfaceSpecification, moduleUnderTest, excludeClasses=False, useFunctionDefaultValues=False)
-    adaptationHandler.identifyAdaptations(maxParamPermutationTries=1)
+    adaptationHandler.identifyAdaptations(maxParamPermutationTries=2)
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings(onlyKeepTopN=10)
 

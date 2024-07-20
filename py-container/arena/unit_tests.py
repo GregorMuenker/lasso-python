@@ -1,5 +1,5 @@
 import unittest
-from adaptation import adapt_function, can_convert_params, can_convert_type
+from adaptation import adapt_function, can_convert_params, can_convert_type,find_permutation
 
 class ExampleFunctions:
     
@@ -13,8 +13,11 @@ class TestAdaptation(unittest.TestCase):
 
     def test_adapt_parameter_order(self):
         exampleFunctions = ExampleFunctions()
+        current_param_order = ['float', 'float', 'str', 'int']
+        new_param_order = ['str', 'int', 'float', 'float']
+        permutation = find_permutation(current_param_order, new_param_order)
         function = exampleFunctions.returns_param_order
-        adapted_function = adapt_function(function, new_return_type = None, convert_to_types = None, current_param_order = ['float', 'float', 'str', 'int'], new_param_order = ['str', 'int', 'float', 'float'])
+        adapted_function = adapt_function(function, new_param_order = permutation)
         result = function(1.0, 2.0, "abc", 4)
         adapted_result = adapted_function("abc", 4, 1.0, 2.0)
         self.assertEqual(result, adapted_result)
@@ -22,7 +25,10 @@ class TestAdaptation(unittest.TestCase):
     def test_adapt_return_type_and_parameter_order(self):
         exampleFunctions = ExampleFunctions()
         function = exampleFunctions.subtract
-        adapted_function = adapt_function(function, new_return_type = "str", convert_to_types = None, current_param_order = ['int', 'float'], new_param_order = ['float', 'int'])
+        current_param_order = ['int', 'float']
+        new_param_order = ['float', 'int']
+        permutation = find_permutation(current_param_order, new_param_order)
+        adapted_function = adapt_function(function, new_return_type = "str", new_param_order=permutation)
         result = function(10, 4)
         adapted_result = adapted_function(4, 10)
         self.assertEqual(result, int(adapted_result))

@@ -21,6 +21,7 @@ def parse_function(node, parentClass=None):
     functionName = node.name
     returnType = get_type_annotation(node.returns)
     parameterTypes = []
+    parameterNames = []
 
     # Index of the first parameter with a default value (parameters with values are always at the end of the signature)
     firstDefault = len(node.args.args) # set to one element behind the last index by default (out of range)
@@ -32,11 +33,13 @@ def parse_function(node, parentClass=None):
         else:
             param_type = "Any"
         parameterTypes.append(param_type)
+        parameterNames.append(arg.arg)
     
-    # remove first parameter (self) for class methods TODO check if function is static (static = no self parameter)
-    if parentClass:
-        parameterTypes = parameterTypes[1:]
-        firstDefault -= 1 # as self is not counted, the index of the first default parameter is reduced by 1
+    # remove first parameter (self) for class methods
+    if len(parameterNames) > 0:
+        if parameterNames[0] == "self":
+            parameterTypes = parameterTypes[1:]
+            firstDefault -= 1 # as self is not counted, the index of the first default parameter is reduced by 1
     
     return FunctionSignature(functionName, returnType, parameterTypes, parentClass, firstDefault)
 
