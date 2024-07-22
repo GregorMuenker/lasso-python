@@ -6,12 +6,17 @@ from io import StringIO
 from tokenize import generate_tokens
 from packaging.version import Version
 import json
-from collections import defaultdict
 import re
 from urllib.request import urlopen
+import requests
 
 
 def get_all_packages():
+    """Retrieves all package names from PyPi.
+
+    Returns:
+        list of strings: List of package names.
+    """
     contents = urlopen('https://pypi.org/simple/').read().decode('utf-8')
     pattern = re.compile(r'>([^<]+)</a>')
     package_list = [match[1] for match in re.finditer(pattern, contents)]
@@ -21,6 +26,14 @@ def get_all_packages():
 
 
 def get_most_downloaded(download_count=False):
+    """Retrieves 8000 most downloaded package names from PyPi.
+
+    Args:
+        download_count (bool, optional): _description_. Defaults to False.
+
+    Returns:
+        list of strings: List of package names.
+    """
     url = "https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json"
     response = urlopen(url)
     data_json = json.loads(response.read())
@@ -34,6 +47,17 @@ def get_most_downloaded(download_count=False):
 
 
 def get_info(folder):
+    """Gets information from METADATA file.
+
+    Args:
+        folder (string): Dist-info folder name with METADATA file.
+
+    Returns:
+        dictionary: Information from Metadata.
+            name (string): Package name.
+            version (string): Package version.
+            dependencies (list of strings): List of package dependencies.
+    """
     path = f"installed/{folder}/METADATA"
     file = open(path, "r", encoding="utf-8")
     dependencies = []
@@ -52,6 +76,14 @@ def get_info(folder):
 
 
 def tokenize(string):
+    """Tokenizes a given string.
+
+    Args:
+        string (string): String.
+
+    Returns:
+        list of strings: List of tokens.
+    """
     STRING = 1
     return list(
         token[STRING]
@@ -61,6 +93,15 @@ def tokenize(string):
 
 
 def reformat_dependency(dependency):
+    """Splits given dependency into package name and its version requirements.
+
+    Args:
+        dependency (string): Dependency.
+
+    Returns:
+        project (string): Package name.
+        tuples (list of tuple strings): List of tuples, which include an operator and a version.
+    """
     result = {}
     if ";" in dependency:
         return False
@@ -80,6 +121,15 @@ def reformat_dependency(dependency):
 
 
 def check_dependency(project, requirements):
+    """Checks if dependency is already fulfilled.
+
+    Args:
+        project (string): Package name.
+        requirements (list of tuple strings): output of reformat_dependency.
+
+    Returns:
+        result (list of strings): List of local versions that satisfy the requirements.
+    """
     local_versions = get_local_versions(project)
     result = []
     for local_version in local_versions:
@@ -95,6 +145,14 @@ def check_dependency(project, requirements):
 
 
 def get_local_versions(project):
+    """Provides a list of local version for a provided package.
+
+    Args:
+        project (string): Package name.
+
+    Returns:
+        versions (list of strings): List of locally installed versions.
+    """
     folders = [folder for folder in os.listdir(
         "installed") if folder.startswith(project)]
     versions = []
@@ -107,6 +165,16 @@ def get_local_versions(project):
 
 
 def compare_versions(left, operator, right):
+    """Compares two versions with each other using a provided operator.
+
+    Args:
+        left (string): Version number.
+        operator (string): Operator.
+        right (string): Version number.
+
+    Returns:
+        boolean: Result of version comparison.
+    """
     v1 = Version(left)
     v2 = Version(right)
     result = eval(f"v1 {operator} v2")
@@ -114,6 +182,14 @@ def compare_versions(left, operator, right):
 
 
 def get_package_name(string):
+    """Retrieves package name from provided (dependency) string.
+
+    Args:
+        string (string): pip install command string.
+
+    Returns:
+        string: Package name.
+    """
     match = re.match(r"^[a-zA-Z0-9_\-]+", string)
     if match:
         return match.group(0)
@@ -121,82 +197,108 @@ def get_package_name(string):
         print("No project name found!")
         return
 
-
-def install(package):
-    """Installs Package and it's dependencies in "installed" folder.
+def satisfy_condition(dependency):
+    """Checks if dependency condition (after ";") is satisfied.
 
     Args:
-        package (str): Package name with or without version requirements.
+        dependency (string): Dependency string.
 
     Returns:
-        name (str): Name of the package.
-        version (str): Version of the package.
+        boolean: Result of check.
     """
-
-    name = get_package_name(package)
-    if not name:
-        return
-    # name = tokenize(package)[0]
-    # FIXME: Check if latest version or version that satisfies the requirements is already installed!
-    if not (local_version := get_local_versions(name)):
-        path = "installed/tmp"
-        subprocess.check_call([sys.executable, "-m", "pip",
-                               "install", package, "--no-deps", "-q", "-t", path])
-        print(f"Installing {name}")
-        local_path = f"tmp"
+    parts = dependency.split(";")
+    if len(parts) > 1:
+        dependency, condition = parts
+        if "extra" in condition:
+            return False
+        elif "python_version" in condition:
+            print(condition)
+            print(tokenize(condition))
+            _, operator, version = tokenize(condition.strip())
+            return compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version.strip('"'))
+        else:
+            return True #?
     else:
-        print(f"{name} already installed!")
-        path = f"installed/{name}-{local_version[0]}"
-        local_path = f"{name}-{local_version[0]}"
-    info = [get_info(f"{local_path}/{item}") for item in os.listdir(
-        path) if item.endswith(".dist-info")][0]
+        return True
 
-    name, version, dependencies = info["name"], info["version"], info["dependencies"]
-    destination = f"installed/{name}-{version}"
-    shutil.move(path, destination)
+def get_latest_version(package_name):
+    """Retrieves latest version of a given package from PyPi.
 
-    if not os.path.exists("index.json"):
-        index = {}
+    Args:
+        package_name (string): Package name.
+
+    Returns:
+        latest_version (string): Latest version.
+    """
+    url = f"https://pypi.org/pypi/{package_name}/json"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        latest_version = data["info"]["version"]
+        return latest_version
     else:
-        with open('index.json', 'r') as file:
-            index = json.load(file)
-    
-    deps = []
-    # FIXME: Multiple Entries for same package (Different python versions)!
-    for dependency in dependencies:
-        if not ("extra" in dependency):
-            dep_name = get_package_name(dependency)
-            local_folders = [folder for folder in os.listdir(
-                "installed") if folder.startswith(dep_name)]
-            print(local_folders)
-            if local_folders:
-                print(f"Dependency {dep_name} already satisfied!")
-                info = [get_info(f"{local_folders[0]}/{item}") for item in os.listdir(
-                        f"installed/{local_folders[0]}") if item.endswith(".dist-info")][0]
-                dep_name, dep_version = info["name"], info["version"]
-            # project, requirements = reformat_dependency(dependency)
-            # print(project, requirements)
-            # if local_versions := check_dependency(project, requirements):
-            #     dep_name, dep_version = project, local_versions[0]
-            # else:
-            #     # TODO: need to get version number back to insert into index
-            #     dep_name, dep_version = install(dependency)
-            else:
-                dep_name, dep_version = install(dependency)
-            print(dep_name, dep_version)
-            deps.append((dep_name, dep_version))
+        return None
 
-    # index[(name, version)] = deps
-    # FIXME: Dependencies of dependencies not in index.
-    index[f"{name}:{version}"] = deps
-    out_file = open("index.json", "w")
-    json.dump(index, out_file)
-    return name, version
+class installHandler:
+    def __init__(self):
+        if not os.path.exists("index.json"):
+            self.index = {}
+        else:
+            with open('index.json', 'r') as file:
+                self.index = json.load(file)
 
+    def install(self, package):
+        """Installs Package and it's dependencies in "installed" folder.
+
+        Args:
+            package (str): Package name with or without version requirements.
+
+        Returns:
+            name (str): Name of the package.
+            version (str): Version of the package.
+        """
+
+        name = get_package_name(package)
+        if not name:
+            return
+        # FIXME: Check if latest version or version that satisfies the requirements is already installed!
+        if not (local_versions := get_local_versions(name)):
+            path = "installed/tmp"
+            subprocess.check_call([sys.executable, "-m", "pip",
+                                "install", package, "--no-deps", "-q", "-t", path])
+            print(f"Installing {name}")
+            local_path = f"tmp"
+        else:
+            print(f"{name} already installed!")
+            path = f"installed/{name}-{local_versions[0]}"
+            local_path = f"{name}-{local_versions[0]}"
+        info = [get_info(f"{local_path}/{item}") for item in os.listdir(
+            path) if item.endswith(".dist-info")][0]
+
+        name, version, dependencies = info["name"], info["version"], info["dependencies"]
+        destination = f"installed/{name}-{version}"
+        shutil.move(path, destination)
+        
+        deps = []
+        for dependency in dependencies:
+            if satisfy_condition(dependency):
+                dep_name, dep_version = self.install(dependency)
+                print(dep_name, dep_version)
+                deps.append((dep_name, dep_version))
+
+        self.index[f"{name}:{version}"] = deps
+        return name, version
+
+    def dump_index(self):
+        out_file = open("index.json", "w")
+        json.dump(self.index, out_file)
 
 if __name__ == "__main__":
-    install("urllib3")
-    # install("python-dateutil")
-    # install('hypothesis>=6.46.1; extra == "test"')
+    # installHandler = installHandler()
+    # installHandler.install("pandas")
+    # installHandler.dump_index()
+
     # dependency = "pysocks!=1.5.7,<2.0,>=1.5.6"
     # install(dependency)
+
+    print(get_latest_version("pandas"))
