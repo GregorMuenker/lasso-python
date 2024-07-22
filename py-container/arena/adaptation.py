@@ -76,15 +76,15 @@ class AdaptationInstruction:
     def __repr__(self) -> str:
         result = ""
         if (self.nameAdaptation):
-            result += "N"
+            result += "Nm"
         if (self.returnTypeAdaptation):
-            result += "R"
+            result += "Rtrn"
         if (self.parameterOrderAdaptation):
-            result += "P"
+            result += "Prmt"
         if (self.blindParameterOrderAdaptation):
-            result += "Pb"
+            result += "Prmt*"
         if (self.parameterTypeConversion):
-            result += "C"
+            result += "Cnvr"
         return result
     
 class Mapping:
@@ -237,7 +237,7 @@ class AdaptationHandler:
             print(mapping)
 
     
-def create_adapted_module(adaptationHandler, module_name, use_constructor_default_values = False):
+def create_adapted_module(adaptationHandler, module_name, use_constructor_default_values = False, testing_mode = False):
     """
     Creates an adapted module using information provided by the adaptationHandler object. The adapted module can be used to execute stimulus sheets.
     The adapted module comprises multiple submodules (mapping0, mapping1, ...) that contain different sets of adapted functions (terminology: one submodule contains one "mapping").
@@ -253,10 +253,11 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
     module = importlib.import_module(module_name)
     # print(module.__file__) # print the path of the module
     
-    # TODO uncomment to import module from a single file, only for testing
-    # spec = importlib.util.spec_from_file_location(module_name, "/Users/florianruhle/Studium/Master/FSS24/Project/lasso-python/py-container/arena/test_data_file.py")
-    # module = importlib.util.module_from_spec(spec)
-    # spec.loader.exec_module(module)
+    if testing_mode:
+        # Import module from a single file, only for testing
+        spec = importlib.util.spec_from_file_location(module_name, "./test_data_file.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
 
     successes = 0
     failed_functions = []
@@ -330,7 +331,6 @@ def create_adapted_module(adaptationHandler, module_name, use_constructor_defaul
 
                     new_return_type = None
                     convert_to_types = None
-                    current_param_order= None
                     new_param_order = None
                     blind_new_param_order = None
 
@@ -437,30 +437,46 @@ def adapt_function(function, new_return_type = None, convert_to_types = None, ne
     def decorator(func):
         def wrapper(*args, **kwargs):
             result = None
-            try:
-                # Adapt parameter order in a smart way by matching the parameter types
-                if (new_param_order):
-                    args = [args[i] for i in new_param_order]
+            adapted_args = copy.deepcopy(args)
+            
+            # Adapt parameter order in a smart way by matching the parameter types
+            if (new_param_order):
+                try:
+                    adapted_args = [adapted_args[i] for i in new_param_order]
+                except Exception as e:
+                    print(f"Error when adapting parameter order of {function}: {e}.")
                 
-                # Adapt parameter order blindly by using a given order TODO this could be merged with the previous step
-                if (blind_new_param_order):
-                    args = [args[i] for i in blind_new_param_order]
-
-                # Adapt parameter types
-                if (convert_to_types):
+            # Adapt parameter order blindly by using a given order TODO this could be merged with the previous step
+            if (blind_new_param_order):
+                try:
+                    adapted_args = [adapted_args[i] for i in blind_new_param_order]
+                except Exception as e:
+                    print(f"Error when blindly adapting parameter order of {function}: {e}.")
+            
+            # Adapt parameter types
+            if (convert_to_types):
+                try:
                     target_types = [type_mapping.get(type_name, int) for type_name in convert_to_types]
-                    args = [target_type(arg) for arg, target_type in zip(args, target_types)]
+                    adapted_args = [target_type(arg) for arg, target_type in zip(adapted_args, target_types)]
+                except Exception as e:
+                    print(f"Error when adapting parameter types of {function}: {e}.")
 
+            # Execute the function with potentially adapted parameters
+            try:
+                result = func(*adapted_args, **kwargs)
+            except Exception as e:
+                print(f"Executing {function} with adapted args threw an error: {e}.")
                 result = func(*args, **kwargs)
                 
-                # Adapt return type
-                if (new_return_type):
+            # Adapt return type
+            if (new_return_type):
+                try:
                     result = type_mapping.get(new_return_type, int)(result) # TODO handling of unknown types, alternative without type_mapping dict: getattr(builtins, new_return_type)(result)
-                
-                return result
-            except Exception as e:
-                print(f"Error when trying to adapt function {function} (result without adaptations will be returned): {e}.")
-                return result
+                except Exception as e:
+                    print(f"Error when adapting return type of {function}: {e}.")
+
+            return result
+
         return wrapper
     
     print("Created adapted wrapper function.")
@@ -611,7 +627,7 @@ if __name__ == "__main__":
     path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" #function_base #user_array #scimath
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/array_api/_array_object.py"
-    # path = "./test_data_file.py"
+    # path = "./test_data_file.py" # <-- for testing with handcrafted python file
     with open(path, 'r') as file:
         file_content = file.read()  # Read the entire content of the file
         moduleUnderTest = parse_code(file_content, "numpy.lib.scimath")
@@ -621,7 +637,7 @@ if __name__ == "__main__":
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings(onlyKeepTopN=10)
 
-    (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, moduleUnderTest.moduleName, use_constructor_default_values=True)
+    (adapted_module, number_of_submodules, submodules_metadata)  = create_adapted_module(adaptationHandler, moduleUnderTest.moduleName, use_constructor_default_values=True, testing_mode = False)
 
     stimulus_sheet = get_stimulus_sheet("calc3.csv")
     execute_test(stimulus_sheet, adapted_module, number_of_submodules, submodules_metadata)
