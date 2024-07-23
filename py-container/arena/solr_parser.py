@@ -1,13 +1,23 @@
 def parse_solr_response(response):
+    """
+    Parses the Solr response and extracts relevant information to create FunctionSignature and ModuleUnderTest objects.
+    As of now, only the first module is considered.
+    """
     from adaptation import FunctionSignature, ModuleUnderTest
     functionSignatures = []
     classes = {}
     moduleName = None
     
     for doc in response:
-        if not moduleName:
-            moduleName = doc.get('module', [None])[0]
-        
+        newModuleName = doc.get('module', [None])[0]
+
+        # Break if new module is found
+        if moduleName and newModuleName != moduleName:
+            print("Only considering the first module, stopping parsing.")
+            break
+
+        moduleName = newModuleName
+
         functionName = doc.get('name', None)[0]
         returnType = 'Any'  # TODO
         parameterTypes = doc.get('arguments.datatype', [])
