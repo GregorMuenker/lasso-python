@@ -7,6 +7,7 @@ from io import StringIO
 from tokenize import generate_tokens
 import os
 import json
+import site
 
 from download import get_latest_tar
 
@@ -76,8 +77,13 @@ def group_dependencies():
     return merged
 
 
-def get_info(folder):
-    path = f"packages/{folder}/PKG-INFO"
+def get_info(folder, type="local"):
+    if type == "installed":
+        path = f"installed/{folder}/METADATA"
+    elif type == "site":
+        path = f"{site.USER_SITE}/{folder}/METADATA"
+    elif type == "local":
+        path = f"packages/{folder}/PKG-INFO"
     file = open(path, "r", encoding="utf-8")
     dependencies = []
     for line in file:
@@ -167,4 +173,5 @@ if __name__ == '__main__':
     #                 'aioitertools<1.0.0,>=0.5.1', 'awscli<1.32.70,>=1.32.41; extra == "awscli"',
     #                 'boto3<1.34.70,>=1.34.41; extra == "boto3"']
     # print(check_dependencies(dependencies))
-    print(group_dependencies())
+    # print(group_dependencies())
+    print(get_info("urllib3/urllib3-2.2.1.dist-info", True))
