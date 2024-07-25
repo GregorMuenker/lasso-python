@@ -171,3 +171,5 @@ lasso-python.code-workspace
 .DS_Store
 numpy-*
 pysolr-*
+
+lassoindex
