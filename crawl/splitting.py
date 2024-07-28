@@ -12,7 +12,7 @@ from os.path import isfile, join, isdir
 import json
 
 from crawl import run
-from crawl.install import install
+from crawl.install import installHandler
 
 
 def get_function_calls(element):
@@ -261,7 +261,8 @@ if __name__ == "__main__":
     try:
         run.move_active(package_name)
     except FileNotFoundError:
-        install(package_name)
+        installHandler = installHandler()
+        installHandler.install(package_name)
         run.move_active(package_name)
     index = get_module_index(package_name)
     run.remove_active()
