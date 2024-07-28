@@ -4,34 +4,29 @@ def parse_solr_response(response):
     As of now, only the first module is considered.
     """
     from adaptation import FunctionSignature, ModuleUnderTest
-    functionSignatures = []
-    classes = {}
-    moduleName = None
+    functionSignatureDict = {} # key: module name, value: list of FunctionSignature objects
+    classDict = {} # key: module name, value: dict with key: class name, value: list of FunctionSignature objects
     
     for doc in response:
-        newModuleName = doc.get('module', [None])[0]
+        moduleName = doc.get('module', [None])[0]
 
-        # Break if new module is found
-        if moduleName and newModuleName != moduleName:
-            print("Only considering the first module, stopping parsing.")
-            break
-
-        moduleName = newModuleName
+        if moduleName not in functionSignatureDict:
+            functionSignatureDict[moduleName] = []
+            classDict[moduleName] = {}
 
         functionName = doc.get('name', None)[0]
-        returnType = 'Any'  # TODO
+        returnType = doc.get('return_types', ['Any'])[0]
         parameterTypes = doc.get('arguments.datatype', [])
-        parentClass = doc.get('dependend_class', [None])[0]
         firstDefault = doc.get('default_index', [len(parameterTypes)])[0]
 
+        parentClass = doc.get('dependend_class', [None])[0]
         if parentClass == "None":
             parentClass = None
+        else:
+            if parentClass not in classDict[moduleName]:
+                classDict[moduleName][parentClass]= []
         
-        if parentClass:
-            if parentClass not in classes:
-                classes[parentClass] = []
         parameterNames = doc.get('arguments.name', [])
-        
         if len(parameterNames) > 0:
             if parameterNames[0] == "self":
                 parameterTypes = parameterTypes[1:]
@@ -40,16 +35,19 @@ def parse_solr_response(response):
         functionSignature = FunctionSignature(functionName, returnType, parameterTypes, parentClass, firstDefault)
 
         if functionName == "__init__" or functionName == "__new__":
-                classes[parentClass].append(functionSignature)
+                classDict[moduleName][parentClass].append(functionSignature)
         else:
-            functionSignatures.append(functionSignature)
-
-        print(functionSignature)
+            functionSignatureDict[moduleName].append(functionSignature)
     
-    moduleUnderTest = ModuleUnderTest(moduleName, functionSignatures)
-    moduleUnderTest.classes = classes
-    print(classes)
-    return moduleUnderTest
+    allModulesUnderTest = []
+    for moduleName in functionSignatureDict:
+        print(moduleName)
+        moduleUnderTest = ModuleUnderTest(moduleName, functionSignatureDict[moduleName], classDict[moduleName])
+        allModulesUnderTest.append(moduleUnderTest)
+    
+    print(f"Generated {len(allModulesUnderTest)} ModuleUnderTest objects.")
+
+    return allModulesUnderTest
 
 if __name__  == "__main__":
     import json

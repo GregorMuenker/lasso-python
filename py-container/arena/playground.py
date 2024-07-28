@@ -20,24 +20,10 @@
 
 # profile_method(my_method)
 
-import numpy.lib.scimath as np
-import coverage
+import test_data_file as tdf
 
-# Start the coverage measurement
-cov = coverage.Coverage(
-    source=[".", "numpy.lib.scimath"],
-    branch=True,
-    include=["*/lib/python*/site-packages/*"],
-)
-cov.start()
+cls = getattr(tdf, "Test")
+method = getattr(cls, "square")
+method(4)
 
-# Your dynamic execution code
-result = getattr(np, 'log10')(2)
-print("Result:", result)
 
-# Stop the coverage measurement
-cov.stop()
-cov.save()
-
-# Report the results
-cov.report()
