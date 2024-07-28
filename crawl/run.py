@@ -7,8 +7,9 @@ import site
 # from versionhandling import get_info
 
 
-def move(package):
-    folders = os.listdir(f"installed/{package}")
+def move(package, version):
+    origin = [folder for folder in os.listdir("installed") if package in folder and version in folder][0]
+    folders = os.listdir(f"installed/{origin}")
     print(f"Moving folders: {folders}")
     for folder in folders:
         # Copy package folder to user-specific site-packages
@@ -29,7 +30,7 @@ def move(package):
 
         # else:
         #     shutil.copytree(f"installed/{package}/{folder}", destination_path, dirs_exist_ok=True)
-        shutil.copytree(f"installed/{package}/{folder}",
+        shutil.copytree(f"installed/{origin}/{folder}",
                         destination_path, dirs_exist_ok=True)
 
     return folders
@@ -64,8 +65,8 @@ def remove_active():
     if active_package_folder in sys.path:
         sys.path.remove(active_package_folder)
 
-def run(package, path, function, parameters):
-    folders = move(package)
+def run(package, version, path, function, parameters):
+    folders = move(package, version)
     module = importlib.import_module(path)
     func = getattr(module, function)
     result = func(*parameters)
@@ -75,6 +76,7 @@ def run(package, path, function, parameters):
 
 if __name__ == "__main__":
     package = "urllib3"
+    version = "2.2.2"
     path = "urllib3.util.util"
     function = "to_bytes"
 
@@ -84,5 +86,5 @@ if __name__ == "__main__":
     errors = "ignore"
     args = (x, encoding, errors)
 
-    call = run(package, path, function, args)
+    call = run(package, version, path, function, args)
     print(call)
