@@ -75,7 +75,7 @@ def get_arg_datatype_code(arg, source):
     return datatype
 
 
-def get_function_args(element, source):
+def get_function_args(element, source, class_function):
     """Returns a list of all arguments and their characteristics of one target function.
 
     :param element: FunctionDef in abstract syntax tree
@@ -84,6 +84,8 @@ def get_function_args(element, source):
     """
     args = []
     element_args = element.args
+    if class_function:
+        element_args.args = element_args.args[1:]
 
     def append_arg(arg, keyword_arg):
         """Inherit function to append argument characteristics to argument_list
@@ -154,10 +156,10 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
     for element in tree.body:
         if type(element) == FunctionDef:
             # source_code = ast.get_source_segment(source, element)
-            args, default_index = get_function_args(element, source)
             if depended_class != "None" and "staticmethod" in [ast.get_source_segment(source, x) for x in
                                                                element.decorator_list]:
                 depended_class = "None"
+            args, default_index = get_function_args(element, source, depended_class != "None")
             index_element = {
                 "module": prefix + sub_module_name,
                 "name": element.name,
@@ -255,7 +257,7 @@ def get_module_index(module_name, path=None):
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
-    package_name = "numpy"
+    package_name = "urllib3"
     try:
         run.move_active(package_name)
     except FileNotFoundError:
