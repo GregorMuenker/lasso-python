@@ -4,6 +4,9 @@ from stimulus_sheet_reader import get_stimulus_sheet
 from test_data import CALCULATOR_CLASS, CALCULATOR_FUNCTIONS, CALCULATOR_LAMBDAS
 
 class StimulusResponseMatrix:
+    """
+    NOTE This class is a prototype and is not used in the current implementation.
+    """
     def __init__(self, implementations) -> None:
         self.implementations = implementations # {name1: implementation1, name2: implementation2, ...}
         self.tests = {} # name:stimulus_sheet

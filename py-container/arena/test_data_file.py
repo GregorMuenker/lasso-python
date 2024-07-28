@@ -17,15 +17,15 @@ def divide(a, b):
 def square(a):
     return a*a
 
-# class Test:
-#     def __init__(self, a: float):
-#         pass
+class Test:
+    def __init__(self, a: float):
+        self.a = a
 
-#     def square(self, a: int):
-#         return a*a
+    def square(self, a: int):
+        return a*a
     
-#     def add(self, a: int, b: str):
-#         return a + b
+    def add(self, a: int, b: str):
+        return a + b
 
-#     def subtract(self, a: float, b: float):
-#         return a - b
+    def subtract(self, a: float, b: float):
+        return a - b

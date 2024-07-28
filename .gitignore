@@ -172,3 +172,5 @@ py-container/arena/runtime/
 .DS_Store
 numpy-*
 pysolr-*
+
+lassoindex
