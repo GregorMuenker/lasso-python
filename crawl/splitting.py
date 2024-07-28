@@ -16,6 +16,11 @@ from crawl.install import install
 
 
 def get_function_calls(element):
+    """ (deprecated) Returns a list of function calls from the target function to load the function at runtime.
+
+    :param element: FunctionDef element of target function in abstract syntax tree
+    :return: list of function calls. Function calls are encoded as string elements.
+    """
     function_calls = []
     for node in ast.walk(element):
         if type(node) == Call:
@@ -36,6 +41,11 @@ def get_function_calls(element):
 
 
 def get_arg_datatype(datatype):
+    """ (deprecated) Returns the pythonic datatype
+
+    :param datatype: annotation element in abstract syntax tree of target argument
+    :return: datatype
+    """
     if type(datatype) is Name:
         datatype = [datatype.id]
     elif type(datatype) is Attribute:
@@ -51,6 +61,12 @@ def get_arg_datatype(datatype):
 
 
 def get_arg_datatype_code(arg, source):
+    """Return the string of the datatype annotate to target argument.
+
+    :param arg: argument element in abstract syntax tree
+    :param source: source code of whole abstract syntax tree
+    :return: string of annotated datatype
+    """
     if arg.annotation is not None:
         arg_source = ast.get_source_segment(source, arg)
         datatype = arg_source.split(": ")[1]
@@ -60,10 +76,21 @@ def get_arg_datatype_code(arg, source):
 
 
 def get_function_args(element, source):
+    """Returns a list of all arguments and their characteristics of one target function.
+
+    :param element: FunctionDef in abstract syntax tree
+    :param source: source code of whole abstract syntax tree
+    :return: list of all arguments and their characteristics
+    """
     args = []
     element_args = element.args
 
     def append_arg(arg, keyword_arg):
+        """Inherit function to append argument characteristics to argument_list
+
+        :param arg: argument element in abstract syntax tree
+        :param keyword_arg: flag whether the argument is keyword-only
+        """
         datatype = get_arg_datatype_code(arg, source)
         if datatype:
             datatype = datatype.replace("\n", "")
@@ -97,19 +124,40 @@ def get_function_args(element, source):
             args[len(element_args.args) + i]["has_default_val"] = True
     return args, default_index
 
+
 def get_return_type(element, source):
+    """Returns the return type of a function by using the source code
+
+    :param element: FunctionDef in abstract syntax tree
+    :param source: source code of whole abstract syntax tree
+    :return: string of datatype
+    """
     return_type = ast.get_source_segment(source, element.returns)
     if return_type:
         return return_type
     else:
         return "Any"
 
+
 def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class="None"):
+    """Generates function characteristics based on an abstract syntax tree.
+
+    :param tree: abstract syntax tree of the target module
+    :param source: source code of the target module
+    :param prefix: import path prefix of the target module
+    :param sub_module_name: name of the target module
+    :param depended_class: default = "None". When a function is identified to be part of a class this parameters has to
+    be set for later querying.
+    :return: list of all functions in the target module with their characteristics
+    """
     index = []
     for element in tree.body:
         if type(element) == FunctionDef:
             # source_code = ast.get_source_segment(source, element)
             args, default_index = get_function_args(element, source)
+            if depended_class != "None" and "staticmethod" in [ast.get_source_segment(source, x) for x in
+                                                               element.decorator_list]:
+                depended_class = "None"
             index_element = {
                 "module": prefix + sub_module_name,
                 "name": element.name,
@@ -119,7 +167,8 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
                 "return_types": get_return_type(element, source),
                 "default_index": default_index,
                 "count_positional_args": len([x for x in args if not x["keyword_arg"]]),
-                "count_positional_non_default_args": len([x for x in args if not x["has_default_val"] and not x["keyword_arg"]]),
+                "count_positional_non_default_args": len(
+                    [x for x in args if not x["has_default_val"] and not x["keyword_arg"]]),
                 "count_kw_args": len([x for x in args if x["keyword_arg"]])
                 # "source_code": source_code,
             }
@@ -130,7 +179,15 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
     return index
 
 
+#
 def get_module_index(module_name, path=None):
+    """Creates an list of all function within the given module. Each element consists of a dictonary of the functions
+    characteristics.
+
+    :param module_name: name of importable python module
+    :param path: (optional) path to python module. When used, than the splitting is only file based, only for backup.
+    :return: list of all functions with their characteristics
+    """
     if "array_api" in module_name:
         return []
     elif "test" in module_name:
@@ -158,8 +215,9 @@ def get_module_index(module_name, path=None):
                     source = inspect.getsource(sub_module)
                     tree = ast.parse(source)
                     index += get_functions_from_ast(tree, source, prefix, sub_module_name)
+                # Subject to change
                 except ModuleNotFoundError:
-                    path = f"./active/{(prefix + sub_module_name).replace('.','/')}.py"
+                    path = f"./active/{(prefix + sub_module_name).replace('.', '/')}.py"
                     source = open(path, "r").read()
                     tree = ast.parse(source)
                     index += get_functions_from_ast(tree, source, prefix, sub_module_name)
@@ -173,8 +231,10 @@ def get_module_index(module_name, path=None):
                 try:
                     importlib.import_module(prefix + sub_module_name)
                     index += get_module_index(prefix + sub_module_name)
+                # Subject to change
                 except ModuleNotFoundError:
-                    index += get_module_index(prefix + sub_module_name, path=f"./active/{(prefix + sub_module_name).replace('.','/')}")
+                    index += get_module_index(prefix + sub_module_name,
+                                              path=f"./active/{(prefix + sub_module_name).replace('.', '/')}")
                 except Exception as e:
                     print(sub_module_name, e)
                     pass
