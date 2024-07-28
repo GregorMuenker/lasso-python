@@ -86,6 +86,7 @@ def get_function_args(element, source):
     else:
         default_index = None
     for i, default_val in enumerate(element_args.defaults):
+        function_source = ast.get_source_segment(source, element)
         args[default_index + i]["default_val"] = ast.get_source_segment(source, default_val)
         args[default_index + i]["has_default_val"] = True
     for arg in element_args.kwonlyargs:
@@ -157,13 +158,23 @@ def get_module_index(module_name, path=None):
                     source = inspect.getsource(sub_module)
                     tree = ast.parse(source)
                     index += get_functions_from_ast(tree, source, prefix, sub_module_name)
+                except ModuleNotFoundError:
+                    path = f"./active/{(prefix + sub_module_name).replace('.','/')}.py"
+                    source = open(path, "r").read()
+                    tree = ast.parse(source)
+                    index += get_functions_from_ast(tree, source, prefix, sub_module_name)
+                except OSError:
+                    print(prefix + sub_module_name, "CPython Function")
+                    pass
                 except Exception as e:
-                    print(sub_module_name, e)
+                    print(prefix + sub_module_name, e)
                     pass
             elif ispkg:
                 try:
                     importlib.import_module(prefix + sub_module_name)
                     index += get_module_index(prefix + sub_module_name)
+                except ModuleNotFoundError:
+                    index += get_module_index(prefix + sub_module_name, path=f"./active/{(prefix + sub_module_name).replace('.','/')}")
                 except Exception as e:
                     print(sub_module_name, e)
                     pass
@@ -172,7 +183,7 @@ def get_module_index(module_name, path=None):
     else:
         prefix = module_name + "."
         for element in sorted(listdir(path)):
-            if isfile(join(path, element)):
+            if isfile(join(path, element)) and ".py" in element[-3:] and "__init__" not in element:
                 sub_module_name = element.split(".py")[0]
                 source = open(join(path, element), "r").read()
                 tree = ast.parse(source)
