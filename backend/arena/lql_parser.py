@@ -1,5 +1,7 @@
 import re
+
 from adaptation import InterfaceSpecification, MethodSignature
+
 
 def parse_method_signature(signature):
     """
@@ -10,13 +12,13 @@ def parse_method_signature(signature):
     ->: Match the literal arrow ->.
     (\w+|\w+\[\]): Match and capture either a simple type (one or more word characters) or an array type (one or more word characters followed by []) as the return type.
     """
-    pattern = re.compile(r'(\w+)\(([^)]*)\)->(\w+|\w+\[\])')
+    pattern = re.compile(r"(\w+)\(([^)]*)\)->(\w+|\w+\[\])")
     match = pattern.match(signature.strip())
     if not match:
         return None
-    
+
     methodName, params, returnType = match.groups()
-    parameterTypes = [param.strip() for param in params.split(',')] if params else []
+    parameterTypes = [param.strip() for param in params.split(",")] if params else []
     return MethodSignature(methodName, returnType, parameterTypes)
 
 
@@ -28,13 +30,15 @@ def parse_interface_spec(spec):
     ([^}]*): Match and capture zero or more characters that are not closing braces } (the body of the interface specification).
     }: Match the literal closing brace }.
     """
-    pattern = re.compile(r'(\w+)\s*{([^}]*)}')
+    pattern = re.compile(r"(\w+)\s*{([^}]*)}")
     match = pattern.match(spec.strip())
     if not match:
         return None
 
     className, body = match.groups()
-    method_signatures = [parse_method_signature(sig.strip()) for sig in body.split('\n') if sig.strip()]
+    method_signatures = [
+        parse_method_signature(sig.strip()) for sig in body.split("\n") if sig.strip()
+    ]
     constructors = [sig for sig in method_signatures if sig.methodName == className]
     methods = [sig for sig in method_signatures if sig.methodName != className]
 
@@ -45,7 +49,7 @@ def parse_multiple_interface_specs(notation):
     """
     This method can parse multiple interface specifications that are separated by one blank line in between.
     """
-    specs = notation.strip().split('\n\n')
+    specs = notation.strip().split("\n\n")
     return [parse_interface_spec(spec) for spec in specs]
 
 

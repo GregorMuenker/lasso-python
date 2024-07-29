@@ -1,0 +1,8 @@
+pypi-simple
+tqdm
+pysolr
+requests
+pandas
+python-dotenv
+uvicorn
+fastapi

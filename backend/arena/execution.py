@@ -1,15 +1,10 @@
-import inspect
 import ast
-import coverage
+import inspect
 import os
 
-RED = "\033[91m"
-GREEN = "\033[92m"
-YELLOW = "\033[93m"
-BLUE = "\033[94m"
-MAGENTA = "\033[95m"
-CYAN = "\033[96m"
-RESET = "\033[0m"
+import coverage
+from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
+
 
 class ExecutionRecord:
     def __init__(self):
@@ -19,9 +14,9 @@ class ExecutionRecord:
         self.y = None
         self.returnValue = None
         self.metrics = None
-    
+
     def __repr__(self):
-        inputParamsString = ', '.join(map(str, self.inputParams))
+        inputParamsString = ", ".join(map(str, self.inputParams))
         instruction = f"{self.methodName}({inputParamsString})"
         return f"{YELLOW}{instruction}: {self.returnValue}{RESET}, {self.metrics}"
 
@@ -36,57 +31,65 @@ def execute_test(stimulus_sheet, adapted_module, mappings):
     number_of_submodules (int): The number of submodules in the adapted module.
     mappings (list): A list of mappings containing metadata for each mapping.
     """
-    
-    print(f"\n{CYAN}----------------------\nEXECUTE STIMULUS SHEET\n----------------------{RESET}")
+
+    print(
+        f"\n{CYAN}----------------------\nEXECUTE STIMULUS SHEET\n----------------------{RESET}"
+    )
     print(f"Module: {adapted_module.__name__}")
     print(f"\n {stimulus_sheet}\n")
 
-    stimulus_sheet_id = 0 # TODO refine this identifier
+    stimulus_sheet_id = 0  # TODO refine this identifier
 
     for i in range(len(mappings)):
         submodule = getattr(adapted_module, "mapping" + str(i))
-        
+
         # Prepare an empty list where ExecutionRecord objects will be stored
         mappings[i].executions[stimulus_sheet_id] = []
-        
+
         for index, row in stimulus_sheet.iterrows():
-            method_name = row['method_name']
-            input_params = row['input_params']
-            
+            method_name = row["method_name"]
+            input_params = row["input_params"]
+
             executionRecord = ExecutionRecord()
             executionRecord.methodName = method_name
             executionRecord.inputParams = input_params
             executionRecord.x = 2
             executionRecord.y = index
 
-            input_params_string = ', '.join(map(str, input_params))
+            input_params_string = ", ".join(map(str, input_params))
             instruction = f"{method_name}({input_params_string})"
 
             method = None
             try:
                 method = getattr(submodule, method_name)
             except Exception as e:
-                print(f"Error when trying to get method {method_name} from submodule {submodule}. Error: {e}")
+                print(
+                    f"Error when trying to get method {method_name} from submodule {submodule}. Error: {e}"
+                )
                 executionRecord.returnValue = "Method not found"
                 continue
 
             # Needed for the metrics
-            original_function_name, adaptationInstruction = mappings[i].adaptationInfo[method_name]
-            executable_statements = get_executable_statements(original_function_name, adapted_module)
+            original_function_name, adaptationInstruction = mappings[i].adaptationInfo[
+                method_name
+            ]
+            executable_statements = get_executable_statements(
+                original_function_name, adapted_module
+            )
 
             return_value = "Error"
             try:
                 filename = inspect.getfile(adapted_module)
-                filename = os.path.abspath(filename) # NOTE: This is neccessary as a relative path will mess up the coverage report
+                filename = os.path.abspath(
+                    filename
+                )  # NOTE: This is neccessary as a relative path will mess up the coverage report
 
-                cov = coverage.Coverage(
-                    source=[adapted_module.__name__],
-                    branch=True
+                cov = coverage.Coverage(source=[adapted_module.__name__], branch=True)
+                return_value, metrics = run_with_metrics(
+                    method, input_params, executable_statements, filename, cov
                 )
-                return_value, metrics = run_with_metrics(method, input_params, executable_statements, filename, cov)
             except Exception as e:
                 print(f"Error when executing instruction: {instruction}: {e}")
-            
 
             # Fill in the results for this execution
             executionRecord.returnValue = return_value
@@ -101,6 +104,7 @@ def execute_test(stimulus_sheet, adapted_module, mappings):
             print(f"\t{execution}")
         counter += 1
 
+
 def get_executable_statements(original_function_name, module):
     original_function = None
     if "." in original_function_name:
@@ -111,47 +115,50 @@ def get_executable_statements(original_function_name, module):
         return set()
     else:
         original_function = getattr(module, original_function_name)
-    
+
     lines, start_line = inspect.getsourcelines(original_function)
-    
+
     # Join the lines into a single string and parse
-    source_code = ''.join(lines)
+    source_code = "".join(lines)
     tree = ast.parse(source_code)
-    
+
     executable_statements = set()
-    
+
     for node in ast.walk(tree):
         # Check if the node has a lineno attribute (indicating it's an executable statement)
-        if hasattr(node, 'lineno'):
+        if hasattr(node, "lineno"):
             # Adjust the line number to be relative to the file
             line_number = node.lineno + start_line - 1
             executable_statements.add(line_number)
-    
-     # Find the line number of the function definition and discard lines before it including the function signature
+
+    # Find the line number of the function definition and discard lines before it including the function signature
     for index, line in enumerate(lines):
-        if line.strip().startswith('def '):
+        if line.strip().startswith("def "):
             function_signature_line = start_line + index
             break
-    
+
     for line_no in range(start_line, function_signature_line + 1):
         executable_statements.discard(line_no)
 
     return executable_statements
 
+
 def run_with_metrics(function, args, executable_statements, filename, cov):
     cov.start()
     result = function(*args)
     cov.stop()
-    
+
     data = cov.get_data()
     covered_lines = data.lines(filename)
 
     arcs = data.arcs(filename)
     covered_arcs = []
-    
+
     if arcs and covered_lines:
-        covered_arcs = [arc for arc in arcs if arc[0] in covered_lines or arc[1] in covered_lines]
-    
+        covered_arcs = [
+            arc for arc in arcs if arc[0] in covered_lines or arc[1] in covered_lines
+        ]
+
     if len(executable_statements) == 0:
         # If the function is a class method, we cannot get the source code and therefore cannot get the executable statements
         return result, f"Lines: {len(covered_lines)} total"
@@ -161,12 +168,16 @@ def run_with_metrics(function, args, executable_statements, filename, cov):
 
     covered_arcs_in_function = []
     if arcs:
-        covered_arcs_in_function = [arc for arc in arcs if arc[0] in covered_by_function or arc[1] in covered_by_function]
+        covered_arcs_in_function = [
+            arc
+            for arc in arcs
+            if arc[0] in covered_by_function or arc[1] in covered_by_function
+        ]
 
     metrics = ""
     if covered_lines:
         metrics += f"Lines: {len(covered_lines)} total, {len(covered_by_function)}/{len(executable_statements)} in function. "
     if arcs:
         metrics += f"Arcs: {len(covered_arcs)} total, {len(covered_arcs_in_function)} in function."
-    
+
     return (result, metrics)
