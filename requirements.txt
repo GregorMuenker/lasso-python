@@ -4,3 +4,4 @@ pysolr
 gunicorn
 requests
 pandas
+dotenv
