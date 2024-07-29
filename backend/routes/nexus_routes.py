@@ -2,4 +2,4 @@
 
 from fastapi import APIRouter
 
-router = APIRouter(prefix="nexus/", tags=["nexus"])
+router = APIRouter(prefix="/nexus", tags=["nexus"])

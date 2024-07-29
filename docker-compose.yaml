@@ -1,16 +1,15 @@
-version: '3'
 services:
   app:
     container_name: lasso_python
     build:
-      context: .
+      context: ./backend
     ports:
       - "8000:8000"
     environment:
       - DOCKER=test
       - SOLR_PATH=http://lasso_solr_quickstart:8983/solr/
   lasso_solr_quickstart:
-    image: solr
+    image: solr:9.6.1
     container_name: lasso_solr_quickstart
     ports:
       - "8983:8983"
@@ -18,4 +17,4 @@ services:
       - ./lassoindex:/var/solr
     command:
       - solr-precreate
-      - lasso_quickstart
+      - lasso_python

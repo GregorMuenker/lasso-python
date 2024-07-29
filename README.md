@@ -2,9 +2,14 @@
 
 a python extension for the LASSO Plattform
 
+## Docs
+[Link to Docs](./docs/structure.md)
+
 ## Automatic Setup
 
-### Execute ```sh ./start.sh```
+### Execute ```docker-compose up -d```
+lassoindex folder has to be set up already ```lassoindex_setup.sh```
+also possible startup with ```sh ./start.sh```
 
 ## Maunal Setup
 
@@ -18,7 +23,7 @@ make sure its host owner matches the container's solr user <br>
 sudo rights necessary
 
 creates and runs a solr container on http://localhost:8983, creates a new index called 'lasso_quickstart' <br>
-```docker run -d -v "$PWD/lassoindex:/var/solr" -p 8983:8983 --name lasso_solr_quickstart solr solr-precreate lasso_quickstart```
+```docker run -d -v "./lassoindex:/var/solr" -p 8983:8983 --name lasso_solr_quickstart solr solr-precreate lasso_quickstart```
 
 copy LASSO document schema to your index
 ```cp -r solr/data/lasso_python/conf/* lassoindex/data/lasso_python/conf/```

@@ -2,4 +2,4 @@
 
 from fastapi import APIRouter
 
-router = APIRouter(prefix="arena/", tags=["arena"])
+router = APIRouter(prefix="/arena", tags=["arena"])

@@ -12,4 +12,4 @@ app = init_routes(app)
 app.add_middleware(BasicAuthMiddleware)
 
 if __name__ == "__main__":
-    uvicorn.run(app, debug=True)
+    uvicorn.run(app)

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-router = APIRouter(prefix="solr/", tags=["solr"])
+router = APIRouter(prefix="/solr", tags=["solr"])
 
 
 # check solr health

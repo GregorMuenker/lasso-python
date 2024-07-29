@@ -1,13 +1,10 @@
-FROM python
+FROM python:3.12
 
 # Set the working directory in the container to /app
 WORKDIR /app
 
 # Add the relevant directory contents into the container at /app
-ADD arena /app
-ADD crawl /app
-ADD splitting /app
-
+ADD . /app
 
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt

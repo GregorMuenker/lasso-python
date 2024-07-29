@@ -1,7 +1,8 @@
 pypi-simple
 tqdm
 pysolr
-gunicorn
 requests
 pandas
-dotenv
+python-dotenv
+uvicorn
+fastapi
