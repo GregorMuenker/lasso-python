@@ -3,7 +3,7 @@ services:
   app:
     container_name: lasso_python
     build:
-      context: ./py-container
+      context: .
     ports:
       - "8000:8000"
     environment:
