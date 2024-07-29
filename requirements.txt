@@ -1,2 +1,6 @@
 pypi-simple
 tqdm
+pysolr
+gunicorn
+requests
+pandas
