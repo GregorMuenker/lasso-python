@@ -20,6 +20,12 @@ sudo rights necessary
 creates and runs a solr container on http://localhost:8983, creates a new index called 'lasso_quickstart' <br>
 ```docker run -d -v "$PWD/lassoindex:/var/solr" -p 8983:8983 --name lasso_solr_quickstart solr solr-precreate lasso_quickstart```
 
+copy LASSO document schema to your index
+```cp -r solr/data/lasso_python/conf/* lassoindex/data/lasso_python/conf/```
+
+make sure its host owner matches the container's solr user
+```sudo chown -R 8983:8983 lassoindex/data/lasso_python/conf/```
+
 ### Build Docker container
 
 ```docker build -t backend .```
