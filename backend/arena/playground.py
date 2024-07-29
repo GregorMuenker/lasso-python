@@ -25,5 +25,3 @@ import test_data_file as tdf
 cls = getattr(tdf, "Test")
 method = getattr(cls, "square")
 method(4)
-
-

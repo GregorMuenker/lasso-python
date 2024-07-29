@@ -1,5 +1,6 @@
 import ast
 
+
 def get_type_annotation(annotation):
     if annotation is None:
         return "Any"
@@ -16,15 +17,19 @@ def get_type_annotation(annotation):
         return f"{value}[{subscript}]"
     return "Any"
 
+
 def parse_function(node, parentClass=None):
     from adaptation import FunctionSignature
+
     functionName = node.name
     returnType = get_type_annotation(node.returns)
     parameterTypes = []
     parameterNames = []
 
     # Index of the first parameter with a default value (parameters with values are always at the end of the signature)
-    firstDefault = len(node.args.args) # set to one element behind the last index by default (out of range)
+    firstDefault = len(
+        node.args.args
+    )  # set to one element behind the last index by default (out of range)
     firstDefault = len(node.args.args) - len(node.args.defaults)
 
     for arg in node.args.args:
@@ -34,14 +39,17 @@ def parse_function(node, parentClass=None):
             param_type = "Any"
         parameterTypes.append(param_type)
         parameterNames.append(arg.arg)
-    
+
     # remove first parameter (self) for class methods
     if len(parameterNames) > 0:
         if parameterNames[0] == "self":
             parameterTypes = parameterTypes[1:]
-            firstDefault -= 1 # as self is not counted, the index of the first default parameter is reduced by 1
-    
-    return FunctionSignature(functionName, returnType, parameterTypes, parentClass, firstDefault)
+            firstDefault -= 1  # as self is not counted, the index of the first default parameter is reduced by 1
+
+    return FunctionSignature(
+        functionName, returnType, parameterTypes, parentClass, firstDefault
+    )
+
 
 def parse_class(node):
     className = node.name
@@ -49,19 +57,21 @@ def parse_class(node):
     constructors = []
     for item in node.body:
         if isinstance(item, ast.FunctionDef):
-            if item.name == '__init__' or item.name == '__new__':
+            if item.name == "__init__" or item.name == "__new__":
                 constructors.append(parse_function(item, parentClass=className))
             else:
                 functions.append(parse_function(item, parentClass=className))
     return className, functions, constructors
 
+
 def parse_code(code_string, module_name):
     from adaptation import ModuleUnderTest
+
     tree = ast.parse(code_string)
     functions = []
     classes = {}
     constructors = []
-    
+
     for node in tree.body:
         if isinstance(node, ast.FunctionDef):
             functions.append(parse_function(node))
@@ -70,7 +80,7 @@ def parse_code(code_string, module_name):
             classes[className] = class_constructors
             functions.extend(class_functions)
             constructors.extend(class_constructors)
-    
+
     module = ModuleUnderTest(module_name, functions)
     module.classes = classes
     module.constructors = constructors
@@ -78,11 +88,16 @@ def parse_code(code_string, module_name):
     print(f"Module Name: {module.moduleName}")
     print(f"Classes: {module.classes}")
     for func in module.constructors:
-        print(f"Constructor Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}, First Default: {func.firstDefault}")
+        print(
+            f"Constructor Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}, First Default: {func.firstDefault}"
+        )
     for func in module.functions:
-        print(f"Function Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}, First Default: {func.firstDefault}")
-    
+        print(
+            f"Function Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}, First Default: {func.firstDefault}"
+        )
+
     return module
+
 
 # Example usage
 if __name__ == "__main__":
