@@ -1,3 +1,7 @@
+"""constants.py"""
+
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,3 +15,6 @@ BLUE = "\033[94m"
 MAGENTA = "\033[95m"
 CYAN = "\033[96m"
 RESET = "\033[0m"
+
+USERNAME = os.getenv("USERNAME")
+PASSWORD = os.getenv("PASSWORD")
