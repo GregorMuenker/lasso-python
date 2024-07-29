@@ -42,8 +42,7 @@ class ModuleUnderTest:
     def __init__(self, moduleName, functions) -> None:
         self.moduleName = moduleName
         self.functions = functions  # List of FunctionSignature objects
-        # This stores class names (keys) and list of their constructors as FunctionSignature objects (values)
-        self.classes = {}
+        self.classes = {}# This stores class names (keys) and list of their constructors as FunctionSignature objects (values)
         self.constructors = []  # TODO this is actually unused so far
 
 
@@ -54,6 +53,11 @@ class FunctionSignature:
         self.parameterTypes = parameterTypes
         self.parentClass = parentClass
         self.firstDefault = firstDefault
+    
+    def __repr__(self):
+        return (f"FunctionSignature(functionName='{self.functionName}', returnType='{self.returnType}', "
+                f"parameterTypes={self.parameterTypes}, parentClass='{self.parentClass}', "
+                f"firstDefault={self.firstDefault})")
 
 
 class AdaptationHandler:
