@@ -2,35 +2,24 @@ from adaptation import InterfaceSpecification
 def translate_to_solr_query(interface_spec):
     queries = []
     
-    # TODO handle queries for methods/constructors without parameters
+    # TODO handle queries for constructors
 
     for method in interface_spec.methods:
         param_types = method.parameterTypes
         param_count = len(param_types)
         
         # Building the Solr query for the method
-        param_query = " AND ".join([f"arguments.datatype:('{ptype}')" for ptype in param_types])
-        # Fuzzy search for method name with similarity factor 0.8
-        query = f"name:{method.methodName}~0.1 AND ({param_query})"
+        param_type_query = " AND ".join([f"arguments.datatype:('{ptype}')" for ptype in param_types])
+        # Fuzzy search for method name with similarity factor 0.1
+        param_type_query = f"name:{method.methodName}~0.1 AND ({param_type_query})"
         
         # Adding an alternative query that matches the parameter count
-        alt_query = f"name:{method.methodName}~0.1 AND count_positional_args:({param_count})"
+        param_count_query = f"name:{method.methodName}~0.1 AND count_positional_args:({param_count})"
         
-        queries.append(f"({query}) OR ({alt_query})")
-
-    for constructor in interface_spec.constructors:
-        param_types = constructor.parameterTypes
-        param_count = len(param_types)
-        
-        # Building the Solr query for the constructor
-        param_query = " AND ".join([f"arguments.datatype:('{ptype}')" for ptype in param_types])
-        # Fuzzy search for method name with similarity factor 0.8
-        query = f"name:__init__ OR name:__new__ AND ({param_query})"
-        
-        # Adding an alternative query that matches the parameter count
-        alt_query = f"(name:__init__ OR name:__new) AND count_positional_args:({param_count})"
-        
-        queries.append(f"({query}) OR ({alt_query})")
+        if (len(param_types) == 0):
+            queries.append(f"({param_count_query})")
+        else:
+            queries.append(f"({param_type_query}) OR ({param_count_query})")
 
     # Combining all queries into one
     combined_query = " OR ".join(queries)

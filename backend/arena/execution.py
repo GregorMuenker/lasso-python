@@ -1,13 +1,14 @@
 import ast
 import inspect
 import os
+import time
 
 import coverage
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 
 
 class ExecutionRecord:
-    def __init__(self):
+    def __init__(self) -> None:
         self.methodName = None
         self.inputParams = None
         self.x = None
@@ -15,13 +16,13 @@ class ExecutionRecord:
         self.returnValue = None
         self.metrics = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         inputParamsString = ", ".join(map(str, self.inputParams))
         instruction = f"{self.methodName}({inputParamsString})"
         return f"{YELLOW}{instruction}: {self.returnValue}{RESET}, {self.metrics}"
 
 
-def execute_test(stimulus_sheet, adapted_module, mappings):
+def execute_test(stimulus_sheet, adapted_module, mappings) -> None:
     """
     Executes a stimulus sheet based on a provided module and prints out the results.
 
@@ -105,7 +106,10 @@ def execute_test(stimulus_sheet, adapted_module, mappings):
         counter += 1
 
 
-def get_executable_statements(original_function_name, module):
+def get_executable_statements(original_function_name, module) -> set:
+    """
+    Returns a set of line numbers that contain executable statements in the original function, i.e. the lines that are not comments/whitespaces/etc.
+    """
     original_function = None
     if "." in original_function_name:
         # split_qualname = original_function_name.split(".")
@@ -143,9 +147,15 @@ def get_executable_statements(original_function_name, module):
     return executable_statements
 
 
-def run_with_metrics(function, args, executable_statements, filename, cov):
+def run_with_metrics(function, args, executable_statements, filename, cov) -> tuple:
+    """
+    Executes a function and records the code coverage and arc coverage metrics.
+    """
     cov.start()
+    start_time = time.time()
     result = function(*args)
+    end_time = time.time()
+    execution_time = end_time - start_time
     cov.stop()
 
     data = cov.get_data()
@@ -161,7 +171,7 @@ def run_with_metrics(function, args, executable_statements, filename, cov):
 
     if len(executable_statements) == 0:
         # If the function is a class method, we cannot get the source code and therefore cannot get the executable statements
-        return result, f"Lines: {len(covered_lines)} total"
+        return result, f"Time: {execution_time:.5f}s. Lines: {len(covered_lines)} total."
 
     if covered_lines:
         covered_by_function = set(covered_lines) & set(executable_statements)
@@ -174,9 +184,9 @@ def run_with_metrics(function, args, executable_statements, filename, cov):
             if arc[0] in covered_by_function or arc[1] in covered_by_function
         ]
 
-    metrics = ""
+    metrics = f"Time: {execution_time:.5f}s. "
     if covered_lines:
-        metrics += f"Lines: {len(covered_lines)} total, {len(covered_by_function)}/{len(executable_statements)} in function. "
+        metrics += f"Lines: {len(covered_lines)} total, {len(covered_by_function)}/{len(executable_statements)} in function."
     if arcs:
         metrics += f"Arcs: {len(covered_arcs)} total, {len(covered_arcs_in_function)} in function."
 

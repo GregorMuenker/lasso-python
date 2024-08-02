@@ -536,7 +536,13 @@ def instantiate_class(
         print(
             f"No constructors found for class {parent_class_name}, trying instantiation call: {parent_class_name}()."
         )
-        parent_class_instance = parent_class()
+        try:
+            parent_class_instance = parent_class()
+        except Exception as e:
+            print("Standard constructor without params failed: {e}.")
+        else:
+            if parent_class_instance:
+                successful_instantiation = True
     else:
         print(
             f"{constructors.__len__()} constructor(s) found for class {parent_class_name}."
@@ -579,8 +585,9 @@ def instantiate_class(
                 continue
 
             else:
-                successful_instantiation = True
-                break  # using the constructor was successful, break the loop
+                if parent_class_instance:
+                    successful_instantiation = True
+                    break  # using the constructor was successful, break the loop
 
     return successful_instantiation, parent_class_instance
 
