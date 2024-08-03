@@ -13,6 +13,7 @@ import json
 
 from crawl import run
 from crawl.install import installHandler
+from crawl import type_inference
 
 
 def get_function_calls(element):
@@ -71,11 +72,25 @@ def get_arg_datatype_code(arg, source):
         arg_source = ast.get_source_segment(source, arg)
         datatype = arg_source.split(": ")[1]
     else:
-        datatype = "Any"
+        datatype = None
     return datatype
 
 
-def get_function_args(element, source, class_function):
+def get_return_type(element, source):
+    """Returns the return type of a function by using the source code
+
+    :param element: FunctionDef in abstract syntax tree
+    :param source: source code of whole abstract syntax tree
+    :return: string of datatype
+    """
+    return_type = ast.get_source_segment(source, element.returns)
+    if return_type:
+        return return_type
+    else:
+        return "Any"
+
+
+def get_function_args(element, source, dependent_class, prefix, sub_module_name):
     """Returns a list of all arguments and their characteristics of one target function.
 
     :param element: FunctionDef in abstract syntax tree
@@ -84,8 +99,9 @@ def get_function_args(element, source, class_function):
     """
     args = []
     element_args = element.args
-    if class_function:
+    if dependent_class != "None":
         element_args.args = element_args.args[1:]
+    inferred_datatypes_function_dict = type_inference.get_inferred_datatypes_function(prefix + sub_module_name, element.name, dependent_class)
 
     def append_arg(arg, keyword_arg):
         """Inherit function to append argument characteristics to argument_list
@@ -98,8 +114,8 @@ def get_function_args(element, source, class_function):
             datatype = datatype.replace("\n", "")
             datatype = datatype.replace(" ", "")
             datatype = datatype.split("|")
-        if type(datatype) != list:
-            datatype = [datatype]
+        else:
+            datatype = inferred_datatypes_function_dict[arg.arg] + ["Any"]
         args.append({
             "name": arg.arg,
             "datatype": datatype,
@@ -127,20 +143,6 @@ def get_function_args(element, source, class_function):
     return args, default_index
 
 
-def get_return_type(element, source):
-    """Returns the return type of a function by using the source code
-
-    :param element: FunctionDef in abstract syntax tree
-    :param source: source code of whole abstract syntax tree
-    :return: string of datatype
-    """
-    return_type = ast.get_source_segment(source, element.returns)
-    if return_type:
-        return return_type
-    else:
-        return "Any"
-
-
 def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class="None"):
     """Generates function characteristics based on an abstract syntax tree.
 
@@ -152,6 +154,7 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
     be set for later querying.
     :return: list of all functions in the target module with their characteristics
     """
+    type_inference.infer_datatypes_module(prefix.split(".")[0], prefix + sub_module_name)
     index = []
     for element in tree.body:
         if type(element) == FunctionDef:
@@ -159,7 +162,7 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
             if depended_class != "None" and "staticmethod" in [ast.get_source_segment(source, x) for x in
                                                                element.decorator_list]:
                 depended_class = "None"
-            args, default_index = get_function_args(element, source, depended_class != "None")
+            args, default_index = get_function_args(element, source, depended_class, prefix, sub_module_name)
             index_element = {
                 "module": prefix + sub_module_name,
                 "name": element.name,
@@ -258,12 +261,13 @@ def get_module_index(module_name, path=None):
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
     package_name = "urllib3"
+    version = "2.2.2"
     try:
-        run.move_active(package_name)
+        run.move_active(f"{package_name}-{version}")
     except FileNotFoundError:
         installHandler = installHandler()
         installHandler.install(package_name)
-        run.move_active(package_name)
+        run.move_active(f"{package_name}-{version}")
     index = get_module_index(package_name)
     run.remove_active()
 

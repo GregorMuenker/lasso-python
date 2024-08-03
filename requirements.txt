@@ -1,2 +1,4 @@
 pypi-simple
 tqdm
+hityper
+pycg==0.0.6

@@ -9,3 +9,9 @@ def multiply(a, b):
     for _ in range(b):
         product = add(product, a)
     return product
+
+def ascii_list(s):
+    ascii_list = []
+    for char in s:
+        ascii_list.append(ord(char))
+    return ascii_list
