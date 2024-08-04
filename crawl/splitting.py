@@ -15,7 +15,6 @@ from crawl import run
 from crawl.install import installHandler
 from crawl import type_inference
 
-
 def get_function_calls(element):
     """ (deprecated) Returns a list of function calls from the target function to load the function at runtime.
 
@@ -76,7 +75,7 @@ def get_arg_datatype_code(arg, source):
     return datatype
 
 
-def get_return_type(element, source):
+def get_return_type(element, source, prefix, sub_module_name, dependent_class, type_inferencing_active):
     """Returns the return type of a function by using the source code
 
     :param element: FunctionDef in abstract syntax tree
@@ -87,10 +86,17 @@ def get_return_type(element, source):
     if return_type:
         return return_type
     else:
+        if type_inferencing_active:
+            inferred_datatypes_function_dict = type_inference.get_inferred_datatypes_function(prefix + sub_module_name,
+                                                                                              element.name, dependent_class)
+            if len(inferred_datatypes_function_dict) != 0:
+                return_type = inferred_datatypes_function_dict["return"]
+                if return_type != []:
+                    return return_type[0]
         return "Any"
 
 
-def get_function_args(element, source, dependent_class, prefix, sub_module_name):
+def get_function_args(element, source, dependent_class, prefix, sub_module_name, type_inferencing_active):
     """Returns a list of all arguments and their characteristics of one target function.
 
     :param element: FunctionDef in abstract syntax tree
@@ -99,9 +105,11 @@ def get_function_args(element, source, dependent_class, prefix, sub_module_name)
     """
     args = []
     element_args = element.args
-    if dependent_class != "None":
+    if dependent_class is not None and "staticmethod" not in [ast.get_source_segment(source, x) for x in
+                                                               element.decorator_list]:
         element_args.args = element_args.args[1:]
-    inferred_datatypes_function_dict = type_inference.get_inferred_datatypes_function(prefix + sub_module_name, element.name, dependent_class)
+    if type_inferencing_active:
+        inferred_datatypes_function_dict = type_inference.get_inferred_datatypes_function(prefix + sub_module_name, element.name, dependent_class)
 
     def append_arg(arg, keyword_arg):
         """Inherit function to append argument characteristics to argument_list
@@ -114,8 +122,15 @@ def get_function_args(element, source, dependent_class, prefix, sub_module_name)
             datatype = datatype.replace("\n", "")
             datatype = datatype.replace(" ", "")
             datatype = datatype.split("|")
+
         else:
-            datatype = inferred_datatypes_function_dict[arg.arg] + ["Any"]
+            if type_inferencing_active:
+                if len(inferred_datatypes_function_dict) == 0:
+                    datatype = ["Any"]
+                else:
+                    datatype = inferred_datatypes_function_dict[arg.arg] + ["Any"]
+            else:
+                datatype = ["Any"]
         args.append({
             "name": arg.arg,
             "datatype": datatype,
@@ -143,8 +158,9 @@ def get_function_args(element, source, dependent_class, prefix, sub_module_name)
     return args, default_index
 
 
-def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class="None"):
+def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class=None, typer_inferencing_engine=None):
     """Generates function characteristics based on an abstract syntax tree.
+
 
     :param tree: abstract syntax tree of the target module
     :param source: source code of the target module
@@ -152,24 +168,25 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
     :param sub_module_name: name of the target module
     :param depended_class: default = "None". When a function is identified to be part of a class this parameters has to
     be set for later querying.
+    :param typer_inferencing_engine: declares the engine used by the type inferencing toolkit. Supported: HiTyper
     :return: list of all functions in the target module with their characteristics
     """
-    type_inference.infer_datatypes_module(prefix.split(".")[0], prefix + sub_module_name)
+    type_inferencing_active = False
+    if typer_inferencing_engine:
+        type_inference.infer_datatypes_module(prefix.split(".")[0], prefix + sub_module_name)
+        type_inferencing_active = True
     index = []
     for element in tree.body:
         if type(element) == FunctionDef:
             # source_code = ast.get_source_segment(source, element)
-            if depended_class != "None" and "staticmethod" in [ast.get_source_segment(source, x) for x in
-                                                               element.decorator_list]:
-                depended_class = "None"
-            args, default_index = get_function_args(element, source, depended_class, prefix, sub_module_name)
+            args, default_index = get_function_args(element, source, depended_class, prefix, sub_module_name, type_inferencing_active)
             index_element = {
                 "module": prefix + sub_module_name,
                 "name": element.name,
                 "dependend_class": depended_class,
                 # "function_calls": get_function_calls(element),
                 "arguments": args,
-                "return_types": get_return_type(element, source),
+                "return_types": get_return_type(element, source, prefix, sub_module_name, depended_class, type_inferencing_active),
                 "default_index": default_index,
                 "count_positional_args": len([x for x in args if not x["keyword_arg"]]),
                 "count_positional_non_default_args": len(
@@ -229,9 +246,9 @@ def get_module_index(module_name, path=None):
                 except OSError:
                     print(prefix + sub_module_name, "CPython Function")
                     pass
-                except Exception as e:
-                    print(prefix + sub_module_name, e)
-                    pass
+                #except Exception as e:
+                 #   print(prefix + sub_module_name, e)
+                  #  pass
             elif ispkg:
                 try:
                     importlib.import_module(prefix + sub_module_name)
@@ -240,11 +257,9 @@ def get_module_index(module_name, path=None):
                 except ModuleNotFoundError:
                     index += get_module_index(prefix + sub_module_name,
                                               path=f"./active/{(prefix + sub_module_name).replace('.', '/')}")
-                except Exception as e:
-                    print(sub_module_name, e)
-                    pass
-
-        return index
+                #except Exception as e:
+                 #   print(sub_module_name, e)
+                  #  pass
     else:
         prefix = module_name + "."
         for element in sorted(listdir(path)):
@@ -255,20 +270,20 @@ def get_module_index(module_name, path=None):
                 index += get_functions_from_ast(tree, source, prefix, sub_module_name)
             elif isdir(join(path, element)):
                 index += get_module_index(prefix + element, join(path, element))
-        return index
-
+    return index
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
-    package_name = "urllib3"
-    version = "2.2.2"
+    package_name = "numpy"
+    version = "1.26.4"
     try:
         run.move_active(f"{package_name}-{version}")
     except FileNotFoundError:
         installHandler = installHandler()
-        installHandler.install(package_name)
+        installHandler.install(f"{package_name}=={version}")
         run.move_active(f"{package_name}-{version}")
-    index = get_module_index(package_name)
+    index = get_module_index("numpy")
+    type_inference.clear_type_inferences()
     run.remove_active()
 
 #fp = open('search_index.json', 'w')

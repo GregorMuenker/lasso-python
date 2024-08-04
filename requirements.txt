@@ -1,4 +1,6 @@
 pypi-simple
 tqdm
+urllib3==1.26.19
 hityper
 pycg==0.0.6
+tensorflow
