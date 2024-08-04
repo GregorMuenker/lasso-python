@@ -1,0 +1,13 @@
+{
+  "arguments": [
+    {
+      "name": "<ARGUMENT 1 NAME>",
+      "datatypes": ["<DATATYPE 1>", "<DATATYPE 2>"]
+    }
+  ],
+  "returns": [
+    {
+      "datatypes": ["<DATATYPE 1>", "<DATATYPE 2>"]
+    }
+  ]
+}

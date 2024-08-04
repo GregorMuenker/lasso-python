@@ -1,0 +1,4 @@
+pysolr
+flask 
+gunicorn
+requests
