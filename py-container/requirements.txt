@@ -1,4 +1,0 @@
-pysolr
-flask 
-gunicorn
-requests
