@@ -166,7 +166,9 @@ crawl/installed/
 example_packages
 crawl/test.ipynb
 crawl/info.csv
+index.json
 lasso-python.code-workspace
+installed/
 
 .DS_Store
 numpy-*
