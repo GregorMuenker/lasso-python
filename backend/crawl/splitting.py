@@ -11,9 +11,9 @@ from os import listdir
 from os.path import isfile, join, isdir
 import json
 
-from crawl import run
-from crawl.install import installHandler
-from crawl import type_inference
+from backend.crawl import run
+from backend.crawl.install import installHandler
+from backend.crawl import type_inference
 
 def get_function_calls(element):
     """ (deprecated) Returns a list of function calls from the target function to load the function at runtime.
