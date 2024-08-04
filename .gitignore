@@ -167,6 +167,9 @@ example_packages
 crawl/test.ipynb
 crawl/info.csv
 lasso-python.code-workspace
+installed/
+
+index.json
 
 .DS_Store
 pysolr-*
