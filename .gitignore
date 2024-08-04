@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+ Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -164,13 +164,13 @@ crawl/archive/
 crawl/packages/
 crawl/installed/
 example_packages
+crawl/test.ipynb
 crawl/info.csv
-crawl/index.json
 lasso-python.code-workspace
-py-container/arena/runtime/
 
 .DS_Store
-numpy-*
 pysolr-*
 
 lassoindex
+
+.env
