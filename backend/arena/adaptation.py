@@ -343,6 +343,7 @@ class AdaptationHandler:
 def create_adapted_module(
     adaptationHandler,
     module_name,
+    class_instantiation_params=None,
     use_constructor_default_values=False,
     testing_mode=False,
 ):
@@ -421,6 +422,7 @@ def create_adapted_module(
                     successful_instantiation, parent_class_instance = instantiate_class(
                         module,
                         parent_class_name,
+                        class_instantiation_params,
                         use_constructor_default_values,
                         adaptationHandler.classes[parent_class_name],
                     )
@@ -513,7 +515,7 @@ def create_adapted_module(
 
 
 def instantiate_class(
-    module, parent_class_name, use_constructor_default_values, constructors
+    module, parent_class_name, class_instantiation_params, use_constructor_default_values, constructors
 ):
     """
     Instantiates a class from a given module.
@@ -532,6 +534,19 @@ def instantiate_class(
     parent_class_instance = None
     successful_instantiation = False
 
+    # Try to instantiate the class with user-defined parameters
+    if class_instantiation_params:
+        print(f"Try instantiation of class {parent_class_name} with user-defined params {class_instantiation_params}.")
+        try:
+            parent_class_instance = parent_class(*class_instantiation_params)
+        except Exception as e:
+            print(f"Instantiation of class {parent_class_name} with user-defined params {class_instantiation_params} failed: {e}.")
+        else:
+            print(f"Successfully instantiated class: {parent_class_instance}.")
+            successful_instantiation = True
+            return successful_instantiation, parent_class_instance
+
+    # Try to instantiate the class without any parameters
     if constructors.__len__() == 0:
         print(
             f"No constructors found for class {parent_class_name}, trying instantiation call: {parent_class_name}()."
@@ -541,11 +556,14 @@ def instantiate_class(
         except Exception as e:
             print("Standard constructor without params failed: {e}.")
         else:
-            if parent_class_instance:
-                successful_instantiation = True
-    else:
+            print(f"Successfully instantiated class: {parent_class_instance}.")
+            successful_instantiation = True
+            return successful_instantiation, parent_class_instance
+
+    # Try to instantiate the class with pre-defined values depending on the constructor parameter types
+    if constructors.__len__() > 0:
         print(
-            f"{constructors.__len__()} constructor(s) found for class {parent_class_name}."
+            f"{constructors.__len__()} constructor(s) found for class {parent_class_name}, try to instantiate with pre-defined values."
         )
         for (
             constructor
@@ -574,20 +592,18 @@ def instantiate_class(
                         f"Trying instantiation call: {parent_class_name}({parameters})."
                     )
                     parent_class_instance = parent_class(parameters)
-                    print(f"Produced class instance: {parent_class_instance}.")
                 else:
                     print(f"Trying instantiation call: {parent_class_name}().")
                     parent_class_instance = parent_class()
-                    print(f"Produced class instance: {parent_class_instance}.")
 
             except Exception as e:
                 print(f"Constructor {constructor.functionName} failed: {e}.")
                 continue
 
             else:
-                if parent_class_instance:
-                    successful_instantiation = True
-                    break  # using the constructor was successful, break the loop
+                print(f"Successfully instantiated class: {parent_class_instance}.")
+                successful_instantiation = True
+                return successful_instantiation, parent_class_instance
 
     return successful_instantiation, parent_class_instance
 
@@ -849,7 +865,7 @@ if __name__ == "__main__":
     path = "./test_data_file.py"  # <-- for testing with handcrafted python file
     with open(path, "r") as file:
         file_content = file.read()  # Read the entire content of the file
-        moduleUnderTest = parse_code(file_content, "numpy.lib.scimath")
+        moduleUnderTest = parse_code(file_content, "numpy.matrixlib.defmatrix")
 
     adaptationHandler = AdaptationHandler(
         interfaceSpecification,
@@ -864,6 +880,7 @@ if __name__ == "__main__":
     (adapted_module, successful_mappings) = create_adapted_module(
         adaptationHandler,
         moduleUnderTest.moduleName,
+        class_instantiation_params=["1 2; 3 4"],
         use_constructor_default_values=True,
         testing_mode=True,
     )

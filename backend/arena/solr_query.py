@@ -8,12 +8,11 @@ def translate_to_solr_query(interface_spec):
         param_types = method.parameterTypes
         param_count = len(param_types)
         
-        # Building the Solr query for the method
+        # Query for name and param types
         param_type_query = " AND ".join([f"arguments.datatype:('{ptype}')" for ptype in param_types])
-        # Fuzzy search for method name with similarity factor 0.1
         param_type_query = f"name:{method.methodName}~0.1 AND ({param_type_query})"
         
-        # Adding an alternative query that matches the parameter count
+        # Query for name and param count
         param_count_query = f"name:{method.methodName}~0.1 AND count_positional_args:({param_count})"
         
         if (len(param_types) == 0):

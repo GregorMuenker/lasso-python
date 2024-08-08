@@ -79,6 +79,7 @@ def execute_test(stimulus_sheet, adapted_module, mappings) -> None:
             )
 
             return_value = "Error"
+            metrics = "No metrics recorded"
             try:
                 filename = inspect.getfile(adapted_module)
                 filename = os.path.abspath(
