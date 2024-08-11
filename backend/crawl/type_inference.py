@@ -27,6 +27,8 @@ def get_inferred_datatypes_function(module_name_with_prefix, function_name, depe
     except KeyError:
         print(f"Datatypes of function {module_name_with_prefix}.{function_name} not inferred!")
         return {}
+    except FileNotFoundError:
+        return {}
 
 
 def clear_type_inferences():
