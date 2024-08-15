@@ -1,3 +1,7 @@
+"""
+DEPRECATED: This module is deprecated and will be removed in the future. Please use backend/lql/antlr_parser.py instead.
+"""
+
 import re
 
 from adaptation import InterfaceSpecification, MethodSignature

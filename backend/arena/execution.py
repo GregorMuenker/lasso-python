@@ -187,7 +187,7 @@ def run_with_metrics(function, args, executable_statements, filename, cov) -> tu
 
     metrics = f"Time: {execution_time:.5f}s. "
     if covered_lines:
-        metrics += f"Lines: {len(covered_lines)} total, {len(covered_by_function)}/{len(executable_statements)} in function."
+        metrics += f"Lines: {len(covered_lines)} total, {len(covered_by_function)}/{len(executable_statements)} in function. "
     if arcs:
         metrics += f"Arcs: {len(covered_arcs)} total, {len(covered_arcs_in_function)} in function."
 

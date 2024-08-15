@@ -8,8 +8,6 @@ from collections import Counter
 
 import pandas as pd
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
-from module_parser import parse_code
-from stimulus_sheet_reader import get_stimulus_sheet
 
 
 class InterfaceSpecification:
@@ -852,6 +850,8 @@ def can_convert_type(source_type, target_type):
 
 if __name__ == "__main__":
     from execution import execute_test
+    from module_parser import parse_code
+    from stimulus_sheet_reader import get_stimulus_sheet
 
     icubed = MethodSignature("icubed", "str", ["int"])
     iminus = MethodSignature("iminus", "str", ["float", "int"])

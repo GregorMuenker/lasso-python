@@ -6,3 +6,5 @@ pandas
 python-dotenv
 uvicorn
 fastapi
+antlr4-python3-runtime
+typing

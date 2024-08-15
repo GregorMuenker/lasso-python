@@ -1,7 +1,7 @@
 import pysolr
 from adaptation import AdaptationHandler, create_adapted_module
 from execution import execute_test
-from lql_parser import parse_interface_spec
+from lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
 from solr_query import translate_to_solr_query
 from stimulus_sheet_reader import get_stimulus_sheet
