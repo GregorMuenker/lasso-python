@@ -160,13 +160,12 @@ cython_debug/
 .idea/
 
 # Project-specific
-crawl/archive/
-crawl/packages/
-crawl/installed/
+backend/crawl/installed/
+backend/crawl/index.json
+backend/arena/runtime/
 example_packages
-crawl/test.ipynb
-crawl/info.csv
 lasso-python.code-workspace
+
 
 .DS_Store
 numpy-*

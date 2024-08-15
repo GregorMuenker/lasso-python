@@ -6,6 +6,7 @@ from solr_parser import parse_solr_response
 from solr_query import translate_to_solr_query
 from stimulus_sheet_reader import get_stimulus_sheet
 
+#TODO: Dynamic?
 if __name__ == "__main__":
     lql_string = """
     Calculator {

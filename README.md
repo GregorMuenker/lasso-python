@@ -46,3 +46,4 @@ Or with:
 
 
 
+```sh ./start.sh```
