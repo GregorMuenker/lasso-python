@@ -87,7 +87,7 @@ class AdaptationInstruction:
             or self.parameterTypeConversion
         )
 
-    def calculateScore(self) -> int:
+    def calculateDistance(self) -> int:
         adaptations = [
             self.nameAdaptation,
             self.returnTypeAdaptation,
@@ -97,7 +97,7 @@ class AdaptationInstruction:
         ]
         
         needed_adaptations = [adaptation for adaptation in adaptations if adaptation is not None]
-        return - len(needed_adaptations)
+        return len(needed_adaptations)
 
     def __repr__(self) -> str:
         result = ""
@@ -116,7 +116,7 @@ class AdaptationInstruction:
 
 class Mapping:
     def __init__(self) -> None:
-        self.totalScore = 0
+        self.totalDistance = 0
         self.adaptationIds = (
             []
         )  # list of tuples (interfaceMethodName, moduleFunctionQualName, iteration)
@@ -131,7 +131,7 @@ class Mapping:
         result = ""
         for key, value in self.adaptationInfo.items():
             result += "[" + key + "->" + value[0] + " via " + str(value[1]) + "]"
-        result += f" | score={self.totalScore}"
+        result += f" | distance={self.totalDistance}"
         return result
 
 
@@ -332,9 +332,9 @@ class AdaptationHandler:
                             iteration
                         ],
                     )
-                    potentialMapping.totalScore += self.adaptations[
+                    potentialMapping.totalDistance += self.adaptations[
                         (interfaceMethodId, moduleFunctionId)
-                    ][iteration].calculateScore()
+                    ][iteration].calculateDistance()
                 else:
                     # At least one module function in the permutation is not adaptable
                     break
@@ -349,7 +349,7 @@ class AdaptationHandler:
         print(f"Generated {self.mappings.__len__()} potential mappings.")
 
         self.mappings = sorted(
-            self.mappings, key=lambda mapping: mapping.totalScore, reverse=True
+            self.mappings, key=lambda mapping: mapping.totalDistance, reverse=False
         )
 
         if onlyKeepTopN and onlyKeepTopN <= len(self.mappings):
