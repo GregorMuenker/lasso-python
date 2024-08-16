@@ -76,7 +76,6 @@ class AdaptationInstruction:
         self.parameterOrderAdaptation = None
         self.blindParameterOrderAdaptation = None
         self.parameterTypeConversion = None
-        self.score = 0
 
     def areAdaptationsNeeded(self) -> bool:
         return (
@@ -88,7 +87,16 @@ class AdaptationInstruction:
         )
 
     def calculateScore(self) -> int:
-        return random.randint(1, 10)  # TODO work on score calculation
+        adaptations = [
+            self.nameAdaptation,
+            self.returnTypeAdaptation,
+            self.parameterOrderAdaptation,
+            self.blindParameterOrderAdaptation,
+            self.parameterTypeConversion
+        ]
+        
+        needed_adaptations = [adaptation for adaptation in adaptations if adaptation is not None]
+        return - len(needed_adaptations)
 
     def __repr__(self) -> str:
         result = ""
@@ -176,7 +184,7 @@ class AdaptationHandler:
         maxParamPermutationTries (int): The maximum number of adaptations for any given interface method/module function pair.
         """
         print(
-            f"\n{MAGENTA}-----------------\nIDENTIFY MAPPINGS\n-----------------{RESET}"
+            f"\n{MAGENTA}-----------------\nIDENTIFY ADAPTATIONS\n-----------------{RESET}"
         )
         for interfaceMethodName, interfaceMethod in self.interfaceMethods.items():
             for moduleFunctionQualName, moduleFunction in self.moduleFunctions.items():
@@ -247,10 +255,23 @@ class AdaptationHandler:
                         i,
                     )
 
-                    # TODO handling of the case that the same permuation is used as in iteration 0
-                    adaptationInstructionBlindPermutation.blindParameterOrderAdaptation = allPermutations[
-                        i
-                    ]
+                    # Pick the current permutation and turn it into a list
+                    blindPermutation = list(allPermutations[i])
+
+                    # Check if the blind permutation is the same as in iteration 0 (the "smart permutation" that matches param types)
+                    if blindPermutation == adaptationInstruction.parameterOrderAdaptation:
+                        print(f"Blind permutation {blindPermutation} for {interfaceMethodName}->{moduleFunctionQualName} would be a duplicate, skipping it")
+
+                        # Check if it is possible to use another permutation instead
+                        if iterations < numOfParamPermutations:
+                            iterations += 1
+                            print(f"Trying an additional blind permutation instead")
+                        
+                        # Don't use this permutation variant and continue with the next iteration
+                        continue
+
+                    # The blind permutation is not a duplicate, generate a new adaptation instruction
+                    adaptationInstructionBlindPermutation.blindParameterOrderAdaptation = blindPermutation
 
                     self.adaptations[
                         (interfaceMethodName, moduleFunctionQualName)
@@ -639,7 +660,7 @@ def adapt_function(
                 except Exception as e:
                     print(f"Error when adapting parameter order of {function}: {e}.")
 
-            # Adapt parameter order blindly by using a given order TODO this could be merged with the previous step
+            # Adapt parameter order blindly by using a given order
             if blind_new_param_order:
                 try:
                     adapted_args = [adapted_args[i] for i in blind_new_param_order]
