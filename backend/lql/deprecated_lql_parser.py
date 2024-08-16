@@ -4,8 +4,6 @@ DEPRECATED: This module is deprecated and will be removed in the future. Please 
 
 import re
 
-from adaptation import InterfaceSpecification, MethodSignature
-
 
 def parse_method_signature(signature):
     """
@@ -58,6 +56,10 @@ def parse_multiple_interface_specs(notation):
 
 
 if __name__ == "__main__":
+    import sys
+    sys.path.insert(1, '../arena/')
+    from adaptation import InterfaceSpecification, MethodSignature
+    
     spec = """
     Stack {
         Stack()
