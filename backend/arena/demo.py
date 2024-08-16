@@ -45,5 +45,5 @@ if __name__ == "__main__":
         use_constructor_default_values=True,
     )
 
-    stimulus_sheet = get_stimulus_sheet("calc4.csv")
+    stimulus_sheet = get_stimulus_sheet("calc4_demo.csv")
     execute_test(stimulus_sheet, adapted_module, successful_mappings)

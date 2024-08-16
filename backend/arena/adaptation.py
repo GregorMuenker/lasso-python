@@ -2,11 +2,12 @@ import copy
 import importlib
 import itertools
 import math
-import random
 import types
 from collections import Counter
-
 import pandas as pd
+
+import sys
+sys.path.insert(1, '../../backend')
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 
 
@@ -184,7 +185,7 @@ class AdaptationHandler:
         maxParamPermutationTries (int): The maximum number of adaptations for any given interface method/module function pair.
         """
         print(
-            f"\n{MAGENTA}-----------------\nIDENTIFY ADAPTATIONS\n-----------------{RESET}"
+            f"\n{MAGENTA}--------------------\nIDENTIFY ADAPTATIONS\n--------------------{RESET}"
         )
         for interfaceMethodName, interfaceMethod in self.interfaceMethods.items():
             for moduleFunctionQualName, moduleFunction in self.moduleFunctions.items():
