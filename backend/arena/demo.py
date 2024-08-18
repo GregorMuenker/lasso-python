@@ -6,6 +6,13 @@ from solr_parser import parse_solr_response
 from solr_query import translate_to_solr_query
 from stimulus_sheet_reader import get_stimulus_sheet
 
+"""
+For this demo to work you need to:
+- have the Solr instance lasso_quickstart running on localhost:8983
+- TODO have an Apache Ignite instance running
+"""
+
+
 #TODO: Dynamic?
 if __name__ == "__main__":
     lql_string = """
