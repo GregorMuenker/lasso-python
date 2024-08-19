@@ -5,11 +5,17 @@ from lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
 from solr_query import translate_to_solr_query
 from stimulus_sheet_reader import get_stimulus_sheet
+from ignite import LassoIgniteClient
 
 """
 For this demo to work you need to:
 - have the Solr instance lasso_quickstart running on localhost:8983
-- TODO have an Apache Ignite instance running
+- have an Apache Ignite instance running
+    1. download Apache Ignite binaries (NOT SOURCE FILES) version 2.16.0 from https://ignite.apache.org/download.cgi#binaries
+    2. unzip the zip archive
+    3. navigate to the bin folder in the unzipped folder
+    4. run ignite.bat (Windows) or ignite.sh (Unix) via the command line
+- alternatively comment out the part starting from "lassoIgniteClient = LassoIgniteClient() ..."
 """
 
 
@@ -53,4 +59,17 @@ if __name__ == "__main__":
     )
 
     stimulus_sheet = get_stimulus_sheet("calc4_demo.csv")
-    execute_test(stimulus_sheet, adapted_module, successful_mappings)
+    allSequenceExecutionRecords = execute_test(stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification)
+    for sequenceExecutionRecord in allSequenceExecutionRecords:
+        print(sequenceExecutionRecord)    
+
+    lassoIgniteClient = LassoIgniteClient()
+    for sequenceExecutionRecord in allSequenceExecutionRecords:
+        cells = sequenceExecutionRecord.toSheetCells()
+        lassoIgniteClient.putAll(cells)
+
+    df = lassoIgniteClient.getDataFrame()
+    print(df)
+
+    lassoIgniteClient.cache.destroy()
+    lassoIgniteClient.client.close()

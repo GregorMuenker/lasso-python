@@ -123,9 +123,7 @@ class Mapping:
         self.adaptationInfo = (
             {}
         )  # dictionary with key = interfaceMethodName and value = (moduleFunctionQualName, adaptationInstruction)
-        self.executions = (
-            {}
-        )  # dictionary with key = stimulus sheet id (counting up from 0) and value = list of ExecutionRecord objects
+
 
     def __repr__(self) -> str:
         result = ""
@@ -656,49 +654,31 @@ def adapt_function(
 
             # Adapt parameter order in a smart way by matching the parameter types
             if new_param_order:
-                try:
-                    adapted_args = [adapted_args[i] for i in new_param_order]
-                except Exception as e:
-                    print(f"Error when adapting parameter order of {function}: {e}.")
+                adapted_args = [adapted_args[i] for i in new_param_order]
 
             # Adapt parameter order blindly by using a given order
             if blind_new_param_order:
-                try:
-                    adapted_args = [adapted_args[i] for i in blind_new_param_order]
-                except Exception as e:
-                    print(
-                        f"Error when blindly adapting parameter order of {function}: {e}."
-                    )
+                adapted_args = [adapted_args[i] for i in blind_new_param_order]
 
             # Adapt parameter types
             if convert_to_types:
-                try:
-                    target_types = [
-                        type_mapping.get(type_name, int)
-                        for type_name in convert_to_types
-                    ]
-                    adapted_args = [
-                        target_type(arg)
-                        for arg, target_type in zip(adapted_args, target_types)
-                    ]
-                except Exception as e:
-                    print(f"Error when adapting parameter types of {function}: {e}.")
+                target_types = [
+                    type_mapping.get(type_name, int)
+                    for type_name in convert_to_types
+                ]
+                adapted_args = [
+                    target_type(arg)
+                    for arg, target_type in zip(adapted_args, target_types)
+                ]
 
             # Execute the function with potentially adapted parameters
-            try:
-                result = func(*adapted_args, **kwargs)
-            except Exception as e:
-                print(f"Executing {function} with adapted args threw an error: {e}.")
-                result = func(*args, **kwargs)
+            result = func(*adapted_args, **kwargs)
 
             # Adapt return type
             if new_return_type:
-                try:
-                    result = type_mapping.get(new_return_type, int)(
-                        result
-                    )  # TODO handling of unknown types, NOTE alternative without type_mapping dict: getattr(builtins, new_return_type)(result)
-                except Exception as e:
-                    print(f"Error when adapting return type of {function}: {e}.")
+                result = type_mapping.get(new_return_type, int)(
+                    result
+                )  # TODO handling of unknown types, NOTE alternative without type_mapping dict: getattr(builtins, new_return_type)(result)
 
             return result
 
@@ -882,13 +862,13 @@ if __name__ == "__main__":
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
 
     # NOTE adjust this path
-    # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" #function_base #user_array #scimath
+    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" #function_base #user_array #scimath
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/array_api/_array_object.py"
-    path = "./test_data_file.py"  # <-- for testing with handcrafted python file
+    # path = "./test_data_file.py"  # <-- for testing with handcrafted python file
     with open(path, "r") as file:
         file_content = file.read()  # Read the entire content of the file
-        moduleUnderTest = parse_code(file_content, "numpy.matrixlib.defmatrix")
+        moduleUnderTest = parse_code(file_content, "numpy.lib.scimath")
 
     adaptationHandler = AdaptationHandler(
         interfaceSpecification,
@@ -905,8 +885,10 @@ if __name__ == "__main__":
         moduleUnderTest.moduleName,
         class_instantiation_params=["1 2; 3 4"],
         use_constructor_default_values=True,
-        testing_mode=True,
+        testing_mode=False,
     )
 
     stimulus_sheet = get_stimulus_sheet("calc3.csv")
-    execute_test(stimulus_sheet, adapted_module, successful_mappings)
+    allSequenceExecutionRecords = execute_test(stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification)
+    for sequenceExecutionRecord in allSequenceExecutionRecords:
+        print(sequenceExecutionRecord)

@@ -105,7 +105,9 @@ def test_arena():
     )
 
     stimulus_sheet = get_stimulus_sheet("calc5_arena_tests.csv")
-    execute_test(stimulus_sheet, adapted_module, successful_mappings)
+    allSequenceExecutionRecords = execute_test(stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification)
+    for sequenceExecutionRecord in allSequenceExecutionRecords:
+        print(sequenceExecutionRecord)
 
 
 if __name__ == "__main__":
