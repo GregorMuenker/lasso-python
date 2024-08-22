@@ -1,6 +1,7 @@
 """constants.py"""
 
 import os
+
 from dotenv import load_dotenv
 import git
 

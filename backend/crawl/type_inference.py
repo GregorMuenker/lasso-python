@@ -3,8 +3,6 @@ import json
 import os
 from backend.crawl.inference_engines import hityper
 
-from backend.crawl import run
-
 active_folder = "active"
 temp_folder = "temp"
 

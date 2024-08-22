@@ -1,5 +1,5 @@
 import sys
-from backend.crawl import install, run, splitting, upload_index
+from backend.crawl import install, splitting, upload_index
 
 
 def index_package(name):

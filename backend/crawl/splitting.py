@@ -12,7 +12,6 @@ from os import listdir
 from os.path import isfile, join, isdir
 import json
 
-from backend.crawl import run
 from backend.crawl.install import installHandler
 from backend.crawl import type_inference
 
@@ -305,11 +304,11 @@ if __name__ == "__main__":
     except FileNotFoundError:
         installHandler = installHandler()
         installHandler.install(f"{package_name}=={version}")
-        run.move_active(f"{package_name}-{version}")
+        #run.move_active(f"{package_name}-{version}")
     start = time.time()
     index = get_module_index(package_name, type_inferencing_engine="HiTyper")
     type_inference.clear_type_inferences()
-    run.remove_active()
+    #run.remove_active()
     print(f"Splitting {package_name} needed {round(time.time() - start,2)} seconds")
 
 #fp = open('search_index.json', 'w')
