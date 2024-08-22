@@ -11,9 +11,11 @@ import ast
 from os import listdir
 from os.path import isfile, join, isdir
 import json
+import sys, os
 
 from backend.crawl.install import installHandler
 from backend.crawl import type_inference
+from backend.constants import INSTALLED
 
 
 def get_function_calls(element):
@@ -299,17 +301,15 @@ def get_module_index(module_name, path=None, type_inferencing_engine=None):
 if __name__ == "__main__":
     package_name = "requests"
     version = "2.32.3"
-    try:
-        run.move_active(f"{package_name}-{version}")
-    except FileNotFoundError:
-        installHandler = installHandler()
-        installHandler.install(f"{package_name}=={version}")
-        #run.move_active(f"{package_name}-{version}")
+    installHandler = installHandler()
+    package_name, version = installHandler.install(f"{package_name}=={version}")
+
+    sys.path.insert(0, os.path.join(INSTALLED, f"{package_name}-{version}"))
     start = time.time()
     index = get_module_index(package_name, type_inferencing_engine="HiTyper")
     type_inference.clear_type_inferences()
-    #run.remove_active()
-    print(f"Splitting {package_name} needed {round(time.time() - start,2)} seconds")
+    sys.path.remove(os.path.join(INSTALLED, f"{package_name}-{version}"))
+    print(f"Splitting {package_name} needed {round(time.time() - start, 2)} seconds")
 
 #fp = open('search_index.json', 'w')
 #json.dump(index, fp)

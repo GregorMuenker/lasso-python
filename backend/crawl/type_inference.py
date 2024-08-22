@@ -1,6 +1,9 @@
 import importlib
 import json
 import os
+import sys
+
+from backend.constants import INSTALLED
 from backend.crawl.inference_engines import hityper
 
 active_folder = "active"
@@ -37,11 +40,11 @@ def clear_type_inferences():
 
 if __name__ == "__main__":
     package_name = "calculator-01"
-    version_name = "1.0.0"
-    run.move_active(f"{package_name}-{version_name}")
+    version = "1.0.0"
+    sys.path.insert(0, os.path.join(INSTALLED, f"{package_name}-{version}"))
     infer_datatypes_module("calculator_01", "calculator_01.calculator_main", "HiTyper")
     inferred_datatypes_function_dict = get_inferred_datatypes_function("calculator_01.calculator_main", "addition",
                                                                        "Calculator")
     print(inferred_datatypes_function_dict)
     #clear_type_inferences()
-    run.remove_active()
+    sys.path.remove(os.path.join(INSTALLED, f"{package_name}-{version}"))
