@@ -196,21 +196,22 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
             args, default_index = get_function_args(element, source, depended_class, prefix, sub_module_name,
                                                     type_inferencing_active)
             index_element = {
-                "module": prefix + sub_module_name,
-                "name": element.name,
-                "dependend_class": depended_class,
+                "packagename_fq": prefix + sub_module_name,
+                "method_fq": element.name,
+                "name_fq": depended_class,
                 # "function_calls": get_function_calls(element),
-                "arguments": args,
+                "methodSignatureParameters": args,
                 "return_types": get_return_type(element, source, prefix, sub_module_name, depended_class,
                                                 type_inferencing_active),
                 "default_index": default_index,
                 "count_positional_args": len([x for x in args if not x["keyword_arg"]]),
                 "count_positional_non_default_args": len(
                     [x for x in args if not x["has_default_val"] and not x["keyword_arg"]]),
-                "count_kw_args": len([x for x in args if x["keyword_arg"]])
+                "count_kw_args": len([x for x in args if x["keyword_arg"]]),
+                "lang": "python"
                 # "source_code": source_code,
             }
-            index_element["id"] = hashlib.md5(json.dumps(index_element).encode("utf-8")).hexdigest()
+            index_element["id"] = hashlib.md5(str(index_element["packagename_fq"],index_element["method_fq"],index_element["name_fq"]).encode("utf-8")).hexdigest()
             index.append(index_element)
         elif type(element) == ClassDef:
             index += get_functions_from_ast(element, source, prefix, sub_module_name, depended_class=element.name)
