@@ -202,7 +202,6 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
                 "packagename_fq": prefix + sub_module_name,
                 "method_fq": element.name,
                 "name_fq": depended_class,
-                # "function_calls": get_function_calls(element),
                 "methodSignatureParameters": args,
                 "return_types": get_return_type(element, source, prefix, sub_module_name, depended_class,
                                                 type_inferencing_active),
@@ -211,8 +210,10 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
                 "count_positional_non_default_args": len(
                     [x for x in args if not x["has_default_val"] and not x["keyword_arg"]]),
                 "count_kw_args": len([x for x in args if x["keyword_arg"]]),
-                "lang": "python"
-                # "source_code": source_code,
+                "lang": "python",
+                "methodDecorators": [ast.get_source_segment(source, x) for x in element.decorator_list]
+                # "content": source_code,
+                # "function_calls": get_function_calls(element),
             }
             index_element["id"] = hashlib.md5((str(index_element["packagename_fq"])+str(index_element["method_fq"])+str(index_element["name_fq"])).encode("utf-8")).hexdigest()
             index.append(index_element)
@@ -301,16 +302,20 @@ def get_module_index(module_name, package_name, version, path=None, type_inferen
                 index += get_module_index(prefix + element, package_name, version, join(path, element))
     return index
 
+def get_import_name(package_path):
+    return [x for x in os.listdir(package_path) if "dist-info" not in x][0]
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
-    package_name = "requests"
+    package_name = "cryptography"
     installHandler = installHandler()
-    package_name, version = installHandler.install(f"{package_name}")
-
-    sys.path.insert(0, os.path.join(INSTALLED, f"{package_name}-{version}"))
+    _, version = installHandler.install(f"{package_name}")
+    package_path = os.path.join(INSTALLED, f"{package_name}-{version}")
+    package_name = get_import_name(package_path)
+    sys.path.insert(0, package_path)
     start = time.time()
-    index = get_module_index(package_name, package_name, version, type_inferencing_engine="HiTyper")
+    #index = get_module_index(package_name, package_name, version, type_inferencing_engine="HiTyper")
+    index = get_module_index(package_name, package_name, version)
     type_inference.clear_type_inferences()
     sys.path.remove(os.path.join(INSTALLED, f"{package_name}-{version}"))
     print(f"Splitting {package_name} needed {round(time.time() - start, 2)} seconds")
