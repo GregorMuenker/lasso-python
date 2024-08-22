@@ -298,17 +298,17 @@ def get_module_index(module_name, path=None, type_inferencing_engine=None):
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
-    start = time.time()
-    package_name = "numpy"
-    version = "1.26.4"
+    package_name = "requests"
+    version = "2.32.3"
     try:
         run.move_active(f"{package_name}-{version}")
     except FileNotFoundError:
         installHandler = installHandler()
         installHandler.install(f"{package_name}=={version}")
         run.move_active(f"{package_name}-{version}")
-    index = get_module_index("numpy", type_inferencing_engine="HiTyper")
-    #type_inference.clear_type_inferences()
+    start = time.time()
+    index = get_module_index(package_name, type_inferencing_engine="HiTyper")
+    type_inference.clear_type_inferences()
     run.remove_active()
     print(f"Splitting {package_name} needed {round(time.time() - start,2)} seconds")
 

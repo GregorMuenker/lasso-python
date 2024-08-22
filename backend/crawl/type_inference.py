@@ -1,7 +1,7 @@
 import importlib
 import json
 import os
-import inference_engines.hityper
+from backend.crawl.inference_engines import hityper
 
 from backend.crawl import run
 
@@ -14,7 +14,7 @@ def infer_datatypes_module(package_name, module_name_with_prefix, type_inference
     module_path = os.path.join(active_folder, module_name_with_prefix.replace(".", "/") + ".py")
     package_path = os.path.join(active_folder, package_name)
     if type_inference_engine == "HiTyper":
-        inference_engines.hityper.infer_datatypes_module(module_path, package_path, module_name_with_prefix)
+        hityper.infer_datatypes_module(module_path, package_path, module_name_with_prefix)
 
 
 def get_inferred_datatypes_function(module_name_with_prefix, function_name, dependent_class):
@@ -45,5 +45,5 @@ if __name__ == "__main__":
     inferred_datatypes_function_dict = get_inferred_datatypes_function("calculator_01.calculator_main", "addition",
                                                                        "Calculator")
     print(inferred_datatypes_function_dict)
-    clear_type_inferences()
+    #clear_type_inferences()
     run.remove_active()

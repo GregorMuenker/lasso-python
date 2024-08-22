@@ -56,7 +56,7 @@ def move_active(package):
     print(f"Moving package {package} and depencies")
     shutil.copytree(f"installed/{package}", active_package_folder, dirs_exist_ok=True)
     if active_package_folder not in sys.path:
-        sys.path.append(active_package_folder)
+        sys.path = [active_package_folder] + sys.path
 
 def remove_active():
     print(f"Removing active packages")
