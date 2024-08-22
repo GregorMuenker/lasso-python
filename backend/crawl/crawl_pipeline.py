@@ -15,7 +15,7 @@ def index_package(package_name):
     package_name, version = installHandler.install(package_name)
     installHandler.dump_index()
     sys.path.insert(0, os.path.join(INSTALLED, f"{package_name}-{version}"))
-    index = splitting.get_module_index(package_name)
+    index = splitting.get_module_index(package_name, package_name, version)
     upload_index.upload_index(index)
     sys.path.remove(os.path.join(INSTALLED, f"{package_name}-{version}"))
 

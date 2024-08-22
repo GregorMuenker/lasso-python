@@ -91,6 +91,9 @@ def get_return_type(element, source, prefix, sub_module_name, dependent_class, t
     """
     return_type = ast.get_source_segment(source, element.returns)
     if return_type:
+        return_type = return_type.replace('"','')
+        return_type = return_type.replace(' ', '')
+        return_type = return_type.split("|")
         return return_type
     else:
         if type_inferencing_active:
@@ -100,8 +103,8 @@ def get_return_type(element, source, prefix, sub_module_name, dependent_class, t
             if len(inferred_datatypes_function_dict) != 0:
                 return_type = inferred_datatypes_function_dict["return"]
                 if return_type != []:
-                    return return_type[0]
-        return "Any"
+                    return return_type
+        return ["Any"]
 
 
 def get_function_args(element, source, dependent_class, prefix, sub_module_name, type_inferencing_active):
@@ -171,7 +174,7 @@ def get_function_args(element, source, dependent_class, prefix, sub_module_name,
     return args, default_index
 
 
-def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class=None, type_inferencing_engine=None):
+def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended_class=None, type_inferencing_engine=None):
     """Generates function characteristics based on an abstract syntax tree.
 
 
@@ -186,8 +189,8 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
     """
     type_inferencing_active = False
     if type_inferencing_engine:
-        type_inference.infer_datatypes_module(prefix.split(".")[0], prefix + sub_module_name,
-                                              type_inference_engine=type_inferencing_engine)
+        type_inference.infer_datatypes_module(prefix + sub_module_name,
+                                              module_path=path, type_inference_engine=type_inferencing_engine)
         type_inferencing_active = True
     index = []
     for element in tree.body:
@@ -211,15 +214,15 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, depended_class
                 "lang": "python"
                 # "source_code": source_code,
             }
-            index_element["id"] = hashlib.md5(str(index_element["packagename_fq"],index_element["method_fq"],index_element["name_fq"]).encode("utf-8")).hexdigest()
+            index_element["id"] = hashlib.md5((str(index_element["packagename_fq"])+str(index_element["method_fq"])+str(index_element["name_fq"])).encode("utf-8")).hexdigest()
             index.append(index_element)
         elif type(element) == ClassDef:
-            index += get_functions_from_ast(element, source, prefix, sub_module_name, depended_class=element.name)
+            index += get_functions_from_ast(element, source, prefix, sub_module_name, path=path, depended_class=element.name)
     return index
 
 
 #
-def get_module_index(module_name, path=None, type_inferencing_engine=None):
+def get_module_index(module_name, package_name, version, path=None, type_inferencing_engine=None):
     """Creates an list of all function within the given module. Each element consists of a dictonary of the functions
     characteristics.
 
@@ -252,16 +255,17 @@ def get_module_index(module_name, path=None, type_inferencing_engine=None):
                 #if not ispkg and sub_module_name[0] != "_":
                 try:
                     sub_module = importlib.import_module(prefix + sub_module_name)
+                    module_path = sub_module.__file__
                     source = inspect.getsource(sub_module)
                     tree = ast.parse(source)
-                    index += get_functions_from_ast(tree, source, prefix, sub_module_name,
+                    index += get_functions_from_ast(tree, source, prefix, sub_module_name, module_path,
                                                     type_inferencing_engine=type_inferencing_engine)
                 # Subject to change
                 except ModuleNotFoundError:
-                    path = f"./active/{(prefix + sub_module_name).replace('.', '/')}.py"
-                    source = open(path, "r").read()
+                    module_path = f"{os.path.join(INSTALLED, f'{package_name}-{version}')}/{(prefix + sub_module_name).replace('.', '/')}.py"
+                    source = open(module_path, "r").read()
                     tree = ast.parse(source)
-                    index += get_functions_from_ast(tree, source, prefix, sub_module_name,
+                    index += get_functions_from_ast(tree, source, prefix, sub_module_name, module_path,
                                                     type_inferencing_engine=type_inferencing_engine)
                 except OSError as e:
                     if str(e) == "source code not available":
@@ -275,12 +279,12 @@ def get_module_index(module_name, path=None, type_inferencing_engine=None):
             elif ispkg:
                 try:
                     importlib.import_module(prefix + sub_module_name)
-                    index += get_module_index(prefix + sub_module_name,
+                    index += get_module_index(prefix + sub_module_name, package_name, version,
                                               type_inferencing_engine=type_inferencing_engine)
                 # Subject to change
                 except ModuleNotFoundError:
-                    index += get_module_index(prefix + sub_module_name,
-                                              path=f"./active/{(prefix + sub_module_name).replace('.', '/')}",
+                    index += get_module_index(prefix + sub_module_name, package_name, version,
+                                              path=f"{os.path.join(INSTALLED, f'{package_name}-{version}')}/{(prefix + sub_module_name).replace('.', '/')}",
                                               type_inferencing_engine=type_inferencing_engine)
                 #except Exception as e:
                 #   print(sub_module_name, e)
@@ -292,22 +296,21 @@ def get_module_index(module_name, path=None, type_inferencing_engine=None):
                 sub_module_name = element.split(".py")[0]
                 source = open(join(path, element), "r").read()
                 tree = ast.parse(source)
-                index += get_functions_from_ast(tree, source, prefix, sub_module_name)
+                index += get_functions_from_ast(tree, source, prefix, sub_module_name, path, type_inferencing_engine)
             elif isdir(join(path, element)):
-                index += get_module_index(prefix + element, join(path, element))
+                index += get_module_index(prefix + element, package_name, version, join(path, element))
     return index
 
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
     package_name = "requests"
-    version = "2.32.3"
     installHandler = installHandler()
-    package_name, version = installHandler.install(f"{package_name}=={version}")
+    package_name, version = installHandler.install(f"{package_name}")
 
     sys.path.insert(0, os.path.join(INSTALLED, f"{package_name}-{version}"))
     start = time.time()
-    index = get_module_index(package_name, type_inferencing_engine="HiTyper")
+    index = get_module_index(package_name, package_name, version, type_inferencing_engine="HiTyper")
     type_inference.clear_type_inferences()
     sys.path.remove(os.path.join(INSTALLED, f"{package_name}-{version}"))
     print(f"Splitting {package_name} needed {round(time.time() - start, 2)} seconds")

@@ -24,3 +24,4 @@ repo = git.Repo(search_parent_directories=True)
 REPOSITORY = repo.working_tree_dir
 INSTALLED = f"{REPOSITORY}/backend/crawl/installed"
 INDEX = f"{REPOSITORY}/backend/crawl/index.json"
+TYPE_INFERENCING_TEMP = f"{REPOSITORY}/backend/crawl/temp"
