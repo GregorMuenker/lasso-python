@@ -9,6 +9,12 @@ import json
 import re
 from urllib.request import urlopen
 import requests
+import git
+
+repo = git.Repo(search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
+
+from backend.constants import INSTALLED, INDEX
 
 
 def get_all_packages():
@@ -58,7 +64,7 @@ def get_info(folder):
             version (string): Package version.
             dependencies (list of strings): List of package dependencies.
     """
-    path = f"installed/{folder}/METADATA"
+    path = f"{INSTALLED}/{folder}/METADATA"
     file = open(path, "r", encoding="utf-8")
     dependencies = []
     for line in file:
@@ -160,12 +166,16 @@ def get_local_versions(project):
     Returns:
         versions (list of strings): List of locally installed versions.
     """
+    #FIXME: names with - -> _ (typing-extensions)
+    # folders = [folder for folder in os.listdir(
+    #     INSTALLED) if folder.startswith(project)]
+    pattern = rf"^{re.escape(project)}-\d+(\.\d+)*"
     folders = [folder for folder in os.listdir(
-        "installed") if folder.startswith(project)]
+        INSTALLED) if re.match(pattern, folder)]
     versions = []
     for folder in folders:
         dist_folder = [item for item in os.listdir(
-            f"installed/{folder}") if item.endswith(".dist-info")][0]
+            f"{INSTALLED}/{folder}") if item.endswith(".dist-info")][0]
         version = get_info(f"{folder}/{dist_folder}")["version"]
         versions.append(version)
     return versions
@@ -221,6 +231,7 @@ def satisfy_condition(dependency):
             return
         elif "python_version" in condition:
             _, operator, version = tokenize(condition.strip())
+            version = version.strip("'")
             if not compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version.strip('"')):
                 return
     return dependency
@@ -247,10 +258,10 @@ def get_latest_version(package_name):
 
 class installHandler:
     def __init__(self):
-        if not os.path.exists("index.json"):
+        if not os.path.exists(INDEX):
             self.index = {}
         else:
-            with open('index.json', 'r') as file:
+            with open(INDEX, 'r') as file:
                 self.index = json.load(file)
 
     def install(self, package):
@@ -273,7 +284,7 @@ class installHandler:
         satisfactory_versions = check_request(name, requirements)
 
         if not satisfactory_versions:
-            path = "installed/tmp"
+            path = f"{INSTALLED}/tmp"
             # TODO: Catch exception?
             subprocess.check_call([sys.executable, "-m", "pip",
                                    "install", package, "--no-deps", "-q", "-t", path])
@@ -281,13 +292,13 @@ class installHandler:
             local_path = f"tmp"
         else:
             print(f"{name} already installed!")
-            path = f"installed/{name}-{satisfactory_versions[0]}"
+            path = f"{INSTALLED}/{name}-{satisfactory_versions[0]}"
             local_path = f"{name}-{satisfactory_versions[0]}"
         info = [get_info(f"{local_path}/{item}") for item in os.listdir(
             path) if item.endswith(".dist-info")][0]
 
         name, version, dependencies = info["name"], info["version"], info["dependencies"]
-        destination = f"installed/{name}-{version}"
+        destination = f"{INSTALLED}/{name}-{version}"
         shutil.move(path, destination)
 
         deps = []
@@ -301,13 +312,14 @@ class installHandler:
         return name, version
 
     def dump_index(self):
-        out_file = open("index.json", "w")
+        out_file = open(INDEX, "w")
         json.dump(self.index, out_file)
 
 
 if __name__ == "__main__":
     packages = get_most_downloaded()
     installHandler = installHandler()
-    for package in packages[:10]:
+    for package in packages[:20]:
         installHandler.install(package)
+    # installHandler.install("attrs")
     installHandler.dump_index()
