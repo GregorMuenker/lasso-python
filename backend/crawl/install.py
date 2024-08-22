@@ -3,7 +3,7 @@ import sys
 import os
 import shutil
 from io import StringIO
-from tokenize import generate_tokens
+from tokenize import generate_tokens, TokenError
 from packaging.version import Version
 import json
 import re
@@ -85,11 +85,14 @@ def tokenize(string):
         list of strings: List of tokens.
     """
     STRING = 1
-    return list(
-        token[STRING]
-        for token in generate_tokens(StringIO(string).readline)
-        if token[STRING]
-    )
+    tokens = []
+    try:
+        for token in generate_tokens(StringIO(string).readline):
+            if token[STRING]:
+                tokens.append(token[STRING])
+    except TokenError:
+        pass
+    return tokens
 
 
 def reformat_dependency(dependency):
@@ -102,26 +105,24 @@ def reformat_dependency(dependency):
         project (string): Package name.
         tuples (list of tuple strings): List of tuples, which include an operator and a version.
     """
-    result = {}
-    if ";" in dependency:
-        return False
-    else:
-        dep = dependency.split(",")
-        project = get_package_name(dep[0])
+    # Regex to extract the package name and version requirements
+    match = re.match(r'^([^<>=!]+)(.*)', dependency)
+    if not match:
+        raise ValueError(f"Invalid dependency format: {dependency}")
 
-        tuples = []
-        for index, item in enumerate(dep):
-            tokens = tokenize(item)
-            if index == 0:
-                tokens.pop(0)
-            operator = tokens[0]
-            version = "".join(tokens[1:])
-            tuples.append((operator, version))
-    return project, tuples
+    version_part = match.group(2).strip()
+
+    # Regex to match each version constraint
+    version_constraints = re.findall(r'([<>=!]+)\s*([\d\w.]+)', version_part)
+
+    tuples = [(operator.strip(), version.strip())
+              for operator, version in version_constraints]
+
+    return tuples
 
 
-def check_dependency(project, requirements):
-    """Checks if dependency is already fulfilled.
+def check_request(project, requirements):
+    """Checks if install request is already satisfied.
 
     Args:
         project (string): Package name.
@@ -132,15 +133,21 @@ def check_dependency(project, requirements):
     """
     local_versions = get_local_versions(project)
     result = []
-    for local_version in local_versions:
-        satisfy = True
-        for operator, version in requirements:
-            comparison = compare_versions(local_version, operator, version)
-            if not comparison:
-                satisfy = False
-                break
-        if satisfy:
-            result.append(local_version)
+
+    if not requirements:
+        latest = get_latest_version(project)
+        if latest in local_versions:
+            result = [latest]
+    else:
+        for local_version in local_versions:
+            satisfy = True
+            for operator, version in requirements:
+                comparison = compare_versions(local_version, operator, version)
+                if not comparison:
+                    satisfy = False
+                    break
+            if satisfy:
+                result.append(local_version)
     return result
 
 
@@ -197,6 +204,7 @@ def get_package_name(string):
         print("No project name found!")
         return
 
+
 def satisfy_condition(dependency):
     """Checks if dependency condition (after ";") is satisfied.
 
@@ -210,16 +218,13 @@ def satisfy_condition(dependency):
     if len(parts) > 1:
         dependency, condition = parts
         if "extra" in condition:
-            return False
+            return
         elif "python_version" in condition:
-            print(condition)
-            print(tokenize(condition))
             _, operator, version = tokenize(condition.strip())
-            return compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version.strip('"'))
-        else:
-            return True #?
-    else:
-        return True
+            if not compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version.strip('"')):
+                return
+    return dependency
+
 
 def get_latest_version(package_name):
     """Retrieves latest version of a given package from PyPi.
@@ -238,6 +243,7 @@ def get_latest_version(package_name):
         return latest_version
     else:
         return None
+
 
 class installHandler:
     def __init__(self):
@@ -260,29 +266,34 @@ class installHandler:
 
         name = get_package_name(package)
         if not name:
-            return
-        # FIXME: Check if latest version or version that satisfies the requirements is already installed!
-        if not (local_versions := get_local_versions(name)):
+            # TODO: Exception or just print?
+            raise BaseException("Could not identify package name.")
+
+        requirements = reformat_dependency(package)
+        satisfactory_versions = check_request(name, requirements)
+
+        if not satisfactory_versions:
             path = "installed/tmp"
+            # TODO: Catch exception?
             subprocess.check_call([sys.executable, "-m", "pip",
-                                "install", package, "--no-deps", "-q", "-t", path])
+                                   "install", package, "--no-deps", "-q", "-t", path])
             print(f"Installing {name}")
             local_path = f"tmp"
         else:
             print(f"{name} already installed!")
-            path = f"installed/{name}-{local_versions[0]}"
-            local_path = f"{name}-{local_versions[0]}"
+            path = f"installed/{name}-{satisfactory_versions[0]}"
+            local_path = f"{name}-{satisfactory_versions[0]}"
         info = [get_info(f"{local_path}/{item}") for item in os.listdir(
             path) if item.endswith(".dist-info")][0]
 
         name, version, dependencies = info["name"], info["version"], info["dependencies"]
         destination = f"installed/{name}-{version}"
         shutil.move(path, destination)
-        
+
         deps = []
         for dependency in dependencies:
-            if satisfy_condition(dependency):
-                dep_name, dep_version = self.install(dependency)
+            if short_dependency := satisfy_condition(dependency):
+                dep_name, dep_version = self.install(short_dependency)
                 print(dep_name, dep_version)
                 deps.append((dep_name, dep_version))
 
@@ -293,12 +304,10 @@ class installHandler:
         out_file = open("index.json", "w")
         json.dump(self.index, out_file)
 
+
 if __name__ == "__main__":
-    # installHandler = installHandler()
-    # installHandler.install("pandas")
-    # installHandler.dump_index()
-
-    # dependency = "pysocks!=1.5.7,<2.0,>=1.5.6"
-    # install(dependency)
-
-    print(get_latest_version("pandas"))
+    packages = get_most_downloaded()
+    installHandler = installHandler()
+    for package in packages[:10]:
+        installHandler.install(package)
+    installHandler.dump_index()

@@ -1,61 +1,187 @@
 import ast
 import inspect
 import os
-
+import time
 import coverage
+import datetime
+
+import sys
+
+sys.path.insert(1, "../../backend")
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
+from ignite import CellId, CellValue
 
 
-class ExecutionRecord:
-    def __init__(self):
-        self.methodName = None
-        self.inputParams = None
-        self.x = None
-        self.y = None
+class SequenceExecutionRecord:
+    def __init__(self, interfaceSpecification, mapping, sequenceSpecification) -> None:
+        self.interfaceSpecification = interfaceSpecification
+        self.mapping = mapping
+        self.sequenceSpecification = sequenceSpecification
+        self.rowRecords = (
+            {}
+        )  # {int: RowRecord}, the int is the y coordinate of the row in the stimulus sheet
+
+    def toSheetCells(self) -> dict:
+        """
+        This method converts the sequence execution record into pairs of (CellId, CellValue) that can be put into the Ignite cache.
+        The following type of stats are covered:
+        - 'value' (TODO oracle value?),
+        - 'op' (operation)
+        - 'input_value'
+        - metrics
+        Not covered
+        - 'seq' (Randoop)
+        - 'exseq' (Randoop)
+        - 'loader.classes_loaded',
+        - 'loader.artifacts'
+
+        Returns: A list of (CellId, CellValue) tuples that represent the cells in the stimulus sheet.
+        """
+        cells = []
+        
+        for position, rowRecord in self.rowRecords.items():
+            original_function_name, adaptation_instruction = self.mapping.adaptationInfo[rowRecord.methodName]
+
+            # Value
+            cellId = CellId(
+                EXECUTIONID="1",
+                ABSTRACTIONID=self.interfaceSpecification.className,
+                ACTIONID="201",
+                ARENAID="execute",
+                SHEETID="401",
+                SYSTEMID="501",
+                VARIANTID="601",
+                ADAPTERID="",
+                X=0,
+                Y=position,
+                TYPE="value",
+            )
+            cellValue = CellValue(
+                VALUE="1",
+                RAWVALUE="1",
+                VALUETYPE="1",
+                LASTMODIFIED=datetime.date.today(),
+                EXECUTIONTIME=rowRecord.metrics.executionTime,
+            )
+            cells.append((cellId, cellValue))
+
+            # Operation
+            cellId = CellId(
+                EXECUTIONID="1",
+                ABSTRACTIONID=self.interfaceSpecification.className,
+                ACTIONID="201",
+                ARENAID="execute",
+                SHEETID="401",
+                SYSTEMID="501",
+                VARIANTID="601",
+                ADAPTERID="",
+                X=1,
+                Y=position,
+                TYPE="op",
+            )
+            cellValue = CellValue(
+                VALUE=original_function_name,
+                RAWVALUE=original_function_name,
+                VALUETYPE="function",
+                LASTMODIFIED=datetime.date.today(),
+                EXECUTIONTIME=rowRecord.metrics.executionTime,
+            )
+            cells.append((cellId, cellValue))
+
+            # TODO Input values, metrics
+
+        return cells
+
+
+    def __repr__(self) -> str:
+        result = f"{self.mapping}"
+        for rowRecord in self.rowRecords.values():
+            result += f"\n\t{rowRecord}"
+        return f"{result}\n"
+
+
+class RowRecord:
+    def __init__(
+        self, position, methodName, originalFunctionName, inputParams, oracleValue=None
+    ) -> None:
+        self.position = position  # The y coordinate of the row in the stimulus sheet
+        self.methodName = methodName
+        self.originalFunctionName = originalFunctionName
+        self.inputParams = inputParams
+        self.oracleValue = oracleValue
+
         self.returnValue = None
         self.metrics = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         inputParamsString = ", ".join(map(str, self.inputParams))
         instruction = f"{self.methodName}({inputParamsString})"
-        return f"{YELLOW}{instruction}: {self.returnValue}{RESET}, {self.metrics}"
+        return f"{CYAN}{instruction}: {self.returnValue}{RESET}, {self.metrics}"
 
 
-def execute_test(stimulus_sheet, adapted_module, mappings):
+class Metrics:
+    def __init__(self) -> None:
+        self.executionTime = None
+        self.coveredLinesInFile = None
+        self.coveredLinesInFunction = None
+        self.coveredLinesInFunctionRatio = None
+
+        self.coveredArcsInFile = None
+        self.coveredArcsInFunction = None
+
+    def __repr__(self) -> str:
+        return f"Time: {self.executionTime} microseconds. Covered lines: {self.coveredLinesInFile} in file, {self.coveredLinesInFunction} in function ({self.coveredLinesInFunctionRatio}% of function lines). Covered arcs: {self.coveredArcsInFile} in file, {self.coveredArcsInFunction} in function."
+
+
+def execute_test(stimulus_sheet, adapted_module, mappings, interface_spec) -> list:
     """
     Executes a stimulus sheet based on a provided module and prints out the results.
 
     Parameters:
     stimulus_sheet (pandas.DataFrame): The stimulus sheet that contains the instructions for the test.
-    adapted_module (module): The module that contains the adapted functions in 1 or more submodules (mapping1, mapping2, ...).
+    adapted_module (module): The module that contains the adapted functions in 1 or more submodules (mapping0, mapping1, ...).
     number_of_submodules (int): The number of submodules in the adapted module.
     mappings (list): A list of mappings containing metadata for each mapping.
+
+    Returns: A list of SequenceExecutionRecord objects that contain the results for executing each module on the provided stimulus sheet.
     """
 
     print(
         f"\n{CYAN}----------------------\nEXECUTE STIMULUS SHEET\n----------------------{RESET}"
     )
     print(f"Module: {adapted_module.__name__}")
+    print(f"Number of submodules: {len(mappings)}")
     print(f"\n {stimulus_sheet}\n")
 
-    stimulus_sheet_id = 0  # TODO refine this identifier
+    allSequenceExecutionRecords = []
 
     for i in range(len(mappings)):
         submodule = getattr(adapted_module, "mapping" + str(i))
 
-        # Prepare an empty list where ExecutionRecord objects will be stored
-        mappings[i].executions[stimulus_sheet_id] = []
+        sequenceExecutionRecord = SequenceExecutionRecord(
+            interfaceSpecification=interface_spec,
+            mapping=mappings[i],
+            sequenceSpecification=stimulus_sheet, # TODO sequenceSpecification
+        )
 
         for index, row in stimulus_sheet.iterrows():
             method_name = row["method_name"]
             input_params = row["input_params"]
+            output_param = row["output_param"]
 
-            executionRecord = ExecutionRecord()
-            executionRecord.methodName = method_name
-            executionRecord.inputParams = input_params
-            executionRecord.x = 2
-            executionRecord.y = index
+            original_function_name, adaptationInstruction = mappings[i].adaptationInfo[
+                method_name
+            ]
 
+            rowRecord = RowRecord(
+                position=index,
+                methodName=method_name,
+                originalFunctionName=original_function_name,
+                inputParams=input_params,
+                oracleValue=output_param,
+            )
+
+            # Build the instruction string to output errors in a more readable way
             input_params_string = ", ".join(map(str, input_params))
             instruction = f"{method_name}({input_params_string})"
 
@@ -66,52 +192,53 @@ def execute_test(stimulus_sheet, adapted_module, mappings):
                 print(
                     f"Error when trying to get method {method_name} from submodule {submodule}. Error: {e}"
                 )
-                executionRecord.returnValue = "Method not found"
+                rowRecord.returnValue = "Method not found"
                 continue
 
             # Needed for the metrics
-            original_function_name, adaptationInstruction = mappings[i].adaptationInfo[
-                method_name
-            ]
             executable_statements = get_executable_statements(
                 original_function_name, adapted_module
             )
 
-            return_value = "Error"
+            # Set the return value
+            return_value = "Execution unsuccessful"
+            metrics = "No metrics recorded"
             try:
                 filename = inspect.getfile(adapted_module)
                 filename = os.path.abspath(
                     filename
-                )  # NOTE: This is neccessary as a relative path will mess up the coverage report
+                )  # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
 
                 cov = coverage.Coverage(source=[adapted_module.__name__], branch=True)
                 return_value, metrics = run_with_metrics(
                     method, input_params, executable_statements, filename, cov
                 )
             except Exception as e:
-                print(f"Error when executing instruction: {instruction}: {e}")
+                print(
+                    f"{RED}{instruction} ({submodule}, {original_function_name}, {adaptationInstruction}) failed{RESET}: {e}"
+                )
 
             # Fill in the results for this execution
-            executionRecord.returnValue = return_value
-            executionRecord.metrics = metrics
-            mappings[i].executions[stimulus_sheet_id].append(executionRecord)
+            rowRecord.returnValue = return_value
+            rowRecord.metrics = metrics
 
-    # Printing the results
-    counter = 0
-    for mapping in mappings:
-        print(f"{counter} {mapping}\t")
-        for execution in mapping.executions[stimulus_sheet_id]:
-            print(f"\t{execution}")
-        counter += 1
+            sequenceExecutionRecord.rowRecords[index] = rowRecord
+
+        allSequenceExecutionRecords.append(sequenceExecutionRecord)
+
+    return allSequenceExecutionRecords
 
 
-def get_executable_statements(original_function_name, module):
+def get_executable_statements(original_function_name, module) -> set:
+    """
+    Returns a set of line numbers that contain executable statements in the original function, i.e. the lines that are not comments/whitespaces/etc.
+    """
     original_function = None
     if "." in original_function_name:
         # split_qualname = original_function_name.split(".")
         # original_class = getattr(module, split_qualname[0])
         # original_function = getattr(original_class, split_qualname[1])
-        # TODO Return empty set of covered lines as Python does not support inspect.getsource for class methods, see: https://github.com/python/cpython/issues/116987
+        # TODO Return empty set of covered lines for now as Python does not support inspect.getsource for class methods, see: https://github.com/python/cpython/issues/116987
         return set()
     else:
         original_function = getattr(module, original_function_name)
@@ -131,53 +258,90 @@ def get_executable_statements(original_function_name, module):
             line_number = node.lineno + start_line - 1
             executable_statements.add(line_number)
 
-    # Find the line number of the function definition and discard lines before it including the function signature
+    # Find the line number of the function definition to later discard all lines before it (e.g., @ annotations) and the function signature line itself
+    function_signature_line = None
     for index, line in enumerate(lines):
         if line.strip().startswith("def "):
             function_signature_line = start_line + index
             break
 
-    for line_no in range(start_line, function_signature_line + 1):
-        executable_statements.discard(line_no)
+    # Discard the function signature line
+    if function_signature_line is not None:
+        for line_no in range(start_line, function_signature_line + 1):
+            executable_statements.discard(line_no)
+        
+        # Check if the next line after the function signature is a docstring (starts with triple quotes)
+        # Unfortunately these starting docstrings are have a lineno attribute so they have to be discarded manually
+        next_line_index = function_signature_line - start_line + 1
+        if next_line_index < len(lines):
+            next_line = lines[next_line_index].strip()
+            if next_line.startswith('"""'):
+                executable_statements.discard(function_signature_line + 1)
 
     return executable_statements
 
 
-def run_with_metrics(function, args, executable_statements, filename, cov):
+def run_with_metrics(function, args, executable_statements, filename, cov) -> tuple:
+    """
+    Executes a function and records the execution time, code coverage and arc coverage.
+    Returns: A tuple containing the result of the function and the metrics object.
+    """
+    metrics = Metrics()
+
     cov.start()
+    start_time = time.time()
     result = function(*args)
+    end_time = time.time()
     cov.stop()
+
+    execution_time = int((end_time - start_time) * 1_000_000) # Convert to microseconds
+    metrics.executionTime = execution_time
 
     data = cov.get_data()
     covered_lines = data.lines(filename)
 
-    arcs = data.arcs(filename)
+    all_arcs_in_file = data.arcs(filename)
     covered_arcs = []
 
-    if arcs and covered_lines:
+    if all_arcs_in_file and covered_lines:
         covered_arcs = [
-            arc for arc in arcs if arc[0] in covered_lines or arc[1] in covered_lines
+            arc
+            for arc in all_arcs_in_file
+            if arc[0] in covered_lines or arc[1] in covered_lines
         ]
+        metrics.coveredArcsInFile = len(covered_arcs)
+
+    metrics.coveredLinesInFile = len(covered_lines)
 
     if len(executable_statements) == 0:
-        # If the function is a class method, we cannot get the source code and therefore cannot get the executable statements
-        return result, f"Lines: {len(covered_lines)} total"
+        # If there is no information on which lines of the function are executable (e.g., for class functions),
+        # further metrics like ratio of covered lines are not possible
+        return (result, metrics)
+
+    covered_lines_in_function = None
 
     if covered_lines:
-        covered_by_function = set(covered_lines) & set(executable_statements)
+        covered_lines_in_function = set(covered_lines) & set(executable_statements)
 
     covered_arcs_in_function = []
-    if arcs:
+    if all_arcs_in_file:
         covered_arcs_in_function = [
             arc
-            for arc in arcs
-            if arc[0] in covered_by_function or arc[1] in covered_by_function
+            for arc in all_arcs_in_file
+            if arc[0] in covered_lines_in_function
+            or arc[1] in covered_lines_in_function
         ]
 
-    metrics = ""
     if covered_lines:
-        metrics += f"Lines: {len(covered_lines)} total, {len(covered_by_function)}/{len(executable_statements)} in function. "
-    if arcs:
-        metrics += f"Arcs: {len(covered_arcs)} total, {len(covered_arcs_in_function)} in function."
+        metrics.coveredLinesInFunction = len(covered_lines_in_function)
+        metrics.coveredLinesInFunctionRatio = len(covered_lines_in_function) / len(
+            executable_statements
+        ) * 100
+    if all_arcs_in_file:
+        metrics.coveredArcsInFunction = len(covered_arcs_in_function)
 
     return (result, metrics)
+
+if __name__ == "__main__":
+    import numpy.lib.scimath as np
+    print(get_executable_statements("sqrt", np))

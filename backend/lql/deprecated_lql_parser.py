@@ -1,6 +1,8 @@
-import re
+"""
+DEPRECATED: This module is deprecated and will be removed in the future. Please use backend/lql/antlr_parser.py instead.
+"""
 
-from adaptation import InterfaceSpecification, MethodSignature
+import re
 
 
 def parse_method_signature(signature):
@@ -9,16 +11,16 @@ def parse_method_signature(signature):
     \(: Match the literal opening parenthesis (.
     ([^)]*): Match and capture zero or more characters that are not closing parentheses ) (the parameter list).
     \): Match the literal closing parenthesis ).
-    ->: Match the literal arrow ->.
-    (\w+|\w+\[\]): Match and capture either a simple type (one or more word characters) or an array type (one or more word characters followed by []) as the return type.
+    (->(\w+|\w+\[\]))?: Optionally match the literal arrow -> followed by either a simple type (one or more word characters) or an array type (one or more word characters followed by []) as the return type.
     """
-    pattern = re.compile(r"(\w+)\(([^)]*)\)->(\w+|\w+\[\])")
+    pattern = re.compile(r"(\w+)\(([^)]*)\)(?:->(\w+|\w+\[\]))?")
     match = pattern.match(signature.strip())
     if not match:
         return None
 
     methodName, params, returnType = match.groups()
     parameterTypes = [param.strip() for param in params.split(",")] if params else []
+    returnType = returnType if returnType else None
     return MethodSignature(methodName, returnType, parameterTypes)
 
 
@@ -54,11 +56,15 @@ def parse_multiple_interface_specs(notation):
 
 
 if __name__ == "__main__":
+    import sys
+    sys.path.insert(1, '../arena/')
+    from adaptation import InterfaceSpecification, MethodSignature
+    
     spec = """
     Stack {
-        Stack()->Stack
+        Stack()
         push(Object)->Object
-        pop()->Object
+        pop(int,float)
     }
     """
 
