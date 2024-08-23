@@ -1,8 +1,8 @@
 """constants.py"""
 
 import os
-
 from dotenv import load_dotenv
+import git
 
 load_dotenv()
 
@@ -18,6 +18,11 @@ RESET = "\033[0m"
 
 USERNAME = os.getenv("USERNAME")
 PASSWORD = os.getenv("PASSWORD")
+
+repo = git.Repo(search_parent_directories=True)
+REPOSITORY = repo.working_tree_dir
+INSTALLED = f"{REPOSITORY}/backend/crawl/installed"
+INDEX = f"{REPOSITORY}/backend/crawl/index.json"
 
 STANDARD_CONSTRUCTOR_VALUES = {
     "str": "",
