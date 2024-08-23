@@ -642,7 +642,7 @@ def instantiate_class(
         )
         for (
             constructor
-        ) in constructors:  # TODO make sure that __new__ is used before __init__
+        ) in constructors:
 
             parameterTypes = constructor.parameterTypes
             print(
@@ -706,7 +706,7 @@ def adapt_function(
     def decorator(func):
         def wrapper(*args, **kwargs):
             result = None
-            adapted_args = copy.deepcopy(args)
+            adapted_args = list(copy.deepcopy(args))
 
             # Adapt parameter order in a smart way by matching the parameter types
             if new_param_order:
@@ -718,22 +718,30 @@ def adapt_function(
 
             # Adapt parameter types
             if convert_to_types:
-                target_types = [
-                    TYPE_MAPPING.get(type_name, int) for type_name in convert_to_types
-                ]
-                adapted_args = [
-                    target_type(arg)
-                    for arg, target_type in zip(adapted_args, target_types)
-                ]
+                for index, type_name in enumerate(convert_to_types):
+                    if type_name == "Any":
+                        continue
+
+                    target_type = TYPE_MAPPING.get(type_name, None)
+
+                    if target_type == None:
+                        raise TypeError(f"Parameter type conversion: the type '{type_name}' is unknown")
+                    
+                    adapted_args[index] = target_type(adapted_args[index])
 
             # Execute the function with potentially adapted parameters
             result = func(*adapted_args, **kwargs)
 
             # Adapt return type
-            if new_return_type:
-                result = TYPE_MAPPING.get(new_return_type, int)(
+            if new_return_type and new_return_type != "Any":
+                conversion_type = TYPE_MAPPING.get(new_return_type, None)
+                if conversion_type == None:
+                    raise TypeError(f"The return type '{new_return_type}' is unknown")
+                
+                result = TYPE_MAPPING.get(new_return_type)(
                     result
-                )  # TODO handling of unknown types, NOTE alternative without type_mapping dict: getattr(builtins, new_return_type)(result)
+                )
+                # NOTE alternative without type_mapping dict: getattr(builtins, new_return_type)(result)
 
             return result
 
@@ -812,7 +820,7 @@ if __name__ == "__main__":
         excludeClasses=False,
         useFunctionDefaultValues=False,
         maxParamPermutationTries=2,
-        typeStrictness=True,
+        typeStrictness=False,
         onlyKeepTopNMappings=10
     )
     adaptationHandler.identifyAdaptations()
