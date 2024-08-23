@@ -9,7 +9,7 @@ import pandas as pd
 import sys
 
 sys.path.insert(1, "../../backend")
-from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
+from constants import GREEN, MAGENTA, RESET, STANDARD_CONSTRUCTOR_VALUES, TYPE_MAPPING, POSSIBLE_CONVERSIONS
 
 
 class InterfaceSpecification:
@@ -622,7 +622,7 @@ def instantiate_class(
 
                 # Strategy: get standard values for each data type (standard_constructor_values dict) and try to instantiate the class with them, if datatype is unknown use value 1
                 parameters = tuple(
-                    standard_constructor_values.get(parameterType, 1)
+                    STANDARD_CONSTRUCTOR_VALUES.get(parameterType, 1)
                     for parameterType in parameterTypes
                 )
 
@@ -683,7 +683,7 @@ def adapt_function(
             # Adapt parameter types
             if convert_to_types:
                 target_types = [
-                    type_mapping.get(type_name, int) for type_name in convert_to_types
+                    TYPE_MAPPING.get(type_name, int) for type_name in convert_to_types
                 ]
                 adapted_args = [
                     target_type(arg)
@@ -695,7 +695,7 @@ def adapt_function(
 
             # Adapt return type
             if new_return_type:
-                result = type_mapping.get(new_return_type, int)(
+                result = TYPE_MAPPING.get(new_return_type, int)(
                     result
                 )  # TODO handling of unknown types, NOTE alternative without type_mapping dict: getattr(builtins, new_return_type)(result)
 
@@ -705,131 +705,6 @@ def adapt_function(
 
     print("Created adapted wrapper function.")
     return decorator(function)
-
-
-standard_constructor_values = {
-    "str": "",
-    "int": 1,
-    "float": 1.0,
-    "complex": 1 + 1j,
-    "list": [],
-    "tuple": (),
-    "range": range(1),
-    "dict": {},
-    "set": set(),
-    "fronzenset": frozenset(),
-    "bool": True,
-    "bytes": b"",
-    "bytearray": bytearray(b""),
-    "memoryview": memoryview(b""),
-    "None": None,
-}
-
-type_mapping = {
-    "str": str,
-    "int": int,
-    "float": float,
-    "complex": complex,
-    "list": list,
-    "tuple": tuple,
-    "range": range,
-    "dict": dict,
-    "set": set,
-    "fronzenset": frozenset,
-    "bool": bool,
-    "bytes": bytes,
-    "bytearray": bytearray,
-    "memoryview": memoryview,
-}
-
-possible_conversions = {
-    "bool": ["bool", "str", "int", "float", "complex", "range", "bytes", "bytearray"],
-    "bytearray": [
-        "bytearray",
-        "str",
-        "list",
-        "tuple",
-        "dict",
-        "set",
-        "frozenset",
-        "bool",
-        "bytes",
-        "memoryview",
-    ],
-    "bytes": [
-        "bytes",
-        "str",
-        "list",
-        "tuple",
-        "dict",
-        "set",
-        "frozenset",
-        "bool",
-        "bytearray",
-        "memoryview",
-    ],
-    "complex": ["complex", "str", "bool"],
-    "dict": [
-        "dict",
-        "str",
-        "list",
-        "tuple",
-        "set",
-        "frozenset",
-        "bool",
-        "bytes",
-        "bytearray",
-    ],
-    "float": ["float", "str", "int", "complex", "bool"],
-    "frozenset": [
-        "frozenset",
-        "str",
-        "list",
-        "tuple",
-        "dict",
-        "set",
-        "bool",
-        "bytes",
-        "bytearray",
-    ],
-    "int": ["int", "str", "float", "complex", "range", "bool", "bytes", "bytearray"],
-    "list": [
-        "list",
-        "str",
-        "tuple",
-        "dict",
-        "set",
-        "frozenset",
-        "bool",
-        "bytes",
-        "bytearray",
-    ],
-    "memoryview": ["memoryview"],
-    "range": ["range"],
-    "set": [
-        "set",
-        "str",
-        "list",
-        "tuple",
-        "dict",
-        "frozenset",
-        "bool",
-        "bytes",
-        "bytearray",
-    ],
-    "str": ["str", "list", "tuple", "dict", "set", "frozenset", "bool"],
-    "tuple": [
-        "tuple",
-        "str",
-        "list",
-        "dict",
-        "set",
-        "frozenset",
-        "bool",
-        "bytes",
-        "bytearray",
-    ],
-}
 
 
 def find_permutation(source, target) -> list:
@@ -866,14 +741,14 @@ def can_convert_params(source_types, target_types) -> bool:
 
     for source, target in zip(source_types, target_types):
         # Check if conversion is possible
-        if target not in possible_conversions.get(source, []):
+        if target not in POSSIBLE_CONVERSIONS.get(source, []):
             return False
 
     return True
 
 
 def can_convert_type(source_type, target_type) -> bool:
-    return target_type in possible_conversions.get(source_type, [])
+    return target_type in POSSIBLE_CONVERSIONS.get(source_type, [])
 
 
 if __name__ == "__main__":
