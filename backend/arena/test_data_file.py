@@ -17,7 +17,7 @@ def divide(a, b):
     return a / b
 
 
-def square(a):
+def square(a: int) -> int:
     return a * a
 
 
@@ -31,5 +31,5 @@ class Test:
     def add(self, a: int, b: str):
         return a + b
 
-    def subtract(self, a: float, b: float):
+    def subtract(self, a: float, b: float) -> float:
         return a - b

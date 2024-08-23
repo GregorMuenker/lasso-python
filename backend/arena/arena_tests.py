@@ -94,10 +94,12 @@ def test_arena():
         moduleUnderTest,
         excludeClasses=False,
         useFunctionDefaultValues=False,
+        maxParamPermutationTries=1,
+        onlyKeepTopNMappings=20
     )
-    adaptationHandler.identifyAdaptations(maxParamPermutationTries=1)
+    adaptationHandler.identifyAdaptations()
     adaptationHandler.visualizeAdaptations()
-    adaptationHandler.generateMappings(onlyKeepTopN=20)
+    adaptationHandler.generateMappings()
 
     (adapted_module, successful_mappings) = create_adapted_module(
         adaptationHandler,

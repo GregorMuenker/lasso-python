@@ -5,6 +5,7 @@ import math
 import types
 from collections import Counter
 import pandas as pd
+import Levenshtein
 
 import sys
 
@@ -89,6 +90,18 @@ class AdaptationInstruction:
         )
 
     def calculateDistance(self) -> int:
+        """
+        Calculates the distance between an interface method and a module function by summing up
+        - The Levenshtein distance between the method names
+        - The number of adaptations needed
+        """
+        
+        interfaceMethodName = self.identifier[0]
+        moduleFunctionName = self.identifier[1]
+        if "." in moduleFunctionName:
+            moduleFunctionName = moduleFunctionName.split(".")[1]
+        nameDistance = Levenshtein.distance(interfaceMethodName, moduleFunctionName)
+        
         adaptations = [
             self.nameAdaptation,
             self.returnTypeAdaptation,
@@ -100,7 +113,7 @@ class AdaptationInstruction:
         needed_adaptations = [
             adaptation for adaptation in adaptations if adaptation is not None
         ]
-        return len(needed_adaptations)
+        return nameDistance + len(needed_adaptations)
 
     def __repr__(self) -> str:
         result = ""
@@ -142,6 +155,9 @@ class AdaptationHandler:
         moduleUnderTest,
         excludeClasses=False,
         useFunctionDefaultValues=False,
+        maxParamPermutationTries=1,
+        typeStrictness = False,
+        onlyKeepTopNMappings=None
     ) -> None:
         """
         The constructor for AdaptationHandler.
@@ -151,6 +167,8 @@ class AdaptationHandler:
         moduleUnderTest (ModuleUnderTest): The parameterized Python module that will be used to implement the interface methods.
         excludeClasses (bool): If true, all functions in the moduleUnderTest with a parent class will be ignored.
         useFunctionDefaultValues (bool): If true, the adaptationHandler will assume that the default parameters of functions will be used with their default values and won't consider them for adaptation.
+        maxParamPermutationTries (int): The maximum number of adaptations for any given interface method/module function pair.
+        onlyKeepTopNMappings (int): If set, only the top N mappings with the shortest distance will be kept. If not set, all mappings will be kept.
         """
 
         self.interfaceMethods = {}
@@ -172,17 +190,19 @@ class AdaptationHandler:
             self.classes = moduleUnderTest.classes
 
         self.adaptations = {}
+        # List of adaptations is needed to generate mappings later, contains the same adaptationInstruction objects as the adaptations dict
         self.adaptationsList = (
             []
-        )  # needed to generate mappings later, contains the same adaptationInstruction objects as the adaptations dict
+        )
         self.mappings = []
 
-    def identifyAdaptations(self, maxParamPermutationTries=1) -> None:
+        self.maxParamPermutationTries = maxParamPermutationTries
+        self.typeStrictness = typeStrictness
+        self.onlyKeepTopNMappigns = onlyKeepTopNMappings
+
+    def identifyAdaptations(self) -> None:
         """
         Identifies all possible adaptations between all interface method/module function pairs.
-
-        Parameters:
-        maxParamPermutationTries (int): The maximum number of adaptations for any given interface method/module function pair.
         """
         print(
             f"\n{MAGENTA}--------------------\nIDENTIFY ADAPTATIONS\n--------------------{RESET}"
@@ -196,8 +216,9 @@ class AdaptationHandler:
                     interfaceMethod.parameterTypes.__len__()
                     != moduleFunction.parameterTypes.__len__()
                 ):
+                    # No adaptation possible as the number of params do not match
                     self.adaptations[(interfaceMethodName, moduleFunctionQualName)] = (
-                        None  # no adaptation possible
+                        None
                     )
                     continue
 
@@ -209,18 +230,27 @@ class AdaptationHandler:
                     adaptationInstruction.nameAdaptation = interfaceMethodName
 
                 if interfaceMethod.returnType != moduleFunction.returnType:
+                    if self.typeStrictness and not can_convert_type(moduleFunction.returnType, interfaceMethod.returnType):
+                        # No adaptation possible as the return types cannot be converted
+                        self.adaptations[(interfaceMethodName, moduleFunctionQualName)] = (
+                            None
+                        )
+                        continue
+                    
                     adaptationInstruction.returnTypeAdaptation = (
                         interfaceMethod.returnType
                     )
 
+                # Create a copy that can be used as a base for blind parameter permutations
                 adaptationInstructionCopy = copy.deepcopy(
                     adaptationInstruction
-                )  # create copy that can be used for blind parameter permutations
+                )
 
                 if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
                     if Counter(interfaceMethod.parameterTypes) == Counter(
                         moduleFunction.parameterTypes
                     ):
+                        # The number of the parameters is the same, but the order is different => "smart" permutation
                         adaptationInstruction.parameterOrderAdaptation = (
                             find_permutation(
                                 moduleFunction.parameterTypes,
@@ -228,21 +258,30 @@ class AdaptationHandler:
                             )
                         )
 
-                    else:  # TODO type strictness check
+                    else:
+                        if self.typeStrictness and not can_convert_params(moduleFunction.parameterTypes, interfaceMethod.parameterTypes):
+                            # No adaptation possible as the parameter types cannot be converted
+                            self.adaptations[(interfaceMethodName, moduleFunctionQualName)] = (
+                                None
+                            )
+                            continue
+                        
+                        # Store the instruction that types should be converted
                         adaptationInstruction.parameterTypeConversion = (
                             moduleFunction.parameterTypes
                         )
 
+                # Store the adaptationInstruction in the adaptations dict and list
                 self.adaptations[(interfaceMethodName, moduleFunctionQualName)].append(
                     adaptationInstruction
                 )
                 self.adaptationsList.append(adaptationInstruction)
 
-                # Blind parameter permutations, i.e. just permutate them without caring about types
+                # Try further permutations without caring about matching types => "blind" parameter permutations
                 numOfParamPermutations = math.factorial(
                     moduleFunction.parameterTypes.__len__()
                 )
-                iterations = min(maxParamPermutationTries, numOfParamPermutations)
+                iterations = min(self.maxParamPermutationTries, numOfParamPermutations)
                 orderedList = list(range(moduleFunction.parameterTypes.__len__()))
                 allPermutations = list(itertools.permutations(orderedList))
 
@@ -301,12 +340,9 @@ class AdaptationHandler:
 
         print("\n", df, "\n")
 
-    def generateMappings(self, onlyKeepTopN=None) -> None:
+    def generateMappings(self) -> None:
         """
         Generates all possibilities of implementing the interface methods with the adapted module functions, will only work after using identifyAdaptations first.
-
-        Parameters:
-        onlyKeepTopN (int): If set, only the top N mappings with the shortest distance will be kept. If not set, all mappings will be kept.
         """
         # Generate all possible permutations (with length = number of interface methods) of all adapters of the module functions
         adaptationIdentifiers = (
@@ -362,9 +398,9 @@ class AdaptationHandler:
             self.mappings, key=lambda mapping: mapping.totalDistance, reverse=False
         )
 
-        if onlyKeepTopN and onlyKeepTopN <= len(self.mappings):
-            print(f"Keeping only the top {onlyKeepTopN} mappings.")
-            self.mappings = self.mappings[:onlyKeepTopN]
+        if self.onlyKeepTopNMappigns and self.onlyKeepTopNMappigns <= len(self.mappings):
+            print(f"Keeping only the top {self.onlyKeepTopNMappigns} mappings.")
+            self.mappings = self.mappings[:self.onlyKeepTopNMappigns]
 
         for mapping in self.mappings:
             print(mapping)
@@ -762,10 +798,10 @@ if __name__ == "__main__":
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
 
     # NOTE adjust this path
-    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"  # function_base #user_array #scimath
+    # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"  # function_base #user_array #scimath
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/array_api/_array_object.py"
-    # path = "./test_data_file.py"  # <-- for testing with handcrafted python file
+    path = "./test_data_file.py"  # <-- for testing with handcrafted python file
     with open(path, "r") as file:
         file_content = file.read()  # Read the entire content of the file
         moduleUnderTest = parse_code(file_content, "numpy.lib.scimath")
@@ -775,17 +811,20 @@ if __name__ == "__main__":
         moduleUnderTest,
         excludeClasses=False,
         useFunctionDefaultValues=False,
+        maxParamPermutationTries=2,
+        typeStrictness=True,
+        onlyKeepTopNMappings=10
     )
-    adaptationHandler.identifyAdaptations(maxParamPermutationTries=2)
+    adaptationHandler.identifyAdaptations()
     adaptationHandler.visualizeAdaptations()
-    adaptationHandler.generateMappings(onlyKeepTopN=10)
+    adaptationHandler.generateMappings()
 
     (adapted_module, successful_mappings) = create_adapted_module(
         adaptationHandler,
         moduleUnderTest.moduleName,
         class_instantiation_params=["1 2; 3 4"],
         use_constructor_default_values=True,
-        testing_mode=False,
+        testing_mode=True,
     )
 
     stimulus_sheet = get_stimulus_sheet("calc3.csv")

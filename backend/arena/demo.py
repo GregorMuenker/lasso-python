@@ -47,10 +47,12 @@ if __name__ == "__main__":
         moduleUnderTest,
         excludeClasses=False,
         useFunctionDefaultValues=False,
+        maxParamPermutationTries=2,
+        onlyKeepTopNMappings=10
     )
-    adaptationHandler.identifyAdaptations(maxParamPermutationTries=2)
+    adaptationHandler.identifyAdaptations()
     adaptationHandler.visualizeAdaptations()
-    adaptationHandler.generateMappings(onlyKeepTopN=10)
+    adaptationHandler.generateMappings()
 
     (adapted_module, successful_mappings) = create_adapted_module(
         adaptationHandler,
