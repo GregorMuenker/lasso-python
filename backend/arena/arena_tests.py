@@ -62,6 +62,7 @@ class TestAdaptation(unittest.TestCase):
         target_type_2 = "Any"
         self.assertFalse(can_convert_type(source_type_2, target_type_2))
 
+
 def test_arena():
     from execution import execute_test
     from module_parser import parse_code
@@ -84,7 +85,9 @@ def test_arena():
     path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
     with open(path, "r") as file:
         file_content = file.read()
-        moduleUnderTest = parse_code(file_content, "numpy.matrixlib.defmatrix") # Parse the file to obtain a ModuleUnderTest object
+        moduleUnderTest = parse_code(
+            file_content, "numpy.matrixlib.defmatrix"
+        )  # Parse the file to obtain a ModuleUnderTest object
 
     adaptationHandler = AdaptationHandler(
         interfaceSpecification,
@@ -105,7 +108,9 @@ def test_arena():
     )
 
     stimulus_sheet = get_stimulus_sheet("calc5_arena_tests.csv")
-    allSequenceExecutionRecords = execute_test(stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification)
+    allSequenceExecutionRecords = execute_test(
+        stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification
+    )
     for sequenceExecutionRecord in allSequenceExecutionRecords:
         print(sequenceExecutionRecord)
 

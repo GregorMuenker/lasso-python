@@ -7,7 +7,8 @@ from collections import Counter
 import pandas as pd
 
 import sys
-sys.path.insert(1, '../../backend')
+
+sys.path.insert(1, "../../backend")
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 
 
@@ -27,7 +28,7 @@ class MethodSignature:
         self.returnType = returnType
         self.parameterTypes = parameterTypes
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"MethodSignature(methodName={self.methodName}, returnType={self.returnType}, parameterTypes={self.parameterTypes})"
 
 
@@ -93,10 +94,12 @@ class AdaptationInstruction:
             self.returnTypeAdaptation,
             self.parameterOrderAdaptation,
             self.blindParameterOrderAdaptation,
-            self.parameterTypeConversion
+            self.parameterTypeConversion,
         ]
-        
-        needed_adaptations = [adaptation for adaptation in adaptations if adaptation is not None]
+
+        needed_adaptations = [
+            adaptation for adaptation in adaptations if adaptation is not None
+        ]
         return len(needed_adaptations)
 
     def __repr__(self) -> str:
@@ -124,7 +127,6 @@ class Mapping:
             {}
         )  # dictionary with key = interfaceMethodName and value = (moduleFunctionQualName, adaptationInstruction)
 
-
     def __repr__(self) -> str:
         result = ""
         for key, value in self.adaptationInfo.items():
@@ -140,7 +142,7 @@ class AdaptationHandler:
         moduleUnderTest,
         excludeClasses=False,
         useFunctionDefaultValues=False,
-    ):
+    ) -> None:
         """
         The constructor for AdaptationHandler.
 
@@ -175,7 +177,7 @@ class AdaptationHandler:
         )  # needed to generate mappings later, contains the same adaptationInstruction objects as the adaptations dict
         self.mappings = []
 
-    def identifyAdaptations(self, maxParamPermutationTries=1):
+    def identifyAdaptations(self, maxParamPermutationTries=1) -> None:
         """
         Identifies all possible adaptations between all interface method/module function pairs.
 
@@ -258,19 +260,26 @@ class AdaptationHandler:
                     blindPermutation = list(allPermutations[i])
 
                     # Check if the blind permutation is the same as in iteration 0 (the "smart permutation" that matches param types)
-                    if blindPermutation == adaptationInstruction.parameterOrderAdaptation:
-                        print(f"Blind permutation {blindPermutation} for {interfaceMethodName}->{moduleFunctionQualName} would be a duplicate, skipping it")
+                    if (
+                        blindPermutation
+                        == adaptationInstruction.parameterOrderAdaptation
+                    ):
+                        print(
+                            f"Blind permutation {blindPermutation} for {interfaceMethodName}->{moduleFunctionQualName} would be a duplicate, skipping it"
+                        )
 
                         # Check if it is possible to use another permutation instead
                         if iterations < numOfParamPermutations:
                             iterations += 1
                             print(f"Trying an additional blind permutation instead")
-                        
+
                         # Don't use this permutation variant and continue with the next iteration
                         continue
 
                     # The blind permutation is not a duplicate, generate a new adaptation instruction
-                    adaptationInstructionBlindPermutation.blindParameterOrderAdaptation = blindPermutation
+                    adaptationInstructionBlindPermutation.blindParameterOrderAdaptation = (
+                        blindPermutation
+                    )
 
                     self.adaptations[
                         (interfaceMethodName, moduleFunctionQualName)
@@ -292,9 +301,12 @@ class AdaptationHandler:
 
         print("\n", df, "\n")
 
-    def generateMappings(self, onlyKeepTopN=None):
+    def generateMappings(self, onlyKeepTopN=None) -> None:
         """
         Generates all possibilities of implementing the interface methods with the adapted module functions, will only work after using identifyAdaptations first.
+
+        Parameters:
+        onlyKeepTopN (int): If set, only the top N mappings with the shortest distance will be kept. If not set, all mappings will be kept.
         """
         # Generate all possible permutations (with length = number of interface methods) of all adapters of the module functions
         adaptationIdentifiers = (
@@ -364,7 +376,7 @@ def create_adapted_module(
     class_instantiation_params=None,
     use_constructor_default_values=False,
     testing_mode=False,
-):
+) -> tuple:
     """
     Creates an adapted module using information provided by the adaptationHandler object. The adapted module can be used to execute stimulus sheets.
     The adapted module comprises multiple submodules (mapping0, mapping1, ...) that contain different sets of adapted functions (terminology: one submodule contains one "mapping").
@@ -375,7 +387,7 @@ def create_adapted_module(
     use_constructor_default_values (bool): If true, the constructor of a class will be instantiated with all available default values instead of explicitly providing these constructor parameters.
 
     Returns:
-    (module: module, successful_mappings: list): A tuple containing the adapted module, and a list of successful Mapping objects.
+    (module: module, successful_mappings: List[Mapping]): A tuple containing the adapted module, and a list of successful Mapping objects.
     """
     # TODO: Auslagern?
     module = importlib.import_module(module_name)
@@ -534,8 +546,12 @@ def create_adapted_module(
 
 
 def instantiate_class(
-    module, parent_class_name, class_instantiation_params, use_constructor_default_values, constructors
-):
+    module,
+    parent_class_name,
+    class_instantiation_params,
+    use_constructor_default_values,
+    constructors,
+) -> tuple:
     """
     Instantiates a class from a given module.
 
@@ -555,11 +571,15 @@ def instantiate_class(
 
     # Try to instantiate the class with user-defined parameters
     if class_instantiation_params:
-        print(f"Try instantiation of class {parent_class_name} with user-defined params {class_instantiation_params}.")
+        print(
+            f"Try instantiation of class {parent_class_name} with user-defined params {class_instantiation_params}."
+        )
         try:
             parent_class_instance = parent_class(*class_instantiation_params)
         except Exception as e:
-            print(f"Instantiation of class {parent_class_name} with user-defined params {class_instantiation_params} failed: {e}.")
+            print(
+                f"Instantiation of class {parent_class_name} with user-defined params {class_instantiation_params} failed: {e}."
+            )
         else:
             print(f"Successfully instantiated class: {parent_class_instance}.")
             successful_instantiation = True
@@ -633,7 +653,7 @@ def adapt_function(
     convert_to_types=None,
     new_param_order=None,
     blind_new_param_order=None,
-):
+) -> object:
     """
     Adapts a function by using a decorator and wrapper.
 
@@ -663,8 +683,7 @@ def adapt_function(
             # Adapt parameter types
             if convert_to_types:
                 target_types = [
-                    type_mapping.get(type_name, int)
-                    for type_name in convert_to_types
+                    type_mapping.get(type_name, int) for type_name in convert_to_types
                 ]
                 adapted_args = [
                     target_type(arg)
@@ -813,7 +832,13 @@ possible_conversions = {
 }
 
 
-def find_permutation(source, target):
+def find_permutation(source, target) -> list:
+    """
+    Finds a permutation of a source list, such that the order of the types exactly matches the target list.
+
+    Returns:
+    list: A list that represents the permutation instruction to adapt the source list to the target list.
+    """
     # Create a dictionary to map each type in the target list to its indices
     target_indices = {}
     for i, t in enumerate(target):
@@ -835,7 +860,7 @@ def find_permutation(source, target):
     return permutation
 
 
-def can_convert_params(source_types, target_types):
+def can_convert_params(source_types, target_types) -> bool:
     if len(source_types) != len(target_types):
         return False
 
@@ -847,7 +872,7 @@ def can_convert_params(source_types, target_types):
     return True
 
 
-def can_convert_type(source_type, target_type):
+def can_convert_type(source_type, target_type) -> bool:
     return target_type in possible_conversions.get(source_type, [])
 
 
@@ -862,7 +887,7 @@ if __name__ == "__main__":
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
 
     # NOTE adjust this path
-    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" #function_base #user_array #scimath
+    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"  # function_base #user_array #scimath
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/array_api/_array_object.py"
     # path = "./test_data_file.py"  # <-- for testing with handcrafted python file
@@ -889,6 +914,8 @@ if __name__ == "__main__":
     )
 
     stimulus_sheet = get_stimulus_sheet("calc3.csv")
-    allSequenceExecutionRecords = execute_test(stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification)
+    allSequenceExecutionRecords = execute_test(
+        stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification
+    )
     for sequenceExecutionRecord in allSequenceExecutionRecords:
         print(sequenceExecutionRecord)

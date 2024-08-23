@@ -21,7 +21,7 @@ class SequenceExecutionRecord:
             {}
         )  # {int: RowRecord}, the int is the y coordinate of the row in the stimulus sheet
 
-    def toSheetCells(self) -> dict:
+    def toSheetCells(self) -> list:
         """
         This method converts the sequence execution record into pairs of (CellId, CellValue) that can be put into the Ignite cache.
         The following type of stats are covered:
@@ -35,7 +35,8 @@ class SequenceExecutionRecord:
         - 'loader.classes_loaded',
         - 'loader.artifacts'
 
-        Returns: A list of (CellId, CellValue) tuples that represent the cells in the stimulus sheet.
+        Returns:
+        list: A list of (CellId, CellValue) tuples that represent the cells in the stimulus sheet.
         """
         cells = []
         
@@ -143,7 +144,8 @@ def execute_test(stimulus_sheet, adapted_module, mappings, interface_spec) -> li
     number_of_submodules (int): The number of submodules in the adapted module.
     mappings (list): A list of mappings containing metadata for each mapping.
 
-    Returns: A list of SequenceExecutionRecord objects that contain the results for executing each module on the provided stimulus sheet.
+    Returns:
+    list: A list of SequenceExecutionRecord objects that contain the results for executing each module on the provided stimulus sheet.
     """
 
     print(
@@ -238,7 +240,8 @@ def get_executable_statements(original_function_name, module) -> set:
         # split_qualname = original_function_name.split(".")
         # original_class = getattr(module, split_qualname[0])
         # original_function = getattr(original_class, split_qualname[1])
-        # TODO Return empty set of covered lines for now as Python does not support inspect.getsource for class methods, see: https://github.com/python/cpython/issues/116987
+        # NOTE Returning empty set of covered lines here for now
+        # Reason: Python 3.9.9 and older does not support inspect.getsource for class methods, see: https://github.com/python/cpython/issues/116987
         return set()
     else:
         original_function = getattr(module, original_function_name)
@@ -270,8 +273,8 @@ def get_executable_statements(original_function_name, module) -> set:
         for line_no in range(start_line, function_signature_line + 1):
             executable_statements.discard(line_no)
         
-        # Check if the next line after the function signature is a docstring (starts with triple quotes)
-        # Unfortunately these starting docstrings are have a lineno attribute so they have to be discarded manually
+        # Check if the next line after the function signature is a docstring (i.e., starts with triple quotes)
+        # Unfortunately these starting docstrings have a lineno attribute so they have to be discarded manually
         next_line_index = function_signature_line - start_line + 1
         if next_line_index < len(lines):
             next_line = lines[next_line_index].strip()
@@ -284,7 +287,9 @@ def get_executable_statements(original_function_name, module) -> set:
 def run_with_metrics(function, args, executable_statements, filename, cov) -> tuple:
     """
     Executes a function and records the execution time, code coverage and arc coverage.
-    Returns: A tuple containing the result of the function and the metrics object.
+    
+    Returns:
+    tuple: A tuple containing the result of the function and the metrics object.
     """
     metrics = Metrics()
 

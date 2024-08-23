@@ -13,7 +13,7 @@ import pandas as pd
 
 
 class LassoIgniteClient:
-    def __init__(self):
+    def __init__(self) -> None:
         self.client = Client(compact_footer=False)
         self.client.connect("127.0.0.1", 10800)
 
