@@ -1,32 +1,32 @@
-class Calculator:
-    def __init__(self):
-        pass
+# class Calculator:
+#     def __init__(self):
+#         pass
 
-    def add(self, a, b):
-        return a + b
+#     def add(self, a, b):
+#         return a + b
 
-    def subtract(self, a: int, b: float):
-        return a - b
-
-
-def multiply(a, b, c):
-    return a * b * c
+#     def subtract(self, a: int, b: float):
+#         return a - b
 
 
-def divide(a, b):
-    return a / b
+# def multiply(a, b, c):
+#     return a * b * c
 
 
-def square(a: int) -> int:
-    return a * a
+# def divide(a, b):
+#     return a / b
+
+
+# def square(a: int) -> int:
+#     return a * a
 
 
 class Test:
     def __init__(self, a: float):
         self.a = a
 
-    def cubed(self, a: int):
-        return a * a * a
+    def cubed(self, a: list):
+        return len(a)
 
     def add(self, a: int, b: str):
         return f"{a}<>{b}"

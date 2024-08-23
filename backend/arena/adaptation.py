@@ -6,11 +6,20 @@ import types
 from collections import Counter
 import pandas as pd
 import Levenshtein
+from collections.abc import Iterable
 
 import sys
 
 sys.path.insert(1, "../../backend")
-from constants import GREEN, MAGENTA, RESET, STANDARD_CONSTRUCTOR_VALUES, TYPE_MAPPING, POSSIBLE_CONVERSIONS
+from constants import (
+    GREEN,
+    MAGENTA,
+    RESET,
+    STANDARD_CONSTRUCTOR_VALUES,
+    TYPE_MAPPING,
+    POSSIBLE_CONVERSIONS,
+    LIST_LIKE_TYPES,
+)
 
 
 class InterfaceSpecification:
@@ -95,13 +104,13 @@ class AdaptationInstruction:
         - The Levenshtein distance between the method names
         - The number of adaptations needed
         """
-        
+
         interfaceMethodName = self.identifier[0]
         moduleFunctionName = self.identifier[1]
         if "." in moduleFunctionName:
             moduleFunctionName = moduleFunctionName.split(".")[1]
         nameDistance = Levenshtein.distance(interfaceMethodName, moduleFunctionName)
-        
+
         adaptations = [
             self.nameAdaptation,
             self.returnTypeAdaptation,
@@ -156,8 +165,8 @@ class AdaptationHandler:
         excludeClasses=False,
         useFunctionDefaultValues=False,
         maxParamPermutationTries=1,
-        typeStrictness = False,
-        onlyKeepTopNMappings=None
+        typeStrictness=False,
+        onlyKeepTopNMappings=None,
     ) -> None:
         """
         The constructor for AdaptationHandler.
@@ -191,9 +200,7 @@ class AdaptationHandler:
 
         self.adaptations = {}
         # List of adaptations is needed to generate mappings later, contains the same adaptationInstruction objects as the adaptations dict
-        self.adaptationsList = (
-            []
-        )
+        self.adaptationsList = []
         self.mappings = []
 
         self.maxParamPermutationTries = maxParamPermutationTries
@@ -230,21 +237,21 @@ class AdaptationHandler:
                     adaptationInstruction.nameAdaptation = interfaceMethodName
 
                 if interfaceMethod.returnType != moduleFunction.returnType:
-                    if self.typeStrictness and not can_convert_type(moduleFunction.returnType, interfaceMethod.returnType):
+                    if self.typeStrictness and not can_convert_type(
+                        moduleFunction.returnType, interfaceMethod.returnType
+                    ):
                         # No adaptation possible as the return types cannot be converted
-                        self.adaptations[(interfaceMethodName, moduleFunctionQualName)] = (
-                            None
-                        )
+                        self.adaptations[
+                            (interfaceMethodName, moduleFunctionQualName)
+                        ] = None
                         continue
-                    
+
                     adaptationInstruction.returnTypeAdaptation = (
                         interfaceMethod.returnType
                     )
 
                 # Create a copy that can be used as a base for blind parameter permutations
-                adaptationInstructionCopy = copy.deepcopy(
-                    adaptationInstruction
-                )
+                adaptationInstructionCopy = copy.deepcopy(adaptationInstruction)
 
                 if interfaceMethod.parameterTypes != moduleFunction.parameterTypes:
                     if Counter(interfaceMethod.parameterTypes) == Counter(
@@ -259,13 +266,16 @@ class AdaptationHandler:
                         )
 
                     else:
-                        if self.typeStrictness and not can_convert_params(moduleFunction.parameterTypes, interfaceMethod.parameterTypes):
+                        if self.typeStrictness and not can_convert_params(
+                            moduleFunction.parameterTypes,
+                            interfaceMethod.parameterTypes,
+                        ):
                             # No adaptation possible as the parameter types cannot be converted
-                            self.adaptations[(interfaceMethodName, moduleFunctionQualName)] = (
-                                None
-                            )
+                            self.adaptations[
+                                (interfaceMethodName, moduleFunctionQualName)
+                            ] = None
                             continue
-                        
+
                         # Store the instruction that types should be converted
                         adaptationInstruction.parameterTypeConversion = (
                             moduleFunction.parameterTypes
@@ -398,9 +408,11 @@ class AdaptationHandler:
             self.mappings, key=lambda mapping: mapping.totalDistance, reverse=False
         )
 
-        if self.onlyKeepTopNMappigns and self.onlyKeepTopNMappigns <= len(self.mappings):
+        if self.onlyKeepTopNMappigns and self.onlyKeepTopNMappigns <= len(
+            self.mappings
+        ):
             print(f"Keeping only the top {self.onlyKeepTopNMappigns} mappings.")
-            self.mappings = self.mappings[:self.onlyKeepTopNMappigns]
+            self.mappings = self.mappings[: self.onlyKeepTopNMappigns]
 
         for mapping in self.mappings:
             print(mapping)
@@ -640,9 +652,7 @@ def instantiate_class(
         print(
             f"{constructors.__len__()} constructor(s) found for class {parent_class_name}, try to instantiate with pre-defined values."
         )
-        for (
-            constructor
-        ) in constructors:
+        for constructor in constructors:
 
             parameterTypes = constructor.parameterTypes
             print(
@@ -725,9 +735,17 @@ def adapt_function(
                     target_type = TYPE_MAPPING.get(type_name, None)
 
                     if target_type == None:
-                        raise TypeError(f"Parameter type conversion: the type '{type_name}' is unknown")
-                    
-                    adapted_args[index] = target_type(adapted_args[index])
+                        raise TypeError(
+                            f"Parameter type conversion: the type '{type_name}' is unknown"
+                        )
+
+                    if (
+                        not isinstance(result, Iterable)
+                        and target_type in LIST_LIKE_TYPES
+                    ):
+                        adapted_args[index] = target_type([adapted_args[index]])
+                    else:
+                        adapted_args[index] = target_type(adapted_args[index])
 
             # Execute the function with potentially adapted parameters
             result = func(*adapted_args, **kwargs)
@@ -735,13 +753,17 @@ def adapt_function(
             # Adapt return type
             if new_return_type and new_return_type != "Any":
                 conversion_type = TYPE_MAPPING.get(new_return_type, None)
+
                 if conversion_type == None:
                     raise TypeError(f"The return type '{new_return_type}' is unknown")
-                
-                result = TYPE_MAPPING.get(new_return_type)(
-                    result
-                )
-                # NOTE alternative without type_mapping dict: getattr(builtins, new_return_type)(result)
+
+                if (
+                    not isinstance(result, Iterable)
+                    and conversion_type in LIST_LIKE_TYPES
+                ):
+                    result = conversion_type([result])
+                else:
+                    result = conversion_type(result)
 
             return result
 
@@ -800,8 +822,8 @@ if __name__ == "__main__":
     from module_parser import parse_code
     from stimulus_sheet_reader import get_stimulus_sheet
 
-    icubed = MethodSignature("icubed", "str", ["int"])
-    iminus = MethodSignature("iminus", "str", ["float", "int"])
+    icubed = MethodSignature("icubed", "int", ["int"])
+    iminus = MethodSignature("iminus", "complex", ["float", "int"])
 
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
 
@@ -821,7 +843,7 @@ if __name__ == "__main__":
         useFunctionDefaultValues=False,
         maxParamPermutationTries=2,
         typeStrictness=False,
-        onlyKeepTopNMappings=10
+        onlyKeepTopNMappings=10,
     )
     adaptationHandler.identifyAdaptations()
     adaptationHandler.visualizeAdaptations()
