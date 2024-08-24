@@ -148,6 +148,7 @@ class Mapping:
         self.adaptationInfo = (
             {}
         )  # dictionary with key = interfaceMethodName and value = (moduleFunctionQualName, adaptationInstruction)
+        self.identifier = None # The identifier of the mapping, is only set if creation of a submodule was successful
 
     def __repr__(self) -> str:
         result = ""
@@ -586,6 +587,7 @@ def create_adapted_module(
             print(
                 f"{GREEN}Successful creation of submodule {successes} for this mapping.{RESET}"
             )
+            mapping.identifier = successes
             successful_mappings.append(mapping)
             successes += 1
 

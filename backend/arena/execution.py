@@ -45,22 +45,22 @@ class SequenceExecutionRecord:
 
             # Value
             cellId = CellId(
-                EXECUTIONID="1",
+                EXECUTIONID="",
                 ABSTRACTIONID=self.interfaceSpecification.className,
-                ACTIONID="201",
+                ACTIONID="",
                 ARENAID="execute",
-                SHEETID="401",
-                SYSTEMID="501",
-                VARIANTID="601",
-                ADAPTERID="",
+                SHEETID=self.sequenceSpecification.name,
+                SYSTEMID="",
+                VARIANTID=str(self.mapping.identifier),
+                ADAPTERID=str(adaptation_instruction.identifier),
                 X=0,
                 Y=position,
                 TYPE="value",
             )
             cellValue = CellValue(
-                VALUE="1",
-                RAWVALUE="1",
-                VALUETYPE="1",
+                VALUE=str(rowRecord.returnValue),
+                RAWVALUE=str(rowRecord.returnValue),
+                VALUETYPE=str(type(rowRecord.returnValue)),
                 LASTMODIFIED=datetime.date.today(),
                 EXECUTIONTIME=rowRecord.metrics.executionTime,
             )
@@ -68,14 +68,14 @@ class SequenceExecutionRecord:
 
             # Operation
             cellId = CellId(
-                EXECUTIONID="1",
+                EXECUTIONID="",
                 ABSTRACTIONID=self.interfaceSpecification.className,
-                ACTIONID="201",
+                ACTIONID="",
                 ARENAID="execute",
-                SHEETID="401",
-                SYSTEMID="501",
-                VARIANTID="601",
-                ADAPTERID="",
+                SHEETID=self.sequenceSpecification.name,
+                SYSTEMID="",
+                VARIANTID=str(self.mapping.identifier),
+                ADAPTERID=str(adaptation_instruction.identifier),
                 X=1,
                 Y=position,
                 TYPE="op",
@@ -89,13 +89,58 @@ class SequenceExecutionRecord:
             )
             cells.append((cellId, cellValue))
 
-            # TODO Input values, metrics
+            # Input values
+            for xPosition, inputParam in enumerate(rowRecord.inputParams):
+                cellId = CellId(
+                    EXECUTIONID="",
+                    ABSTRACTIONID=self.interfaceSpecification.className,
+                    ACTIONID="",
+                    ARENAID="execute",
+                    SHEETID=self.sequenceSpecification.name,
+                    SYSTEMID="",
+                    VARIANTID=str(self.mapping.identifier),
+                    ADAPTERID=str(adaptation_instruction.identifier),
+                    X=3+xPosition,
+                    Y=position,
+                    TYPE="input_value",
+                )
+                cellValue = CellValue(
+                    VALUE=str(inputParam),
+                    RAWVALUE=str(inputParam),
+                    VALUETYPE=str(type(inputParam)),
+                    LASTMODIFIED=datetime.date.today(),
+                    EXECUTIONTIME=-1,
+                )
+                cells.append((cellId, cellValue))
+
+            # Metrics
+            cellId = CellId(
+                EXECUTIONID="",
+                ABSTRACTIONID=self.interfaceSpecification.className,
+                ACTIONID="",
+                ARENAID="execute",
+                SHEETID=self.sequenceSpecification.name,
+                SYSTEMID="",
+                VARIANTID=str(self.mapping.identifier),
+                ADAPTERID=str(adaptation_instruction.identifier),
+                X=-1,
+                Y=-1,
+                TYPE="coverage_ratio",
+            )
+            cellValue = CellValue(
+                VALUE=f"{rowRecord.metrics.coveredLinesInFunctionRatio}%",
+                RAWVALUE=f"{rowRecord.metrics.coveredLinesInFunctionRatio}",
+                VALUETYPE="percentage",
+                LASTMODIFIED=datetime.date.today(),
+                EXECUTIONTIME=-1,
+            )
+            cells.append((cellId, cellValue))
 
         return cells
 
 
     def __repr__(self) -> str:
-        result = f"{self.mapping}"
+        result = f"{self.mapping.identifier} {self.mapping}"
         for rowRecord in self.rowRecords.values():
             result += f"\n\t{rowRecord}"
         return f"{result}\n"

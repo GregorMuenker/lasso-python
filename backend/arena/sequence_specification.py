@@ -9,6 +9,7 @@ from constants import RED, RESET
 
 class SequenceSpecification:
     def __init__(self, filePath) -> None:
+        self.name = os.path.basename(filePath)
         self.stimulusSheet = get_stimulus_sheet(filePath)
 
         self.statements = {}
