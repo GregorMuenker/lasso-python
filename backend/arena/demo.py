@@ -71,16 +71,14 @@ if __name__ == "__main__":
     for sequenceExecutionRecord in allSequenceExecutionRecords:
         print(sequenceExecutionRecord)
 
-    # lassoIgniteClient = LassoIgniteClient()
-    # for sequenceExecutionRecord in allSequenceExecutionRecords:
-    #     cells = sequenceExecutionRecord.toSheetCells()
-    #     lassoIgniteClient.putAll(cells)
+    lassoIgniteClient = LassoIgniteClient()
+    for sequenceExecutionRecord in allSequenceExecutionRecords:
+        cells = sequenceExecutionRecord.toSheetCells()
+        lassoIgniteClient.putAll(cells)
 
-    # df = lassoIgniteClient.getDataFrame()
-    # print(df)
+    df = lassoIgniteClient.getDataFrame()
+    print(df)
 
-    # lassoIgniteClient.cache.destroy()
-    # lassoIgniteClient.client.close()
-
-    # TODO remove m = getattr(adapted_module, "mapping0")
-    # print(m.log(2, 10))
+    lassoIgniteClient.cache.destroy()
+    lassoIgniteClient.client.close()
+    
