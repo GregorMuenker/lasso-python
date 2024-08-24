@@ -134,7 +134,7 @@ class Metrics:
         return f"Time: {self.executionTime} microseconds. Covered lines: {self.coveredLinesInFile} in file, {self.coveredLinesInFunction} in function ({self.coveredLinesInFunctionRatio}% of function lines). Covered arcs: {self.coveredArcsInFile} in file, {self.coveredArcsInFunction} in function."
 
 
-def execute_test(stimulus_sheet, adapted_module, mappings, interface_spec) -> list:
+def execute_test(sequence_spec, adapted_module, mappings, interface_spec) -> list:
     """
     Executes a stimulus sheet based on a provided module and prints out the results.
 
@@ -153,7 +153,7 @@ def execute_test(stimulus_sheet, adapted_module, mappings, interface_spec) -> li
     )
     print(f"Module: {adapted_module.__name__}")
     print(f"Number of submodules: {len(mappings)}")
-    print(f"\n {stimulus_sheet}\n")
+    print(f"\n {sequence_spec.stimulusSheet}\n")
 
     allSequenceExecutionRecords = []
 
@@ -163,36 +163,37 @@ def execute_test(stimulus_sheet, adapted_module, mappings, interface_spec) -> li
         sequenceExecutionRecord = SequenceExecutionRecord(
             interfaceSpecification=interface_spec,
             mapping=mappings[i],
-            sequenceSpecification=stimulus_sheet, # TODO sequenceSpecification
+            sequenceSpecification=sequence_spec,
         )
 
-        for index, row in stimulus_sheet.iterrows():
-            method_name = row["method_name"]
-            input_params = row["input_params"]
-            output_param = row["output_param"]
+        for index, statement in sequence_spec.statements.items():
+
+            # Skip the create statement as it already has been covered during creating the adapted module
+            if (statement.methodName == "create"):
+                continue
 
             original_function_name, adaptationInstruction = mappings[i].adaptationInfo[
-                method_name
+                statement.methodName
             ]
 
             rowRecord = RowRecord(
                 position=index,
-                methodName=method_name,
+                methodName=statement.methodName,
                 originalFunctionName=original_function_name,
-                inputParams=input_params,
-                oracleValue=output_param,
+                inputParams=statement.inputParams,
+                oracleValue=statement.oracleValue,
             )
 
             # Build the instruction string to output errors in a more readable way
-            input_params_string = ", ".join(map(str, input_params))
-            instruction = f"{method_name}({input_params_string})"
+            input_params_string = ", ".join(map(str, statement.inputParams))
+            instruction = f"{statement.methodName}({input_params_string})"
 
             method = None
             try:
-                method = getattr(submodule, method_name)
+                method = getattr(submodule, statement.methodName)
             except Exception as e:
                 print(
-                    f"Error when trying to get method {method_name} from submodule {submodule}. Error: {e}"
+                    f"Error when trying to get method {statement.methodName} from submodule {submodule}. Error: {e}"
                 )
                 rowRecord.returnValue = "Method not found"
                 continue
@@ -213,7 +214,7 @@ def execute_test(stimulus_sheet, adapted_module, mappings, interface_spec) -> li
 
                 cov = coverage.Coverage(source=[adapted_module.__name__], branch=True)
                 return_value, metrics = run_with_metrics(
-                    method, input_params, executable_statements, filename, cov
+                    method, statement.inputParams, executable_statements, filename, cov
                 )
             except Exception as e:
                 print(

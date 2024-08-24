@@ -66,7 +66,7 @@ class TestAdaptation(unittest.TestCase):
 def test_arena():
     from execution import execute_test
     from module_parser import parse_code
-    from stimulus_sheet_reader import get_stimulus_sheet
+    from sequence_specification import SequenceSpecification
     from adaptation import AdaptationHandler, create_adapted_module
     from lql.antlr_parser import parse_interface_spec
 
@@ -80,6 +80,7 @@ def test_arena():
 
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
+    sequenceSpecification = SequenceSpecification("calc5_arena_tests.xlsx")
 
     # Load source of specific file on disk
     path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
@@ -95,7 +96,7 @@ def test_arena():
         excludeClasses=False,
         useFunctionDefaultValues=False,
         maxParamPermutationTries=1,
-        onlyKeepTopNMappings=20
+        onlyKeepTopNMappings=20,
     )
     adaptationHandler.identifyAdaptations()
     adaptationHandler.visualizeAdaptations()
@@ -109,9 +110,11 @@ def test_arena():
         testing_mode=False,
     )
 
-    stimulus_sheet = get_stimulus_sheet("calc5_arena_tests.csv")
     allSequenceExecutionRecords = execute_test(
-        stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification
+        sequenceSpecification,
+        adapted_module,
+        successful_mappings,
+        interfaceSpecification,
     )
     for sequenceExecutionRecord in allSequenceExecutionRecords:
         print(sequenceExecutionRecord)

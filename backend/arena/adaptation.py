@@ -820,12 +820,14 @@ def can_convert_type(source_type, target_type) -> bool:
 if __name__ == "__main__":
     from execution import execute_test
     from module_parser import parse_code
-    from stimulus_sheet_reader import get_stimulus_sheet
+    from sequence_specification import SequenceSpecification
 
     icubed = MethodSignature("icubed", "int", ["int"])
-    iminus = MethodSignature("iminus", "complex", ["float", "int"])
+    iminus = MethodSignature("iminus", "str", ["float", "int"])
 
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
+    sequenceSpecification = SequenceSpecification("calc3_adaptation.xlsx")
+    print(sequenceSpecification.stimulusSheet)
 
     # NOTE adjust this path
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"  # function_base #user_array #scimath
@@ -857,9 +859,11 @@ if __name__ == "__main__":
         testing_mode=True,
     )
 
-    stimulus_sheet = get_stimulus_sheet("calc3.csv")
     allSequenceExecutionRecords = execute_test(
-        stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification
+        sequenceSpecification,
+        adapted_module,
+        successful_mappings,
+        interfaceSpecification,
     )
     for sequenceExecutionRecord in allSequenceExecutionRecords:
         print(sequenceExecutionRecord)
