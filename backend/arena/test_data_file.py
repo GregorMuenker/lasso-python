@@ -17,8 +17,8 @@
 #     return a / b
 
 
-# def square(a: int) -> int:
-#     return a * a
+def square(a: int) -> int:
+    return a * a
 
 
 class Test:
@@ -26,7 +26,10 @@ class Test:
         self.a = a
 
     def cubed(self, a: list):
-        return len(a)
+        if (a != "dsdsd"):
+            return 0
+        else:
+            return len(a)
 
     def add(self, a: int, b: str):
         return f"{a}<>{b}"

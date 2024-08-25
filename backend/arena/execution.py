@@ -1,9 +1,10 @@
-import ast
 import inspect
 import os
 import time
 import coverage
 import datetime
+import json
+import io
 
 import sys
 
@@ -39,9 +40,11 @@ class SequenceExecutionRecord:
         list: A list of (CellId, CellValue) tuples that represent the cells in the stimulus sheet.
         """
         cells = []
-        
+
         for position, rowRecord in self.rowRecords.items():
-            original_function_name, adaptation_instruction = self.mapping.adaptationInfo[rowRecord.methodName]
+            original_function_name, adaptation_instruction = (
+                self.mapping.adaptationInfo[rowRecord.methodName]
+            )
 
             # Value
             cellId = CellId(
@@ -100,7 +103,7 @@ class SequenceExecutionRecord:
                     SYSTEMID="",
                     VARIANTID=str(self.mapping.identifier),
                     ADAPTERID=str(adaptation_instruction.identifier),
-                    X=3+xPosition,
+                    X=3 + xPosition,
                     Y=position,
                     TYPE="input_value",
                 )
@@ -124,7 +127,7 @@ class SequenceExecutionRecord:
                 VARIANTID=str(self.mapping.identifier),
                 ADAPTERID=str(adaptation_instruction.identifier),
                 X=-1,
-                Y=-1,
+                Y=position,
                 TYPE="coverage_ratio",
             )
             cellValue = CellValue(
@@ -137,7 +140,6 @@ class SequenceExecutionRecord:
             cells.append((cellId, cellValue))
 
         return cells
-
 
     def __repr__(self) -> str:
         result = f"{self.mapping.identifier} {self.mapping}"
@@ -168,15 +170,22 @@ class RowRecord:
 class Metrics:
     def __init__(self) -> None:
         self.executionTime = None
+        
+        self.allLinesInFile = None
         self.coveredLinesInFile = None
+
+        self.allLinesInFunction = None
         self.coveredLinesInFunction = None
         self.coveredLinesInFunctionRatio = None
 
-        self.coveredArcsInFile = None
-        self.coveredArcsInFunction = None
+        self.allBranchesInFile = None
+        self.coveredBranchesInFile = None
+
+        self.allBranchesInFunction = None
+        self.coveredBranchesInFunction = None
 
     def __repr__(self) -> str:
-        return f"Time: {self.executionTime} microseconds. Covered lines: {self.coveredLinesInFile} in file, {self.coveredLinesInFunction} in function ({self.coveredLinesInFunctionRatio}% of function lines). Covered arcs: {self.coveredArcsInFile} in file, {self.coveredArcsInFunction} in function."
+        return f"Time: {self.executionTime} microseconds. Covered lines: {self.coveredLinesInFile}/{self.allLinesInFile} in file, {self.coveredLinesInFunction}/{self.allLinesInFunction} in function ({self.coveredLinesInFunctionRatio}%). Covered branches: {self.coveredBranchesInFile}/{self.allBranchesInFile} in file, {self.coveredBranchesInFunction}/{self.allBranchesInFunction} in function."
 
 
 def execute_test(sequence_spec, adapted_module, mappings, interface_spec) -> list:
@@ -214,7 +223,7 @@ def execute_test(sequence_spec, adapted_module, mappings, interface_spec) -> lis
         for index, statement in sequence_spec.statements.items():
 
             # Skip the create statement as it already has been covered during creating the adapted module
-            if (statement.methodName == "create"):
+            if statement.methodName == "create":
                 continue
 
             original_function_name, adaptationInstruction = mappings[i].adaptationInfo[
@@ -243,23 +252,21 @@ def execute_test(sequence_spec, adapted_module, mappings, interface_spec) -> lis
                 rowRecord.returnValue = "Method not found"
                 continue
 
-            # Needed for the metrics
-            executable_statements = get_executable_statements(
-                original_function_name, adapted_module
-            )
-
             # Set the return value
             return_value = "Execution unsuccessful"
             metrics = "No metrics recorded"
             try:
                 filename = inspect.getfile(adapted_module)
-                filename = os.path.abspath(
-                    filename
-                )  # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
+                # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
+                filename = os.path.abspath(filename)
 
                 cov = coverage.Coverage(source=[adapted_module.__name__], branch=True)
                 return_value, metrics = run_with_metrics(
-                    method, statement.inputParams, executable_statements, filename, cov
+                    method,
+                    statement.inputParams,
+                    filename,
+                    cov,
+                    original_function_name,
                 )
             except Exception as e:
                 print(
@@ -277,63 +284,10 @@ def execute_test(sequence_spec, adapted_module, mappings, interface_spec) -> lis
     return allSequenceExecutionRecords
 
 
-def get_executable_statements(original_function_name, module) -> set:
-    """
-    Returns a set of line numbers that contain executable statements in the original function, i.e. the lines that are not comments/whitespaces/etc.
-    """
-    original_function = None
-    if "." in original_function_name:
-        # split_qualname = original_function_name.split(".")
-        # original_class = getattr(module, split_qualname[0])
-        # original_function = getattr(original_class, split_qualname[1])
-        # NOTE Returning empty set of covered lines here for now
-        # Reason: Python 3.9.9 and older does not support inspect.getsource for class methods, see: https://github.com/python/cpython/issues/116987
-        return set()
-    else:
-        original_function = getattr(module, original_function_name)
-
-    lines, start_line = inspect.getsourcelines(original_function)
-
-    # Join the lines into a single string and parse
-    source_code = "".join(lines)
-    tree = ast.parse(source_code)
-
-    executable_statements = set()
-
-    for node in ast.walk(tree):
-        # Check if the node has a lineno attribute (indicating it's an executable statement)
-        if hasattr(node, "lineno"):
-            # Adjust the line number to be relative to the file
-            line_number = node.lineno + start_line - 1
-            executable_statements.add(line_number)
-
-    # Find the line number of the function definition to later discard all lines before it (e.g., @ annotations) and the function signature line itself
-    function_signature_line = None
-    for index, line in enumerate(lines):
-        if line.strip().startswith("def "):
-            function_signature_line = start_line + index
-            break
-
-    # Discard the function signature line
-    if function_signature_line is not None:
-        for line_no in range(start_line, function_signature_line + 1):
-            executable_statements.discard(line_no)
-        
-        # Check if the next line after the function signature is a docstring (i.e., starts with triple quotes)
-        # Unfortunately these starting docstrings have a lineno attribute so they have to be discarded manually
-        next_line_index = function_signature_line - start_line + 1
-        if next_line_index < len(lines):
-            next_line = lines[next_line_index].strip()
-            if next_line.startswith('"""'):
-                executable_statements.discard(function_signature_line + 1)
-
-    return executable_statements
-
-
-def run_with_metrics(function, args, executable_statements, filename, cov) -> tuple:
+def run_with_metrics(function, args, filename, cov, original_function_name) -> tuple:
     """
     Executes a function and records the execution time, code coverage and arc coverage.
-    
+
     Returns:
     tuple: A tuple containing the result of the function and the metrics object.
     """
@@ -345,54 +299,59 @@ def run_with_metrics(function, args, executable_statements, filename, cov) -> tu
     end_time = time.time()
     cov.stop()
 
-    execution_time = int((end_time - start_time) * 1_000_000) # Convert to microseconds
+    execution_time = int((end_time - start_time) * 1_000_000)  # Convert to microseconds
     metrics.executionTime = execution_time
 
-    data = cov.get_data()
-    covered_lines = data.lines(filename)
+    # Modify stdout to capture the coverage report
+    old_stdout = sys.stdout
+    new_stdout = io.StringIO()
+    sys.stdout = new_stdout
 
-    all_arcs_in_file = data.arcs(filename)
-    covered_arcs = []
+    # Get the coverage report (outfile="-" -> report is written to stdout)
+    cov.json_report(outfile="-")
 
-    if all_arcs_in_file and covered_lines:
-        covered_arcs = [
-            arc
-            for arc in all_arcs_in_file
-            if arc[0] in covered_lines or arc[1] in covered_lines
-        ]
-        metrics.coveredArcsInFile = len(covered_arcs)
+    # Capture the output and reset stdout
+    output = new_stdout.getvalue()
+    sys.stdout = old_stdout
 
-    metrics.coveredLinesInFile = len(covered_lines)
-
-    if len(executable_statements) == 0:
-        # If there is no information on which lines of the function are executable (e.g., for class functions),
-        # further metrics like ratio of covered lines are not possible
+    json_output = None
+    try:
+        json_output = json.loads(output)
+    except Exception as e:
+        print("Error when trying to parse coverage report, skipping further metrics", e)
         return (result, metrics)
 
-    covered_lines_in_function = None
+    file_data = None
+    file_data_found = False
+    try:
+        file_data = json_output["files"][filename]
+    except:
+        print(f"Coverage.py file data not found for {filename}, trying file name only")
+    else:
+        file_data_found = True
+    
+    if not file_data_found:
+        try:
+            file_data = json_output["files"][os.path.basename(filename)]
+        except:
+            # If the file data is still not found, return the result and the metrics object with only the execution time
+            print(f"Coverage.py file data not found for {filename}, skipping further metrics")
+            return (result, metrics)
+        else:
+            print("Coverage.py file data found for file name only")
+            file_data_found = True
+    
+    metrics.allLinesInFile = file_data["summary"]["num_statements"]
+    metrics.coveredLinesInFile = file_data["summary"]["covered_lines"]
+    
+    metrics.allLinesInFunction = file_data["functions"][original_function_name]["summary"]["num_statements"]
+    metrics.coveredLinesInFunction = file_data["functions"][original_function_name]["summary"]["covered_lines"]
+    metrics.coveredLinesInFunctionRatio = file_data["functions"][original_function_name]["summary"]["percent_covered"]
 
-    if covered_lines:
-        covered_lines_in_function = set(covered_lines) & set(executable_statements)
-
-    covered_arcs_in_function = []
-    if all_arcs_in_file:
-        covered_arcs_in_function = [
-            arc
-            for arc in all_arcs_in_file
-            if arc[0] in covered_lines_in_function
-            or arc[1] in covered_lines_in_function
-        ]
-
-    if covered_lines:
-        metrics.coveredLinesInFunction = len(covered_lines_in_function)
-        metrics.coveredLinesInFunctionRatio = len(covered_lines_in_function) / len(
-            executable_statements
-        ) * 100
-    if all_arcs_in_file:
-        metrics.coveredArcsInFunction = len(covered_arcs_in_function)
+    metrics.allBranchesInFile = file_data["summary"]["num_branches"]
+    metrics.coveredBranchesInFile = file_data["summary"]["covered_branches"]
+    
+    metrics.allBranchesInFunction = file_data["functions"][original_function_name]["summary"]["num_branches"]
+    metrics.coveredBranchesInFunction = file_data["functions"][original_function_name]["summary"]["covered_branches"]
 
     return (result, metrics)
-
-if __name__ == "__main__":
-    import numpy.lib.scimath as np
-    print(get_executable_statements("sqrt", np))
