@@ -20,7 +20,7 @@ class SequenceExecutionRecord:
         self.sequenceSpecification = sequenceSpecification
         self.rowRecords = (
             {}
-        )  # {int: RowRecord}, the int is the y coordinate of the row in the stimulus sheet
+        )  # {int: RowRecord}, the int is the y coordinate of the row in the sequence sheet
 
     def toSheetCells(self) -> list:
         """
@@ -37,7 +37,7 @@ class SequenceExecutionRecord:
         - 'loader.artifacts'
 
         Returns:
-        list: A list of (CellId, CellValue) tuples that represent the cells in the stimulus sheet.
+        list: A list of (CellId, CellValue) tuples that represent the cells in the sequence sheet.
         """
         cells = []
 
@@ -152,7 +152,7 @@ class RowRecord:
     def __init__(
         self, position, methodName, originalFunctionName, inputParams, oracleValue=None
     ) -> None:
-        self.position = position  # The y coordinate of the row in the stimulus sheet
+        self.position = position  # The y coordinate of the row in the sequence sheet
         self.methodName = methodName
         self.originalFunctionName = originalFunctionName
         self.inputParams = inputParams
@@ -190,24 +190,24 @@ class Metrics:
 
 def execute_test(sequence_spec, adapted_module, mappings, interface_spec) -> list:
     """
-    Executes a stimulus sheet based on a provided module and prints out the results.
+    Executes a sequence sheet based on a provided module and prints out the results.
 
     Parameters:
-    stimulus_sheet (pandas.DataFrame): The stimulus sheet that contains the instructions for the test.
+    sequence_spec (pandas.DataFrame): The sequence sheet that contains the instructions for the test.
     adapted_module (module): The module that contains the adapted functions in 1 or more submodules (mapping0, mapping1, ...).
     number_of_submodules (int): The number of submodules in the adapted module.
     mappings (list): A list of mappings containing metadata for each mapping.
 
     Returns:
-    list: A list of SequenceExecutionRecord objects that contain the results for executing each module on the provided stimulus sheet.
+    list: A list of SequenceExecutionRecord objects that contain the results for executing each module on the provided sequence sheet.
     """
 
     print(
-        f"\n{CYAN}----------------------\nEXECUTE STIMULUS SHEET\n----------------------{RESET}"
+        f"\n{CYAN}----------------------\nEXECUTE SEQUENCE SHEET\n----------------------{RESET}"
     )
     print(f"Module: {adapted_module.__name__}")
     print(f"Number of submodules: {len(mappings)}")
-    print(f"\n {sequence_spec.stimulusSheet}\n")
+    print(f"\n {sequence_spec.sequenceSheet}\n")
 
     allSequenceExecutionRecords = []
 
