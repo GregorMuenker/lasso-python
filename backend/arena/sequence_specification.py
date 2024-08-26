@@ -10,10 +10,10 @@ from constants import RED, RESET
 class SequenceSpecification:
     def __init__(self, filePath) -> None:
         self.name = os.path.basename(filePath)
-        self.stimulusSheet = get_stimulus_sheet(filePath)
+        self.sequenceSheet = get_sequence_sheet(filePath)
 
         self.statements = {}
-        for index, row in self.stimulusSheet.iterrows():
+        for index, row in self.sequenceSheet.iterrows():
             statement = Statement(
                 index,
                 row["output_param"],
@@ -42,9 +42,9 @@ class Statement:
         return f"{self.position}: Oracle Value: {self.oracleValue} | Method Name: {self.methodName} | Instance Param: {self.instanceParam} | Input Params: {self.inputParams}"
 
 
-def get_stimulus_sheet(path) -> pd.DataFrame:
+def get_sequence_sheet(path) -> pd.DataFrame:
     """
-    Read in excel/csv file and return stimulus sheet in DataFrame format
+    Read in excel/csv file and return sequence sheet in DataFrame format
     """
     _, file_extension = os.path.splitext(path)
 
@@ -59,7 +59,7 @@ def get_stimulus_sheet(path) -> pd.DataFrame:
         raise ValueError("Unsupported file type")
 
     if not df.iloc[0].astype(str).str.contains("create").any():
-        raise ValueError("Stimulus sheet must contain a create statement")
+        raise ValueError("Sequence sheet must contain a create statement")
 
     # Apply reference resolution across the DataFrame
     # TODO uncomment once the automatic float conversion is fixed
@@ -102,6 +102,6 @@ def resolve_references(cell, df):
 
 if __name__ == "__main__":
     sequenceSpecification = SequenceSpecification("calc3_adaptation.xlsx")
-    print(sequenceSpecification.stimulusSheet)
+    print(sequenceSpecification.sequenceSheet)
     
     sequenceSpecification.printInputParamTypes()

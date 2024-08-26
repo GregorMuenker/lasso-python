@@ -829,7 +829,7 @@ if __name__ == "__main__":
 
     interfaceSpecification = InterfaceSpecification("Calculator", [], [icubed, iminus])
     sequenceSpecification = SequenceSpecification("calc3_adaptation.xlsx")
-    print(sequenceSpecification.stimulusSheet)
+    print(sequenceSpecification.sequenceSheet)
 
     # NOTE adjust this path
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"  # function_base #user_array #scimath
