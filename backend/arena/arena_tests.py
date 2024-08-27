@@ -99,15 +99,14 @@ def test_arena():
         onlyKeepTopNMappings=20,
     )
     adaptationHandler.identifyAdaptations()
+    adaptationHandler.identifyConstructorAdaptations()
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
 
     (adapted_module, successful_mappings) = create_adapted_module(
         adaptationHandler,
         moduleUnderTest.moduleName,
-        class_instantiation_params=["1 2; 3 4"],
-        use_constructor_default_values=True,
-        testing_mode=False,
+        sequenceSpecification,
     )
 
     allSequenceExecutionRecords = execute_test(

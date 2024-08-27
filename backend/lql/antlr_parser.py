@@ -6,11 +6,19 @@ java -jar antlr-4.13.2-complete.jar LQL.g4 -Dlanguage=Python3
 java -jar antlr-4.13.2-complete.jar -Dlanguage=Python3 -visitor LQL.g4
 """
 
+import sys
+
+sys.path.insert(1, "../lql")
+sys.path.insert(1, "../arena")
+sys.path.insert(1, "../../backend")
+
 from antlr4 import *
-from .LQLLexer import LQLLexer
-from .LQLParser import LQLParser
-from .LQLVisitor import LQLVisitor
-from arena.adaptation import MethodSignature, InterfaceSpecification
+from LQLLexer import LQLLexer
+from LQLParser import LQLParser
+from LQLVisitor import LQLVisitor
+from adaptation import MethodSignature, InterfaceSpecification
+from constants import RED, RESET
+
 
 class LQLCustomVisitor(LQLVisitor):
     def __init__(self):
@@ -35,7 +43,14 @@ class LQLCustomVisitor(LQLVisitor):
             else:
                 methods.append(method)
 
-        self.interfaceSpecification = InterfaceSpecification(className, constructors, methods)
+        if len(constructors) > 1:
+            print(
+                f"{RED}Warning:{RESET} LASSO Python does not support more than one constructor, only the first one will be considered."
+            )
+
+        self.interfaceSpecification = InterfaceSpecification(
+            className, constructors[0], methods
+        )
         print("Interface Specification:", self.interfaceSpecification)  # Debugging
         return self.interfaceSpecification
 
@@ -55,12 +70,14 @@ class LQLCustomVisitor(LQLVisitor):
     def visitParameters(self, ctx: LQLParser.ParametersContext):
         parameterTypes = []
         for paramCtx in ctx.getChildren():
-            if isinstance(paramCtx, LQLParser.SimpletypeContext) or isinstance(paramCtx, LQLParser.QualifiedtypeContext):
+            if isinstance(paramCtx, LQLParser.SimpletypeContext) or isinstance(
+                paramCtx, LQLParser.QualifiedtypeContext
+            ):
                 parameterTypes.append(paramCtx.getText())
             elif isinstance(paramCtx, LQLParser.ArraytypeContext):
                 parameterTypes.append(paramCtx.getText())
             elif isinstance(paramCtx, LQLParser.NamedparamContext):
-                parameterTypes.append(paramCtx.getText().split('=')[1])
+                parameterTypes.append(paramCtx.getText().split("=")[1])
             elif isinstance(paramCtx, LQLParser.TypeparamContext):
                 parameterTypes.append(paramCtx.getText())
         return parameterTypes
@@ -80,13 +97,14 @@ def parse_interface_spec(input_text):
 
 if __name__ == "__main__":
     # Example input string
-    input_text = '''
+    input_text = """
     Calculator {
         Calculator(int)
+        Calculator(str)
         log(int, int)->float
         sqrd(int)->int
     }
-    '''
+    """
 
     # Parse the input
     interface_spec = parse_interface_spec(input_text)

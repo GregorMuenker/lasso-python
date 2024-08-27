@@ -47,8 +47,6 @@ if __name__ == "__main__":
     adaptationHandler = AdaptationHandler(
         interfaceSpecification,
         moduleUnderTest,
-        excludeClasses=False,
-        useFunctionDefaultValues=False,
         maxParamPermutationTries=2,
         onlyKeepTopNMappings=10,
     )
@@ -59,7 +57,7 @@ if __name__ == "__main__":
     (adapted_module, successful_mappings) = create_adapted_module(
         adaptationHandler,
         moduleUnderTest.moduleName,
-        use_constructor_default_values=True,
+        sequenceSpecification,
     )
 
     allSequenceExecutionRecords = execute_test(
