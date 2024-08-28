@@ -62,8 +62,7 @@ def get_sequence_sheet(path) -> pd.DataFrame:
         raise ValueError("Sequence sheet must contain a create statement")
 
     # Apply reference resolution across the DataFrame
-    # TODO uncomment once the automatic float conversion is fixed
-    # df = df.applymap(lambda x: resolve_references(x, df))
+    df = df.applymap(lambda x: resolve_references(x, df))
 
     # combine all input param columns into one list and drop null entries
     input_params = pd.DataFrame(
@@ -83,20 +82,24 @@ def get_sequence_sheet(path) -> pd.DataFrame:
 def resolve_references(cell, df):
     """
     Resolve cell references like A1, B2, etc.
-    NOTE: Currently, cell references are realized by prepending ->>, e.g., "->>A1"
-    TODO: Automatically converts ints to floats / run this during execution, not during initialization
+    NOTE: Currently, cell references are realized by prepending >>, e.g., ">>A1"
     """
-    if isinstance(cell, str) and cell.startswith("->>"):
+    if isinstance(cell, str) and cell.startswith(">>"):
         try:
-            # Get the referenced cell position, e.g., "A1"
-            ref = cell[3:]
+            # Get the referenced cell position, e.g., ">>A1"
+            ref = cell[2:]
             # Parse the column and row
             col = ord(ref[0].upper()) - 65
             row = int(ref[1:]) - 1
-            # Return the value from the referenced cell
-            return df.iloc[row, col]
-        except:
-            return cell  # Return the original value if parsing fails
+
+            value = df.iloc[row, col]
+            # Ensure integer values remain as integers
+            if isinstance(value, float) and value.is_integer():
+                return int(value)
+            return value
+        except Exception as e:
+            # Return the original value if parsing fails
+            return cell 
     return cell
 
 
