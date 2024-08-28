@@ -6,16 +6,16 @@ class Calculator:
         return a - b
 
 
-# def multiply(a, b, c):
-#     return a * b * c
+def multiply(a, b, c):
+    return a * b * c
 
 
-# def divide(a, b):
-#     return a / b
+def divide(a, b):
+    return a / b
 
 
-# def square(a: int) -> int:
-#     return a * a
+def square(a: int) -> int:
+    return a * a
 
 
 class Test:

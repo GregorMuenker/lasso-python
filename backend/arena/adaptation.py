@@ -194,6 +194,9 @@ class AdaptationHandler:
             self.interfaceMethods[method.methodName] = method
 
         self.interfaceConstructor = interfaceSpecification.constructor
+        if (self.interfaceConstructor == None):
+            # If no constructor has been specified, use a default constructor with no parameters
+            self.interfaceConstructor = MethodSignature("create", "None", [])
 
         self.moduleFunctions = {}
         for function in moduleUnderTest.functions:
@@ -731,13 +734,13 @@ def instantiate_class(
                     f"Parameter type conversion: the type '{type_name}' is unknown"
                 )
 
-            # if (
-            #     not isinstance(constructor, Iterable) # TODO source type
-            #     and target_type in LIST_LIKE_TYPES
-            # ):
-            #     class_instantiation_params[index] = target_type([class_instantiation_params[index]])
-            # else:
-            class_instantiation_params[index] = target_type(class_instantiation_params[index])
+            if (
+                not isinstance(class_instantiation_params[index], Iterable)
+                and target_type in LIST_LIKE_TYPES
+            ):
+                class_instantiation_params[index] = target_type([class_instantiation_params[index]])
+            else:
+                class_instantiation_params[index] = target_type(class_instantiation_params[index])
 
     if use_standard_constructor_values != None:
         parameterTypes = constructor.parameterTypes
@@ -839,13 +842,13 @@ def adapt_function(
                             f"Parameter type conversion: the type '{type_name}' is unknown"
                         )
 
-                    # if (
-                    #     not isinstance(result, Iterable) # TODO fix this
-                    #     and target_type in LIST_LIKE_TYPES
-                    # ):
-                    #     adapted_args[index] = target_type([adapted_args[index]])
-                    # else:
-                    adapted_args[index] = target_type(adapted_args[index])
+                    if (
+                        not isinstance(adapted_args[index], Iterable) # TODO fix this
+                        and target_type in LIST_LIKE_TYPES
+                    ):
+                        adapted_args[index] = target_type([adapted_args[index]])
+                    else:
+                        adapted_args[index] = target_type(adapted_args[index])
 
             # Execute the function with potentially adapted parameters
             result = func(*adapted_args, **kwargs)
@@ -922,11 +925,12 @@ if __name__ == "__main__":
     from module_parser import parse_code
     from sequence_specification import SequenceSpecification
 
-    icubed = MethodSignature("icubed", "Any", ["int"])
+    icubed = MethodSignature("icubed", "Any", ["list"])
     iminus = MethodSignature("iminus", "float", ["float", "int"])
     iconstructor = MethodSignature("create", "None", ["int", "int"])
 
     interfaceSpecification = InterfaceSpecification("Calculator", iconstructor, [icubed, iminus])
+
     sequenceSpecification = SequenceSpecification("calc3_adaptation.xlsx")
     print(sequenceSpecification.sequenceSheet)
 

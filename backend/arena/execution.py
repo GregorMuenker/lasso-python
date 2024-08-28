@@ -19,8 +19,8 @@ class SequenceExecutionRecord:
         self.mapping = mapping
         self.sequenceSpecification = sequenceSpecification
         self.rowRecords = (
-            {}
-        )  # {int: RowRecord}, the int is the y coordinate of the row in the sequence sheet
+            []
+        )  # List[RownRecord]
 
     def toSheetCells(self) -> list:
         """
@@ -41,7 +41,7 @@ class SequenceExecutionRecord:
         """
         cells = []
 
-        for position, rowRecord in self.rowRecords.items():
+        for rowRecord in self.rowRecords:
             original_function_name, adaptation_instruction = (
                 self.mapping.adaptationInfo[rowRecord.methodName]
             )
@@ -57,7 +57,7 @@ class SequenceExecutionRecord:
                 VARIANTID=str(self.mapping.identifier),
                 ADAPTERID=str(adaptation_instruction.identifier),
                 X=0,
-                Y=position,
+                Y=rowRecord.position,
                 TYPE="value",
             )
             cellValue = CellValue(
@@ -80,7 +80,7 @@ class SequenceExecutionRecord:
                 VARIANTID=str(self.mapping.identifier),
                 ADAPTERID=str(adaptation_instruction.identifier),
                 X=1,
-                Y=position,
+                Y=rowRecord.position,
                 TYPE="op",
             )
             cellValue = CellValue(
@@ -104,7 +104,7 @@ class SequenceExecutionRecord:
                     VARIANTID=str(self.mapping.identifier),
                     ADAPTERID=str(adaptation_instruction.identifier),
                     X=3 + xPosition,
-                    Y=position,
+                    Y=rowRecord.position,
                     TYPE="input_value",
                 )
                 cellValue = CellValue(
@@ -127,7 +127,7 @@ class SequenceExecutionRecord:
                 VARIANTID=str(self.mapping.identifier),
                 ADAPTERID=str(adaptation_instruction.identifier),
                 X=-1,
-                Y=position,
+                Y=rowRecord.position,
                 TYPE="coverage_ratio",
             )
             cellValue = CellValue(
@@ -143,7 +143,7 @@ class SequenceExecutionRecord:
 
     def __repr__(self) -> str:
         result = f"{self.mapping.identifier} {self.mapping}"
-        for rowRecord in self.rowRecords.values():
+        for rowRecord in self.rowRecords:
             result += f"\n\t{rowRecord}"
         return f"{result}\n"
 
@@ -277,7 +277,7 @@ def execute_test(sequence_spec, adapted_module, mappings, interface_spec) -> lis
             rowRecord.returnValue = return_value
             rowRecord.metrics = metrics
 
-            sequenceExecutionRecord.rowRecords[index] = rowRecord
+            sequenceExecutionRecord.rowRecords.append(rowRecord)
 
         allSequenceExecutionRecords.append(sequenceExecutionRecord)
 

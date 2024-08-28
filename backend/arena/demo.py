@@ -51,6 +51,7 @@ if __name__ == "__main__":
         onlyKeepTopNMappings=10,
     )
     adaptationHandler.identifyAdaptations()
+    adaptationHandler.identifyConstructorAdaptations()
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
 
