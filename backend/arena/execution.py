@@ -11,16 +11,21 @@ import sys
 sys.path.insert(1, "../../backend")
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 from ignite import CellId, CellValue
+from adaptation import InterfaceSpecification, Mapping
+from sequence_specification import SequenceSpecification
 
 
 class SequenceExecutionRecord:
-    def __init__(self, interfaceSpecification, mapping, sequenceSpecification) -> None:
+    def __init__(
+        self,
+        interfaceSpecification: InterfaceSpecification,
+        mapping: Mapping,
+        sequenceSpecification: SequenceSpecification,
+    ) -> None:
         self.interfaceSpecification = interfaceSpecification
         self.mapping = mapping
         self.sequenceSpecification = sequenceSpecification
-        self.rowRecords = (
-            []
-        )  # List[RownRecord]
+        self.rowRecords = []  # List[RownRecord]
 
     def toSheetCells(self) -> list:
         """
@@ -150,7 +155,12 @@ class SequenceExecutionRecord:
 
 class RowRecord:
     def __init__(
-        self, position, methodName, originalFunctionName, inputParams, oracleValue=None
+        self,
+        position: int,
+        methodName: str,
+        originalFunctionName: str,
+        inputParams: list,
+        oracleValue=None,
     ) -> None:
         self.position = position  # The y coordinate of the row in the sequence sheet
         self.methodName = methodName
@@ -170,7 +180,7 @@ class RowRecord:
 class Metrics:
     def __init__(self) -> None:
         self.executionTime = None
-        
+
         self.allLinesInFile = None
         self.coveredLinesInFile = None
 
@@ -188,7 +198,12 @@ class Metrics:
         return f"Time: {self.executionTime} microseconds. Covered lines: {self.coveredLinesInFile}/{self.allLinesInFile} in file, {self.coveredLinesInFunction}/{self.allLinesInFunction} in function ({self.coveredLinesInFunctionRatio}%). Covered branches: {self.coveredBranchesInFile}/{self.allBranchesInFile} in file, {self.coveredBranchesInFunction}/{self.allBranchesInFunction} in function."
 
 
-def execute_test(sequence_spec, adapted_module, mappings, interface_spec) -> list:
+def execute_test(
+    sequence_spec: SequenceSpecification,
+    adapted_module: object,
+    mappings: list,
+    interface_spec: InterfaceSpecification,
+) -> list:
     """
     Executes a sequence sheet based on a provided module and prints out the results.
 
@@ -284,7 +299,13 @@ def execute_test(sequence_spec, adapted_module, mappings, interface_spec) -> lis
     return allSequenceExecutionRecords
 
 
-def run_with_metrics(function, args, filename, cov, original_function_name) -> tuple:
+def run_with_metrics(
+    function: object,
+    args: list,
+    filename: str,
+    cov: object,
+    original_function_name: str,
+) -> tuple:
     """
     Executes a function and records the execution time, code coverage and arc coverage.
 
@@ -321,6 +342,7 @@ def run_with_metrics(function, args, filename, cov, original_function_name) -> t
         print("Error when trying to parse coverage report, skipping further metrics", e)
         return (result, metrics)
 
+    # Some logic for finding coverage data in the json output
     file_data = None
     file_data_found = False
     try:
@@ -329,28 +351,30 @@ def run_with_metrics(function, args, filename, cov, original_function_name) -> t
         print(f"Coverage.py file data not found for {filename}, trying file name only")
     else:
         file_data_found = True
-    
+
     if not file_data_found:
         try:
             file_data = json_output["files"][os.path.basename(filename)]
         except:
             # If the file data is still not found, return the result and the metrics object with only the execution time
-            print(f"Coverage.py file data not found for {filename}, skipping further metrics")
+            print(
+                f"Coverage.py file data not found for {filename}, skipping further metrics"
+            )
             return (result, metrics)
         else:
             print("Coverage.py file data found for file name only")
             file_data_found = True
-    
+
     metrics.allLinesInFile = file_data["summary"]["num_statements"]
     metrics.coveredLinesInFile = file_data["summary"]["covered_lines"]
-    
+
     metrics.allLinesInFunction = file_data["functions"][original_function_name]["summary"]["num_statements"]
     metrics.coveredLinesInFunction = file_data["functions"][original_function_name]["summary"]["covered_lines"]
     metrics.coveredLinesInFunctionRatio = file_data["functions"][original_function_name]["summary"]["percent_covered"]
 
     metrics.allBranchesInFile = file_data["summary"]["num_branches"]
     metrics.coveredBranchesInFile = file_data["summary"]["covered_branches"]
-    
+
     metrics.allBranchesInFunction = file_data["functions"][original_function_name]["summary"]["num_branches"]
     metrics.coveredBranchesInFunction = file_data["functions"][original_function_name]["summary"]["covered_branches"]
 

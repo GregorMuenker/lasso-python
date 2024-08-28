@@ -20,20 +20,11 @@ from constants import (
     POSSIBLE_CONVERSIONS,
     LIST_LIKE_TYPES,
 )
-
-
-class InterfaceSpecification:
-    def __init__(self, className, constructor, methods) -> None:
-        self.className = className
-        self.constructor = constructor
-        self.methods = methods
-
-    def __repr__(self):
-        return f"InterfaceSpecification(className={self.className}, constructor={self.constructor}, methods={self.methods})"
+from sequence_specification import SequenceSpecification
 
 
 class MethodSignature:
-    def __init__(self, methodName, returnType, parameterTypes) -> None:
+    def __init__(self, methodName: str, returnType: str, parameterTypes: list) -> None:
         self.methodName = methodName
         self.returnType = returnType
         self.parameterTypes = parameterTypes
@@ -42,11 +33,25 @@ class MethodSignature:
         return f"MethodSignature(methodName={self.methodName}, returnType={self.returnType}, parameterTypes={self.parameterTypes})"
 
 
+class InterfaceSpecification:
+    def __init__(
+        self, className: str, constructor: MethodSignature, methods: list
+    ) -> None:
+        self.className = className
+        self.constructor = constructor
+        self.methods = methods
+
+    def __repr__(self):
+        return f"InterfaceSpecification(className={self.className}, constructor={self.constructor}, methods={self.methods})"
+
+
 class ModuleUnderTest:
-    def __init__(self, moduleName, functions, classConstructors) -> None:
+    def __init__(
+        self, moduleName: str, functions: list, classConstructors: dict
+    ) -> None:
         self.moduleName = moduleName
         self.functions = functions  # List of FunctionSignature objects
-        self.classConstructors = classConstructors # This stores class names (keys) and their constructor (FunctionSignature object)
+        self.classConstructors = classConstructors  # This stores class names (keys) and their constructor (FunctionSignature object)
 
     def __repr__(self) -> str:
         return (
@@ -57,7 +62,12 @@ class ModuleUnderTest:
 
 class FunctionSignature:
     def __init__(
-        self, functionName, returnType, parameterTypes, parentClass, firstDefault
+        self,
+        functionName: str,
+        returnType: str,
+        parameterTypes: list,
+        parentClass: str,
+        firstDefault: int,
     ) -> None:
         self.functionName = functionName
         self.returnType = returnType
@@ -78,7 +88,9 @@ class FunctionSignature:
 
 
 class AdaptationInstruction:
-    def __init__(self, interfaceMethodName, moduleFunctionQualName, iteration) -> None:
+    def __init__(
+        self, interfaceMethodName: str, moduleFunctionQualName: str, iteration: int
+    ) -> None:
         self.identifier = (interfaceMethodName, moduleFunctionQualName, iteration)
         self.nameAdaptation = None
         self.returnTypeAdaptation = None
@@ -152,10 +164,14 @@ class Mapping:
         self.adaptationInfo = (
             {}
         )  # dictionary with key = interfaceMethodName and value = (moduleFunctionQualName, adaptationInstruction)
-        self.constructorAdaptations = {} # key = className, value = adaptationInstruction
-        self.functionSignatures = {} # key = moduleFunctionName, value = FunctionSignature
-        self.classNames = set() # set of class names that are used in the mapping
-        self.identifier = None # The identifier of the mapping, is only set if creation of a submodule was successful
+        self.constructorAdaptations = (
+            {}
+        )  # key = className, value = adaptationInstruction
+        self.functionSignatures = (
+            {}
+        )  # key = moduleFunctionName, value = FunctionSignature
+        self.classNames = set()  # set of class names that are used in the mapping
+        self.identifier = None  # The identifier of the mapping, is only set if creation of a submodule was successful
 
     def __repr__(self) -> str:
         result = ""
@@ -168,14 +184,14 @@ class Mapping:
 class AdaptationHandler:
     def __init__(
         self,
-        interfaceSpecification,
-        moduleUnderTest,
+        interfaceSpecification: InterfaceSpecification,
+        moduleUnderTest: ModuleUnderTest,
         excludeClasses=False,
         useFunctionDefaultValues=False,
         maxParamPermutationTries=1,
         typeStrictness=False,
         onlyKeepTopNMappings=None,
-        allowStandardValueConstructorAdaptations=True
+        allowStandardValueConstructorAdaptations=True,
     ) -> None:
         """
         The constructor for AdaptationHandler.
@@ -194,7 +210,7 @@ class AdaptationHandler:
             self.interfaceMethods[method.methodName] = method
 
         self.interfaceConstructor = interfaceSpecification.constructor
-        if (self.interfaceConstructor == None):
+        if self.interfaceConstructor == None:
             # If no constructor has been specified, use a default constructor with no parameters
             self.interfaceConstructor = MethodSignature("create", "None", [])
 
@@ -212,18 +228,28 @@ class AdaptationHandler:
         if excludeClasses == False:
             self.classConstructors = moduleUnderTest.classConstructors
 
-        self.adaptations = {} # key = (interfaceMethodName, moduleFunctionQualName), value = list of adaptationInstruction objects
-        
-        self.adaptationsList = [] # List of adaptations is needed to generate mappings later, contains the same adaptationInstruction objects as the adaptations dict
+        self.adaptations = (
+            {}
+        )  # key = (interfaceMethodName, moduleFunctionQualName), value = list of adaptationInstruction objects
 
-        self.constructorAdaptations = {} # key = className, value = adaptationInstruction
-        
-        self.mappings = [] # list of Mapping objects that is populated by generateMappings()
+        self.adaptationsList = (
+            []
+        )  # List of adaptations is needed to generate mappings later, contains the same adaptationInstruction objects as the adaptations dict
+
+        self.constructorAdaptations = (
+            {}
+        )  # key = className, value = adaptationInstruction
+
+        self.mappings = (
+            []
+        )  # list of Mapping objects that is populated by generateMappings()
 
         self.maxParamPermutationTries = maxParamPermutationTries
         self.typeStrictness = typeStrictness
         self.onlyKeepTopNMappigns = onlyKeepTopNMappings
-        self.allowStandardValueConstructorAdaptations = allowStandardValueConstructorAdaptations
+        self.allowStandardValueConstructorAdaptations = (
+            allowStandardValueConstructorAdaptations
+        )
 
     def identifyAdaptations(self) -> None:
         """
@@ -368,68 +394,80 @@ class AdaptationHandler:
 
         print("\n", df, "\n")
 
-        constructorParamsString = ", ".join(map(str, self.interfaceConstructor.parameterTypes))
-        print(f"Constructor adaptations for {self.interfaceConstructor.methodName}({constructorParamsString}):")
+        constructorParamsString = ", ".join(
+            map(str, self.interfaceConstructor.parameterTypes)
+        )
+        print(
+            f"Constructor adaptations for {self.interfaceConstructor.methodName}({constructorParamsString}):"
+        )
         for key, value in self.constructorAdaptations.items():
             print(f"\t{key}: {value}")
         print("")
 
-        
     def identifyConstructorAdaptations(self) -> bool:
         for className, moduleConstructor in self.classConstructors.items():
-            
+
             # Class has no constructor, use the empty constructor adaptation strategy
             if moduleConstructor == None:
-                adaptationInstruction = AdaptationInstruction("create", f"None.{className}", 0)
+                adaptationInstruction = AdaptationInstruction(
+                    "create", f"None.{className}", 0
+                )
                 adaptationInstruction.useEmptyConstructor = True
                 self.constructorAdaptations[className] = adaptationInstruction
                 continue
-            
-            adaptationInstruction = AdaptationInstruction("create", moduleConstructor.qualName, 0)
+
+            adaptationInstruction = AdaptationInstruction(
+                "create", moduleConstructor.qualName, 0
+            )
 
             # Set the adaptation strategy to "no adaptations needed, constructors are compatible" by default
             self.constructorAdaptations[className] = "V"
 
-            if self.interfaceConstructor.parameterTypes.__len__() != moduleConstructor.parameterTypes.__len__():
+            if (
+                self.interfaceConstructor.parameterTypes.__len__()
+                != moduleConstructor.parameterTypes.__len__()
+            ):
                 if not self.allowStandardValueConstructorAdaptations:
                     # No adaptation possible as the parameter types cannot be converted
                     self.constructorAdaptations[className] = None
                 else:
-                    adaptationInstruction.useStandardConstructorValues = moduleConstructor.parameterTypes
+                    adaptationInstruction.useStandardConstructorValues = (
+                        moduleConstructor.parameterTypes
+                    )
                     self.constructorAdaptations[className] = adaptationInstruction
-                
+
                 # Adaptation strategy was either set successfully or constructor is not adaptable, continue with next constructor
                 continue
 
-            if self.interfaceConstructor.parameterTypes != moduleConstructor.parameterTypes:
-                    if Counter(self.interfaceConstructor.parameterTypes) == Counter(
-                        moduleConstructor.parameterTypes
+            if (
+                self.interfaceConstructor.parameterTypes
+                != moduleConstructor.parameterTypes
+            ):
+                if Counter(self.interfaceConstructor.parameterTypes) == Counter(
+                    moduleConstructor.parameterTypes
+                ):
+                    # The number of the parameters is the same, but the order is different => "smart" permutation
+                    adaptationInstruction.parameterOrderAdaptation = find_permutation(
+                        self.interfaceConstructor.parameterTypes,
+                        moduleConstructor.parameterTypes,
+                    )
+                    self.constructorAdaptations[className] = adaptationInstruction
+
+                else:
+                    if self.typeStrictness and not can_convert_params(
+                        self.interfaceConstructor.parameterTypes,
+                        moduleConstructor.parameterTypes,
                     ):
-                        # The number of the parameters is the same, but the order is different => "smart" permutation
-                        adaptationInstruction.parameterOrderAdaptation = (
-                            find_permutation(
-                                self.interfaceConstructor.parameterTypes,
-                                moduleConstructor.parameterTypes,
-                            )
+                        # No adaptation possible as the parameter types cannot be converted
+                        self.constructorAdaptations[className] = None
+
+                    else:
+                        # Store the instruction that types should be converted
+                        adaptationInstruction.parameterTypeConversion = (
+                            moduleConstructor.parameterTypes
                         )
                         self.constructorAdaptations[className] = adaptationInstruction
 
-                    else:
-                        if self.typeStrictness and not can_convert_params(
-                            self.interfaceConstructor.parameterTypes,
-                            moduleConstructor.parameterTypes,
-                        ):
-                            # No adaptation possible as the parameter types cannot be converted
-                            self.constructorAdaptations[className] = None
-
-                        else:
-                            # Store the instruction that types should be converted
-                            adaptationInstruction.parameterTypeConversion = (
-                                moduleConstructor.parameterTypes
-                            )
-                            self.constructorAdaptations[className] = adaptationInstruction
-
-    
     def generateMappings(self) -> None:
         """
         Generates all possibilities of implementing the interface methods with the adapted module functions, will only work after using identifyAdaptations() first.
@@ -471,7 +509,9 @@ class AdaptationHandler:
                     potentialMapping.totalDistance += self.adaptations[
                         (interfaceMethodId, moduleFunctionId)
                     ][iteration].calculateDistance()
-                    potentialMapping.functionSignatures[moduleFunctionId] = self.moduleFunctions[moduleFunctionId]
+                    potentialMapping.functionSignatures[moduleFunctionId] = (
+                        self.moduleFunctions[moduleFunctionId]
+                    )
 
                     # Store class names of classes that are used in this mapping
                     className = self.moduleFunctions[moduleFunctionId].parentClass
@@ -508,10 +548,10 @@ class AdaptationHandler:
 
 
 def create_adapted_module(
-    adaptation_handler,
-    module_name,
-    sequence_specification,
-    testing_mode=False,
+    adaptation_handler: AdaptationHandler,
+    module_name: str,
+    sequence_specification: SequenceSpecification,
+    testing_mode: bool = False,
 ) -> tuple:
     """
     Creates an adapted module using information provided by the AdaptationHandler object. The adapted module can be used to execute stimulus sheets.
@@ -685,11 +725,11 @@ def create_adapted_module(
 
 
 def instantiate_class(
-    module,
-    parent_class_name,
-    class_instantiation_params,
-    adaptation_instruction,
-    constructor,
+    module: object,
+    parent_class_name: str,
+    class_instantiation_params: list,
+    adaptation_instruction: AdaptationInstruction,
+    constructor: FunctionSignature,
 ) -> tuple:
     """
     Instantiates a class from a given module.
@@ -711,17 +751,21 @@ def instantiate_class(
     use_empty_constructor = adaptation_instruction.useEmptyConstructor
     new_param_order = adaptation_instruction.parameterOrderAdaptation
     convert_to_types = adaptation_instruction.parameterTypeConversion
-    use_standard_constructor_values = adaptation_instruction.useStandardConstructorValues
-    
+    use_standard_constructor_values = (
+        adaptation_instruction.useStandardConstructorValues
+    )
+
     # Create a copy to possibly use the original parameters later
     class_instantiation_params_copy = copy.deepcopy(class_instantiation_params)
 
     if use_empty_constructor:
         class_instantiation_params = []
-    
+
     if new_param_order != None:
-        class_instantiation_params = [class_instantiation_params[i] for i in new_param_order]
-    
+        class_instantiation_params = [
+            class_instantiation_params[i] for i in new_param_order
+        ]
+
     if convert_to_types != None:
         for index, type_name in enumerate(convert_to_types):
             if type_name == "Any":
@@ -738,15 +782,17 @@ def instantiate_class(
                 not isinstance(class_instantiation_params[index], Iterable)
                 and target_type in LIST_LIKE_TYPES
             ):
-                class_instantiation_params[index] = target_type([class_instantiation_params[index]])
+                class_instantiation_params[index] = target_type(
+                    [class_instantiation_params[index]]
+                )
             else:
-                class_instantiation_params[index] = target_type(class_instantiation_params[index])
+                class_instantiation_params[index] = target_type(
+                    class_instantiation_params[index]
+                )
 
     if use_standard_constructor_values != None:
         parameterTypes = constructor.parameterTypes
-        print(
-            f"Constructor signature: {constructor.functionName}({parameterTypes})."
-        )
+        print(f"Constructor signature: {constructor.functionName}({parameterTypes}).")
 
         parameterTypes = parameterTypes[: constructor.firstDefault]
         print(
@@ -786,18 +832,20 @@ def instantiate_class(
                 )
                 parent_class_instance = parent_class(*class_instantiation_params_copy)
             else:
-                print(f"Trying instantiation call without adaptations: {parent_class_name}().")
+                print(
+                    f"Trying instantiation call without adaptations: {parent_class_name}()."
+                )
                 parent_class_instance = parent_class()
         except Exception as e:
             print(f"Constructor without adaptations failed: {e}.")
         else:
             successful_instantiation = True
-    
+
     return successful_instantiation, parent_class_instance
 
 
 def adapt_function(
-    function,
+    function: object,
     new_return_type=None,
     convert_to_types=None,
     new_param_order=None,
@@ -843,7 +891,7 @@ def adapt_function(
                         )
 
                     if (
-                        not isinstance(adapted_args[index], Iterable) # TODO fix this
+                        not isinstance(adapted_args[index], Iterable)  # TODO fix this
                         and target_type in LIST_LIKE_TYPES
                     ):
                         adapted_args[index] = target_type([adapted_args[index]])
@@ -876,7 +924,7 @@ def adapt_function(
     return decorator(function)
 
 
-def find_permutation(source, target) -> list:
+def find_permutation(source: list, target: list) -> list:
     """
     Finds a permutation of a source list, such that the order of the types exactly matches the target list.
 
@@ -904,7 +952,7 @@ def find_permutation(source, target) -> list:
     return permutation
 
 
-def can_convert_params(source_types, target_types) -> bool:
+def can_convert_params(source_types: list, target_types: list) -> bool:
     if len(source_types) != len(target_types):
         return False
 
@@ -916,7 +964,7 @@ def can_convert_params(source_types, target_types) -> bool:
     return True
 
 
-def can_convert_type(source_type, target_type) -> bool:
+def can_convert_type(source_type: str, target_type: str) -> bool:
     return target_type in POSSIBLE_CONVERSIONS.get(source_type, [])
 
 
@@ -929,7 +977,9 @@ if __name__ == "__main__":
     iminus = MethodSignature("iminus", "float", ["float", "int"])
     iconstructor = MethodSignature("create", "None", ["int", "int"])
 
-    interfaceSpecification = InterfaceSpecification("Calculator", iconstructor, [icubed, iminus])
+    interfaceSpecification = InterfaceSpecification(
+        "Calculator", iconstructor, [icubed, iminus]
+    )
 
     sequenceSpecification = SequenceSpecification("calc3_adaptation.xlsx")
     print(sequenceSpecification.sequenceSheet)
@@ -951,7 +1001,7 @@ if __name__ == "__main__":
         maxParamPermutationTries=2,
         typeStrictness=False,
         onlyKeepTopNMappings=10,
-        allowStandardValueConstructorAdaptations=True
+        allowStandardValueConstructorAdaptations=True,
     )
     adaptationHandler.identifyAdaptations()
     adaptationHandler.identifyConstructorAdaptations()

@@ -1,9 +1,11 @@
+from adaptation import FunctionSignature, ModuleUnderTest
+
+
 def parse_solr_response(response):
     """
     Parses the Solr response and extracts relevant information to create FunctionSignature and ModuleUnderTest objects.
     As of now, only the first module is considered.
     """
-    from adaptation import FunctionSignature, ModuleUnderTest
 
     functionSignatureDict = (
         {}

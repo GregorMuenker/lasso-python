@@ -126,13 +126,21 @@ class LassoIgniteClient:
             }
         )
 
-    def putAll(self, cells) -> None:
+    def putAll(self, cells: list) -> bool:
         """
         Put all cells into the cache
+
+        Returns: True if successful, False otherwise
         """
-        for cell in cells:
-            cellId, cellValue = cell
-            self.cache.put(cellId, cellValue)
+        try:
+            for cell in cells:
+                cellId, cellValue = cell
+                self.cache.put(cellId, cellValue)
+        except Exception as e:
+            print(f"Error while putting cells into cache: {e}")
+            return False
+        else:
+            return True
 
     def getDataFrame(self) -> pd.DataFrame:
         """
@@ -162,6 +170,9 @@ class CellId(
         "TYPE": String,
     },
 ):
+    """
+    Pythonic representation of the BinaryObject Ignite data type.
+    """
     pass
 
 
@@ -177,3 +188,6 @@ class CellValue(
     },
 ):
     pass
+    """
+    Pythonic representation of the BinaryObject Ignite data type.
+    """
