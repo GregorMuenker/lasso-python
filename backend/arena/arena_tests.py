@@ -1,11 +1,11 @@
 import unittest
 
-from adaptation import (
-    adapt_function,
+from adaptation_identification import (
     can_convert_params,
     can_convert_type,
     find_permutation,
 )
+from adaptation_implementation import adapt_function
 
 
 class ExampleFunctions:
@@ -64,10 +64,11 @@ class TestAdaptation(unittest.TestCase):
 
 
 def test_arena():
-    from execution import execute_test
+    from execution import execute_test, ExecutionEnvironment
     from module_parser import parse_code
     from sequence_specification import SequenceSpecification
-    from adaptation import AdaptationHandler, create_adapted_module
+    from adaptation_identification import AdaptationHandler
+    from adaptation_implementation import create_adapted_module
     from lql.antlr_parser import parse_interface_spec
 
     lql_string = """
@@ -103,20 +104,19 @@ def test_arena():
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
 
-    (adapted_module, successful_mappings) = create_adapted_module(
-        adaptationHandler,
-        moduleUnderTest.moduleName,
-        sequenceSpecification,
+    executionEnvironment = ExecutionEnvironment(
+        adaptationHandler.mappings, sequenceSpecification, interfaceSpecification
     )
 
-    allSequenceExecutionRecords = execute_test(
-        sequenceSpecification,
-        adapted_module,
-        successful_mappings,
-        interfaceSpecification,
+    adapted_module = create_adapted_module(
+        adaptationHandler,
+        moduleUnderTest.moduleName,
+        executionEnvironment,
     )
-    for sequenceExecutionRecord in allSequenceExecutionRecords:
-        print(sequenceExecutionRecord)
+
+    execute_test(adapted_module, executionEnvironment)
+
+    executionEnvironment.printResults()
 
 
 if __name__ == "__main__":

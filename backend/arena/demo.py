@@ -1,6 +1,7 @@
 import pysolr
-from adaptation import AdaptationHandler, create_adapted_module
-from execution import execute_test
+from adaptation_identification import AdaptationHandler
+from adaptation_implementation import create_adapted_module
+from execution import execute_test, ExecutionEnvironment
 from lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
 from solr_query import translate_to_solr_query
@@ -55,29 +56,28 @@ if __name__ == "__main__":
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
 
-    (adapted_module, successful_mappings) = create_adapted_module(
+    executionEnvironment = ExecutionEnvironment(
+        adaptationHandler.mappings, sequenceSpecification, interfaceSpecification
+    )
+
+    adapted_module = create_adapted_module(
         adaptationHandler,
         moduleUnderTest.moduleName,
-        sequenceSpecification,
+        executionEnvironment,
     )
 
     allSequenceExecutionRecords = execute_test(
-        sequenceSpecification,
         adapted_module,
-        successful_mappings,
-        interfaceSpecification,
+        executionEnvironment,
     )
-    for sequenceExecutionRecord in allSequenceExecutionRecords:
-        print(sequenceExecutionRecord)
+
+    executionEnvironment.printResults()
 
     lassoIgniteClient = LassoIgniteClient()
-    for sequenceExecutionRecord in allSequenceExecutionRecords:
-        cells = sequenceExecutionRecord.toSheetCells()
-        lassoIgniteClient.putAll(cells)
+    executionEnvironment.saveResults(lassoIgniteClient)
 
     df = lassoIgniteClient.getDataFrame()
     print(df)
 
     lassoIgniteClient.cache.destroy()
     lassoIgniteClient.client.close()
-    

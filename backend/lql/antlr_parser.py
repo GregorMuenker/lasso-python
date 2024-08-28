@@ -16,7 +16,7 @@ from antlr4 import *
 from LQLLexer import LQLLexer
 from LQLParser import LQLParser
 from LQLVisitor import LQLVisitor
-from adaptation import MethodSignature, InterfaceSpecification
+from arena.adaptation_identification import MethodSignature, InterfaceSpecification
 from constants import RED, RESET
 
 

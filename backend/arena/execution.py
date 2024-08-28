@@ -11,15 +11,15 @@ import sys
 sys.path.insert(1, "../../backend")
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 from ignite import CellId, CellValue
-from adaptation import InterfaceSpecification, Mapping
+from adaptation_identification import InterfaceSpecification, Mapping
 from sequence_specification import SequenceSpecification
 
 
 class SequenceExecutionRecord:
     def __init__(
         self,
-        interfaceSpecification: InterfaceSpecification,
         mapping: Mapping,
+        interfaceSpecification: InterfaceSpecification,
         sequenceSpecification: SequenceSpecification,
     ) -> None:
         self.interfaceSpecification = interfaceSpecification
@@ -151,6 +151,42 @@ class SequenceExecutionRecord:
         for rowRecord in self.rowRecords:
             result += f"\n\t{rowRecord}"
         return f"{result}\n"
+    
+
+class ExecutionEnvironment:
+    """
+    Holds multiple SequenceExecutionRecord objects.
+    This class is associated with multiple mappings that all are associated with the same module, interface spec and sequence spec.
+    """
+    def __init__(self, mappings, sequenceSpecification: SequenceSpecification, interfaceSpecification: InterfaceSpecification) -> None:
+        self.mappings = mappings
+        self.interfaceSpecification = interfaceSpecification
+        self.sequenceSpecification = sequenceSpecification
+
+        self.allSequenceExecutionRecords = []
+        
+        for mapping in mappings:
+            sequenceExecutionRecord = SequenceExecutionRecord(
+                mapping=mapping,
+                interfaceSpecification=interfaceSpecification,
+                sequenceSpecification=sequenceSpecification,
+            )
+            self.allSequenceExecutionRecords.append(sequenceExecutionRecord)
+    
+    def getSequenceExecutionRecord(self, mapping: Mapping):
+        for sequenceExecutionRecord in self.allSequenceExecutionRecords:
+            if sequenceExecutionRecord.mapping == mapping:
+                return sequenceExecutionRecord
+        return None
+
+    def printResults(self) -> None:
+        for sequenceExecutionRecord in self.allSequenceExecutionRecords:
+            print(sequenceExecutionRecord)
+
+    def saveResults(self, igniteClient) -> None:
+        for sequenceExecutionRecord in self.allSequenceExecutionRecords:
+            cells = sequenceExecutionRecord.toSheetCells()
+            igniteClient.putAll(cells)
 
 
 class RowRecord:
@@ -199,23 +235,18 @@ class Metrics:
 
 
 def execute_test(
-    sequence_spec: SequenceSpecification,
     adapted_module: object,
-    mappings: list,
-    interface_spec: InterfaceSpecification,
-) -> list:
+    execution_environment: ExecutionEnvironment,
+) -> None:
     """
-    Executes a sequence sheet based on a provided module and prints out the results.
+    Executes a sequence sheet based on a provided module and stores the results in the ExecutionEnvironment object.
 
     Parameters:
-    sequence_spec (pandas.DataFrame): The sequence sheet that contains the instructions for the test.
-    adapted_module (module): The module that contains the adapted functions in 1 or more submodules (mapping0, mapping1, ...).
-    number_of_submodules (int): The number of submodules in the adapted module.
-    mappings (list): A list of mappings containing metadata for each mapping.
-
-    Returns:
-    list: A list of SequenceExecutionRecord objects that contain the results for executing each module on the provided sequence sheet.
+    adapted_module: The module that contains the adapted functions in 1 or more submodules (mapping0, mapping1, ...).
+    execution_environment: The ExecutionEnvironment object used for this execution.
     """
+    sequence_spec = execution_environment.sequenceSpecification
+    mappings = execution_environment.mappings
 
     print(
         f"\n{CYAN}----------------------\nEXECUTE SEQUENCE SHEET\n----------------------{RESET}"
@@ -224,16 +255,13 @@ def execute_test(
     print(f"Number of submodules: {len(mappings)}")
     print(f"\n {sequence_spec.sequenceSheet}\n")
 
-    allSequenceExecutionRecords = []
-
-    for i in range(len(mappings)):
+    for i, mapping in enumerate(mappings):
+        if not mapping.successful:
+            continue # TODO store error message?
+        
         submodule = getattr(adapted_module, "mapping" + str(i))
 
-        sequenceExecutionRecord = SequenceExecutionRecord(
-            interfaceSpecification=interface_spec,
-            mapping=mappings[i],
-            sequenceSpecification=sequence_spec,
-        )
+        sequenceExecutionRecord = execution_environment.getSequenceExecutionRecord(mapping)
 
         for index, statement in sequence_spec.statements.items():
 
@@ -293,11 +321,6 @@ def execute_test(
             rowRecord.metrics = metrics
 
             sequenceExecutionRecord.rowRecords.append(rowRecord)
-
-        allSequenceExecutionRecords.append(sequenceExecutionRecord)
-
-    return allSequenceExecutionRecords
-
 
 def run_with_metrics(
     function: object,

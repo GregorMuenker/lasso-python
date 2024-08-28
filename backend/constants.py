@@ -140,6 +140,7 @@ POSSIBLE_CONVERSIONS = {
         "bytes",
         "bytearray",
     ],
+    "None": ["None", "str", "bool", "list", "tuple", "set", "frozenset"],
 }
 
 LIST_LIKE_TYPES = [list, tuple, set, frozenset]

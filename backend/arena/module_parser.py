@@ -19,7 +19,7 @@ def get_type_annotation(annotation):
 
 
 def parse_function(node, parentClass=None):
-    from adaptation import FunctionSignature
+    from adaptation_identification import FunctionSignature
 
     functionName = node.name
     returnType = get_type_annotation(node.returns)
@@ -65,7 +65,7 @@ def parse_class(node):
 
 
 def parse_code(code_string, module_name):
-    from adaptation import ModuleUnderTest
+    from arena.adaptation_identification import ModuleUnderTest
 
     tree = ast.parse(code_string)
     functions = []

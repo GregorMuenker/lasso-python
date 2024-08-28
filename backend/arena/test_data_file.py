@@ -19,14 +19,11 @@ def square(a: int) -> int:
 
 
 class Test:
-    def __init__(self, a: float, b: int):
+    def __init__(self, a: int, b: int):
         self.a = a
 
-    def cubed(self, a: int):
-        if (a != "dsdsd"):
-            return 0
-        else:
-            return len(a)
+    def cubed(self, a: list):
+        return a
 
     def add(self, a: int, b: str):
         return f"{a}<>{b}"

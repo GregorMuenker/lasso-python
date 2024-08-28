@@ -61,8 +61,8 @@ def get_sequence_sheet(path) -> pd.DataFrame:
     if not df.iloc[0].astype(str).str.contains("create").any():
         raise ValueError("Sequence sheet must contain a create statement")
 
-    # Apply reference resolution across the DataFrame
-    df = df.applymap(lambda x: resolve_references(x, df))
+    # Apply reference resolution across the DataFrame TODO uncomment if this works
+    # df = df.applymap(lambda x: resolve_references(x, df))
 
     # combine all input param columns into one list and drop null entries
     input_params = pd.DataFrame(

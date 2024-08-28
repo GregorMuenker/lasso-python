@@ -1,4 +1,4 @@
-from adaptation import InterfaceSpecification
+from adaptation_identification import InterfaceSpecification
 def translate_to_solr_query(interface_spec):
     queries = []
     
@@ -29,7 +29,7 @@ def translate_to_solr_query(interface_spec):
     return solr_query
 
 if __name__ == "__main__":
-    from adaptation import MethodSignature
+    from backend.arena.adaptation_identification import MethodSignature
     import pysolr
     
     solr_url = "http://localhost:8983/solr/lasso_quickstart"

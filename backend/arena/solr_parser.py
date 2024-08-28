@@ -1,4 +1,4 @@
-from adaptation import FunctionSignature, ModuleUnderTest
+from adaptation_identification import FunctionSignature, ModuleUnderTest
 
 
 def parse_solr_response(response):
