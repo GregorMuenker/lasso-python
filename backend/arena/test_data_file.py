@@ -19,8 +19,8 @@ def square(a: int) -> int:
 
 
 class Test:
-    def __init__(self, a: int, b: int):
-        self.a = a
+    def __init__(self):
+        pass
 
     def cubed(self, a: list):
         return a

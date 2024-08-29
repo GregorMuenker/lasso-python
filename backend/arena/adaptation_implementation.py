@@ -282,14 +282,10 @@ def instantiate_class(
     
     # Try to call the instructor with the potentially adapted parameters
     try:
-        if class_instantiation_params.__len__() > 0:
-            print(
-                f"Trying instantiation call: {parent_class_name}({class_instantiation_params})."
-            )
-            parent_class_instance = parent_class(*class_instantiation_params)
-        else:
-            print(f"Trying instantiation call: {parent_class_name}().")
-            parent_class_instance = parent_class()
+        print(
+            f"Trying instantiation call: {parent_class_name}({class_instantiation_params})."
+        )
+        parent_class_instance = parent_class(*class_instantiation_params)
 
     except Exception as e:
         print(f"Constructor {constructor} failed: {e}.")
@@ -301,16 +297,10 @@ def instantiate_class(
     # If nothing succeeded, try to instantiate the class without adaptations
     if not successful_instantiation:
         try:
-            if class_instantiation_params.__len__() > 0:
-                print(
-                    f"Trying instantiation call without adaptations: {parent_class_name}({original_class_instantiation_params})."
-                )
-                parent_class_instance = parent_class(*original_class_instantiation_params)
-            else:
-                print(
-                    f"Trying instantiation call without adaptations: {parent_class_name}()."
-                )
-                parent_class_instance = parent_class()
+            print(
+                f"Trying instantiation call without adaptations: {parent_class_name}({original_class_instantiation_params})."
+            )
+            parent_class_instance = parent_class(*original_class_instantiation_params)
         except Exception as e:
             print(f"Constructor without adaptations failed: {e}.")
         else:

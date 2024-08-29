@@ -613,9 +613,9 @@ if __name__ == "__main__":
     from sequence_specification import SequenceSpecification
     from adaptation_implementation import create_adapted_module
 
-    icubed = MethodSignature("icubed", "int", ["int"])
+    icubed = MethodSignature("icubed", "set", ["int"])
     iminus = MethodSignature("iminus", "float", ["float", "int"])
-    iconstructor = MethodSignature("create", "None", ["int", "int"])
+    iconstructor = MethodSignature("create", "None", [])
 
     interfaceSpecification = InterfaceSpecification(
         "Calculator", iconstructor, [icubed, iminus]
@@ -647,10 +647,6 @@ if __name__ == "__main__":
     adaptationHandler.identifyConstructorAdaptations()
     adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
-
-    print(adaptationHandler.constructorAdaptations)
-    print(adaptationHandler.mappings[7].constructorAdaptations)
-    print(adaptationHandler.mappings[7].classNames)
 
     executionEnvironment = ExecutionEnvironment(adaptationHandler.mappings, sequenceSpecification, interfaceSpecification)
 
