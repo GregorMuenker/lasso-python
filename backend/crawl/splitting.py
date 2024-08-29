@@ -211,7 +211,7 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
                     [x for x in args if not x["has_default_val"] and not x["keyword_arg"]]),
                 "count_kw_args": len([x for x in args if x["keyword_arg"]]),
                 "lang": "python",
-                "methodDecorators": [ast.get_source_segment(source, x) for x in element.decorator_list]
+                "decorators": [ast.get_source_segment(source, x) for x in element.decorator_list]
                 # "content": source_code,
                 # "function_calls": get_function_calls(element),
             }
