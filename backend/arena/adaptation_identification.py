@@ -4,7 +4,6 @@ import math
 from collections import Counter
 import pandas as pd
 import Levenshtein
-from collections.abc import Iterable
 
 import sys
 

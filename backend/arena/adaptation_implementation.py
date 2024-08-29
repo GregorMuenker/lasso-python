@@ -1,14 +1,17 @@
 from adaptation_identification import (
     AdaptationHandler,
     AdaptationInstruction,
-    SequenceSpecification,
     FunctionSignature,
 )
-from execution import ExecutionEnvironment, SequenceExecutionRecord, RowRecord
+from execution import ExecutionEnvironment, SequenceExecutionRecord, RowRecord, Metrics
 import copy
 import importlib
 import types
 from collections.abc import Iterable
+import coverage
+import inspect
+import os
+import time
 
 import sys
 sys.path.insert(1, "../../backend")
@@ -282,10 +285,22 @@ def instantiate_class(
     
     # Try to call the instructor with the potentially adapted parameters
     try:
+        filename = inspect.getfile(module)
+        filename = os.path.abspath(filename) # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
+
+        cov = coverage.Coverage(source=[module.__name__], branch=True)
+        
         print(
             f"Trying instantiation call: {parent_class_name}({class_instantiation_params})."
         )
         parent_class_instance = parent_class(*class_instantiation_params)
+        # TODO parent_class_instance, metrics = run_constructor_with_metrics(
+        #     parent_class,
+        #     class_instantiation_params,
+        #     filename,
+        #     cov,
+        #     constructor.functionName,
+        # )
 
     except Exception as e:
         print(f"Constructor {constructor} failed: {e}.")
@@ -296,11 +311,23 @@ def instantiate_class(
 
     # If nothing succeeded, try to instantiate the class without adaptations
     if not successful_instantiation:
+        filename = inspect.getfile(module)
+        filename = os.path.abspath(filename) # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
+
+        cov = coverage.Coverage(source=[module.__name__], branch=True)
+        
         try:
             print(
                 f"Trying instantiation call without adaptations: {parent_class_name}({original_class_instantiation_params})."
             )
             parent_class_instance = parent_class(*original_class_instantiation_params)
+            # TODO parent_class_instance, metrics = run_constructor_with_metrics(
+            #     parent_class,
+            #     original_class_instantiation_params,
+            #     filename,
+            #     cov,
+            #     constructor.functionName,
+            # )
         except Exception as e:
             print(f"Constructor without adaptations failed: {e}.")
         else:
@@ -316,6 +343,32 @@ def instantiate_class(
     sequence_execution_record.rowRecords.append(row_record)
 
     return successful_instantiation, parent_class_instance
+
+
+def run_constructor_with_metrics(
+    parent_class: object,
+    args: list,
+    filename: str,
+    cov: object,
+    original_function_name: str,
+):
+    metrics = Metrics()
+
+    cov.start()
+    start_time = time.time()
+    result = parent_class(*args)
+    end_time = time.time()
+    cov.stop()
+
+    execution_time = int((end_time - start_time) * 1_000_000)  # Convert to microseconds
+    metrics.executionTime = execution_time
+
+    # Get the coverage report (outfile="-" -> report is written to stdout)
+    cov.json_report()
+
+    # TODO store metrics
+
+    return (result, metrics)
 
 
 def adapt_function(
@@ -395,6 +448,6 @@ def adapt_function(
         return wrapper
 
     print(
-        f"Created adapted wrapper function: {new_param_order}, {blind_new_param_order}, {convert_to_types}, {new_return_type}"
+        f"Created adapted wrapper function for {function}: {new_param_order}, {blind_new_param_order}, {convert_to_types}, {new_return_type}"
     )
     return decorator(function)
