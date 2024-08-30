@@ -12,7 +12,8 @@ import coverage
 import inspect
 import os
 import time
-
+import io
+import json
 import sys
 sys.path.insert(1, "../../backend")
 from constants import (
@@ -22,7 +23,6 @@ from constants import (
     TYPE_MAPPING,
     LIST_LIKE_TYPES,
 )
-from sequence_specification import SequenceSpecification
 
 
 def create_adapted_module(
@@ -38,14 +38,16 @@ def create_adapted_module(
     Parameters:
     adaptation_handler (AdaptationHandler): The AdaptationHandler object containing all necessary information on how to adapt functions/how many submodules to create.
     module_name (str): The name of the module that is used for importing the module via importlib.
-    sequence_specification (SequenceSpecification): The SequenceSpecification object that represents the sequence sheet to be executed using this module.
+    execution_environment (ExecutionEnvironment): The ExecutionEnvironment object that configures this execution.
+    testing_mode (bool): A flag that indicates whether the module should be imported from a single file for testing purposes.
 
     Returns:
-    module: object: The adapted module.
+    module (object): The adapted module.
     """
     # TODO: Auslagern?
     module = importlib.import_module(module_name)
-    # print(module.__file__) # print the path of the module
+
+    record_metrics = True # TODO put this as configuration variable in ExecutionEnvironment
 
     if testing_mode:
         # Import module from a single file, only for testing
@@ -60,13 +62,14 @@ def create_adapted_module(
 
     class_instantiation_params = execution_environment.sequenceSpecification.statements[0].inputParams
 
-    for mapping in adaptation_handler.mappings:
+    for index, mapping in enumerate(adaptation_handler.mappings):
         
-        success = True
+        # Keep track if there occurs an error => if yes, the mapping is not successful
+        no_error = True
         print(
-            f"\n-----------------------------\nTRYING ADAPTATION FOR MAPPING {mapping}.\n-----------------------------"
+            f"\n-----------------------------\nTRYING ADAPTATION FOR MAPPING\n-----------------------------\n{mapping}."
         )
-        submodule_name = "mapping" + str(successes)
+        submodule_name = "mapping" + str(index)
         submodule = types.ModuleType(submodule_name)
         setattr(module, submodule_name, submodule)
 
@@ -78,7 +81,7 @@ def create_adapted_module(
                 print(
                     f"Cancelling adaptation for mapping {mapping} as {moduleFunctionQualName} failed previously."
                 )
-                success = False
+                no_error = False
                 break
 
             adaptationInstruction = adaptation_handler.adaptations[
@@ -105,13 +108,26 @@ def create_adapted_module(
 
                 # function is a class method that has not been instantiated yet
                 elif parent_class_name:
+                    if adaptation_handler.classConstructors[parent_class_name]:
+                        class_constructor = adaptation_handler.classConstructors[parent_class_name]
+                    else:
+                        # Generate a dummy constructor if the class has no constructor
+                        class_constructor = FunctionSignature(
+                            functionName="None",
+                            returnType="Any",
+                            parameterTypes=[],
+                            parentClass=parent_class_name,
+                            firstDefault=0,
+                        )
+
                     successful_instantiation, parent_class_instance = instantiate_class(
                         module,
                         parent_class_name,
                         class_instantiation_params,
                         adaptation_handler.constructorAdaptations[parent_class_name],
-                        adaptation_handler.classConstructors[parent_class_name],
+                        class_constructor,
                         execution_environment.getSequenceExecutionRecord(mapping),
+                        record_metrics
                     )
                     if successful_instantiation:
                         instantiated_classes[parent_class_name] = parent_class_instance
@@ -124,7 +140,7 @@ def create_adapted_module(
                     else:
                         failed_functions.append(moduleFunctionQualName)
                         print(f"Failed to instantiate class {parent_class_name}.")
-                        success = False
+                        no_error = False
                         break
 
                 # function is a standalone function
@@ -136,7 +152,7 @@ def create_adapted_module(
                 print(
                     f"For function '{moduleFunctionQualName}' there is an error: {e}."
                 )
-                success = False
+                no_error = False
                 break
             else:
                 # function was found in the module, continue with adaptation: create a submodule that contains the adapted function
@@ -190,9 +206,9 @@ def create_adapted_module(
                             f"Adapted name of function {new_function} to {interfaceMethodName}."
                         )
 
-        if success:
+        if no_error:
             print(
-                f"{GREEN}Successful creation of submodule {successes} for this mapping.{RESET}"
+                f"{GREEN}Successful creation of submodule {index} for this mapping.{RESET}"
             )
             mapping.successful = True
             successes += 1
@@ -208,6 +224,7 @@ def instantiate_class(
     adaptation_instruction: AdaptationInstruction,
     constructor: FunctionSignature,
     sequence_execution_record: SequenceExecutionRecord,
+    record_metrics: bool,
 ) -> tuple:
     """
     Instantiates a class from a given module.
@@ -216,7 +233,8 @@ def instantiate_class(
     module (module): The module that contains the class to be instantiated, e.g., numpy.
     parent_class_name (str): The name of the class that the function tries to instantiate.
     adaptation_instruction (AdaptationInstruction): Instructions on how to adapt the parameters for the constructor call.
-    constructors (dict): A dictionary with key = class name and value = FunctionSignature object that represents the constructor of the class.
+    constructor (FunctionSignature): FunctionSignature object that represents the constructor of the class.
+    sequence_execution_record (SequenceExecutionRecord): The sequence execution record that is used to store the results of the constructor call.
 
     Returns:
     (successful_instantiation: bool, parent_class_instance: object): A tuple containing a boolean indicating whether the instantiation was successful and the instance of the parent class.
@@ -283,24 +301,33 @@ def instantiate_class(
             for parameterType in parameterTypes
         )
     
+    # Instantiate empty Metrics object
+    metrics = Metrics()
+
     # Try to call the instructor with the potentially adapted parameters
     try:
-        filename = inspect.getfile(module)
-        filename = os.path.abspath(filename) # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
+        if not record_metrics or use_empty_constructor:
+            print(
+                f"Trying instantiation call (no metrics): {parent_class_name}({class_instantiation_params})."
+            )
+            parent_class_instance = parent_class(*class_instantiation_params)
+        else:
+            print(
+                f"Trying instantiation call with metrics: {parent_class_name}({class_instantiation_params})."
+            )
 
-        cov = coverage.Coverage(source=[module.__name__], branch=True)
-        
-        print(
-            f"Trying instantiation call: {parent_class_name}({class_instantiation_params})."
-        )
-        parent_class_instance = parent_class(*class_instantiation_params)
-        # TODO parent_class_instance, metrics = run_constructor_with_metrics(
-        #     parent_class,
-        #     class_instantiation_params,
-        #     filename,
-        #     cov,
-        #     constructor.functionName,
-        # )
+            filename = inspect.getfile(module)
+            filename = os.path.abspath(filename) # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
+            
+            cov = coverage.Coverage(source=[module.__name__], branch=True)
+            
+            parent_class_instance, metrics = run_constructor_with_metrics(
+                parent_class,
+                class_instantiation_params,
+                filename,
+                cov,
+                constructor.qualName,
+            )
 
     except Exception as e:
         print(f"Constructor {constructor} failed: {e}.")
@@ -311,31 +338,22 @@ def instantiate_class(
 
     # If nothing succeeded, try to instantiate the class without adaptations
     if not successful_instantiation:
-        filename = inspect.getfile(module)
-        filename = os.path.abspath(filename) # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
-
-        cov = coverage.Coverage(source=[module.__name__], branch=True)
-        
         try:
             print(
-                f"Trying instantiation call without adaptations: {parent_class_name}({original_class_instantiation_params})."
+                f"Trying instantiation call without adaptations (no metrics): {parent_class_name}({original_class_instantiation_params})."
             )
             parent_class_instance = parent_class(*original_class_instantiation_params)
-            # TODO parent_class_instance, metrics = run_constructor_with_metrics(
-            #     parent_class,
-            #     original_class_instantiation_params,
-            #     filename,
-            #     cov,
-            #     constructor.functionName,
-            # )
         except Exception as e:
             print(f"Constructor without adaptations failed: {e}.")
         else:
+            adaptation_instruction.clear()
             successful_instantiation = True
 
     # Generate RowRecord for the constructor call
     constructor_name = constructor.qualName if constructor else f"{parent_class_name}.None" # Account for the situation that the class has no constructor, i.e. the constructor is None
     row_record = RowRecord(position=0, methodName="create", originalFunctionName=constructor_name, inputParams=original_class_instantiation_params)
+    row_record.metrics = metrics
+
     if successful_instantiation:
         row_record.returnValue = str(parent_class_instance)
     else:
@@ -363,10 +381,59 @@ def run_constructor_with_metrics(
     execution_time = int((end_time - start_time) * 1_000_000)  # Convert to microseconds
     metrics.executionTime = execution_time
 
-    # Get the coverage report (outfile="-" -> report is written to stdout)
-    cov.json_report()
+    old_stdout = sys.stdout
+    new_stdout = io.StringIO()
+    sys.stdout = new_stdout
 
-    # TODO store metrics
+    # Get the coverage report (outfile="-" -> report is written to stdout)
+    cov.json_report(outfile="-")
+
+    # Capture the output and reset stdout
+    output = new_stdout.getvalue()
+    sys.stdout = old_stdout
+
+    json_output = None
+    try:
+        json_output = json.loads(output)
+    except Exception as e:
+        print("Error when trying to parse coverage report, skipping further metrics", e)
+        return (result, metrics)
+
+    # Some logic for finding coverage data in the json output
+    file_data = None
+    file_data_found = False
+    try:
+        file_data = json_output["files"][filename]
+    except:
+        print(f"Coverage.py file data not found for {filename}, trying file name only")
+    else:
+        file_data_found = True
+
+    if not file_data_found:
+        try:
+            file_data = json_output["files"][os.path.basename(filename)]
+        except:
+            # If the file data is still not found, return the result and the metrics object with only the execution time
+            print(
+                f"Coverage.py file data not found for {filename}, skipping further metrics"
+            )
+            return (result, metrics)
+        else:
+            print("Coverage.py file data found for file name only")
+            file_data_found = True
+
+    metrics.allLinesInFile = file_data["summary"]["num_statements"]
+    metrics.coveredLinesInFile = file_data["summary"]["covered_lines"]
+
+    metrics.allLinesInFunction = file_data["functions"][original_function_name]["summary"]["num_statements"]
+    metrics.coveredLinesInFunction = file_data["functions"][original_function_name]["summary"]["covered_lines"]
+    metrics.coveredLinesInFunctionRatio = file_data["functions"][original_function_name]["summary"]["percent_covered"]
+
+    metrics.allBranchesInFile = file_data["summary"]["num_branches"]
+    metrics.coveredBranchesInFile = file_data["summary"]["covered_branches"]
+
+    metrics.allBranchesInFunction = file_data["functions"][original_function_name]["summary"]["num_branches"]
+    metrics.coveredBranchesInFunction = file_data["functions"][original_function_name]["summary"]["covered_branches"]
 
     return (result, metrics)
 
@@ -448,6 +515,6 @@ def adapt_function(
         return wrapper
 
     print(
-        f"Created adapted wrapper function for {function}: {new_param_order}, {blind_new_param_order}, {convert_to_types}, {new_return_type}"
+        f"Created adapted wrapper function for {function}: New param order: {new_param_order}, New blind param order: {blind_new_param_order}, Param conversion: {convert_to_types}, Return conversion: {new_return_type}"
     )
     return decorator(function)

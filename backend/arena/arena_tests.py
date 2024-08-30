@@ -114,9 +114,11 @@ def test_arena():
         executionEnvironment,
     )
 
-    execute_test(adapted_module, executionEnvironment)
+    adaptationHandler.visualizeAdaptations()
 
-    executionEnvironment.printResults()
+    #execute_test(adapted_module, executionEnvironment)
+
+    #executionEnvironment.printResults()
 
 
 if __name__ == "__main__":

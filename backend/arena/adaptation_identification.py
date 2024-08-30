@@ -9,13 +9,9 @@ import sys
 
 sys.path.insert(1, "../../backend")
 from constants import (
-    GREEN,
     MAGENTA,
     RESET,
-    STANDARD_CONSTRUCTOR_VALUES,
-    TYPE_MAPPING,
     POSSIBLE_CONVERSIONS,
-    LIST_LIKE_TYPES,
 )
 from sequence_specification import SequenceSpecification
 
@@ -105,6 +101,7 @@ class AdaptationInstruction:
             or self.blindParameterOrderAdaptation != None
             or self.parameterTypeConversion != None
             or self.useStandardConstructorValues != None
+            or self.useEmptyConstructor != None
         )
 
     def calculateDistance(self) -> int:
@@ -132,6 +129,18 @@ class AdaptationInstruction:
             adaptation for adaptation in adaptations if adaptation is not None
         ]
         return nameDistance + len(needed_adaptations)
+    
+    def clear(self) -> None:
+        """
+        Resets the adaptation instruction to its default state.
+        """
+        self.nameAdaptation = None
+        self.returnTypeAdaptation = None
+        self.parameterOrderAdaptation = None
+        self.blindParameterOrderAdaptation = None
+        self.parameterTypeConversion = None
+        self.useStandardConstructorValues = None
+        self.useEmptyConstructor = None
 
     def __repr__(self) -> str:
         if self.areAdaptationsNeeded():
@@ -176,10 +185,10 @@ class Mapping:
         )  # key = moduleFunctionName, value = FunctionSignature
         self.classNames = set()  # set of class names that are used in the mapping
         self.identifier = None  # The identifier of the mapping
-        self.successful = False # Whether a submodule was successfully created for this mapping using 
+        self.successful = False # Whether a submodule was successfully created for this mapping 
 
     def __repr__(self) -> str:
-        result = ""
+        result = f"{self.identifier}: "
         for key, value in self.adaptationInfo.items():
             result += "[" + key + "->" + value[0] + " via " + str(value[1]) + "]"
         for key, value in self.constructorAdaptations.items():
@@ -614,10 +623,10 @@ if __name__ == "__main__":
 
     icubed = MethodSignature("icubed", "set", ["int"])
     iminus = MethodSignature("iminus", "float", ["float", "int"])
-    iconstructor = MethodSignature("create", "None", [])
+    iconstructor = MethodSignature("create", "None", ["int"])
 
     interfaceSpecification = InterfaceSpecification(
-        "Calculator", iconstructor, [icubed, iminus]
+        "Calculator", None, [icubed, iminus]
     )
 
     sequenceSpecification = SequenceSpecification("calc3_adaptation.xlsx")
