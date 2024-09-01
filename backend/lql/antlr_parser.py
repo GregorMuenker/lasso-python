@@ -10,7 +10,7 @@ from antlr4 import *
 from .LQLLexer import LQLLexer
 from .LQLParser import LQLParser
 from .LQLVisitor import LQLVisitor
-from arena.adaptation import MethodSignature, InterfaceSpecification
+from backend.arena.adaptation import MethodSignature, InterfaceSpecification
 
 class LQLCustomVisitor(LQLVisitor):
     def __init__(self):

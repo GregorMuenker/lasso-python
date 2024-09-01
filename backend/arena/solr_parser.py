@@ -3,7 +3,7 @@ def parse_solr_response(response):
     Parses the Solr response and extracts relevant information to create FunctionSignature and ModuleUnderTest objects.
     As of now, only the first module is considered.
     """
-    from adaptation import FunctionSignature, ModuleUnderTest
+    from backend.arena.adaptation import FunctionSignature, ModuleUnderTest
 
     functionSignatureDict = (
         {}
@@ -13,25 +13,25 @@ def parse_solr_response(response):
     )  # key: module name, value: dict with key: class name, value: list of FunctionSignature objects
 
     for doc in response:
-        moduleName = doc.get("module", [None])[0]
+        moduleName = doc.get("packagename", [None])[0]
 
         if moduleName not in functionSignatureDict:
             functionSignatureDict[moduleName] = []
             classDict[moduleName] = {}
 
-        functionName = doc.get("name", None)[0]
+        functionName = doc.get("method", None)[0]
         returnType = doc.get("return_types", ["Any"])[0]
-        parameterTypes = doc.get("arguments.datatype", [])
+        parameterTypes = doc.get("methodSignatureParameters.datatype", [])
         firstDefault = doc.get("default_index", [len(parameterTypes)])[0]
 
-        parentClass = doc.get("dependend_class", [None])[0]
+        parentClass = doc.get("name", [None])[0]
         if parentClass == "None":
             parentClass = None
         else:
             if parentClass not in classDict[moduleName]:
                 classDict[moduleName][parentClass] = []
 
-        parameterNames = doc.get("arguments.name", [])
+        parameterNames = doc.get("methodSignatureParameters.name", [])
         if len(parameterNames) > 0:
             if parameterNames[0] == "self":
                 parameterTypes = parameterTypes[1:]

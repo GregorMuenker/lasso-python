@@ -12,6 +12,8 @@ from os import listdir
 from os.path import isfile, join, isdir
 import json
 import sys, os
+from Levenshtein import distance
+import line_profiler
 
 from backend.crawl.install import installHandler
 from backend.crawl import type_inference
@@ -91,10 +93,11 @@ def get_return_type(element, source, prefix, sub_module_name, dependent_class, t
     """
     return_type = ast.get_source_segment(source, element.returns)
     if return_type:
-        return_type = return_type.replace('"','')
+        return_type = return_type.replace('"', '')
         return_type = return_type.replace(' ', '')
+        return_type = return_type.replace('"', '')
         return_type = return_type.split("|")
-        return return_type
+        return [f"pt_{x}" for x in return_type]
     else:
         if type_inferencing_active:
             inferred_datatypes_function_dict = type_inference.get_inferred_datatypes_function(prefix + sub_module_name,
@@ -103,10 +106,12 @@ def get_return_type(element, source, prefix, sub_module_name, dependent_class, t
             if len(inferred_datatypes_function_dict) != 0:
                 return_type = inferred_datatypes_function_dict["return"]
                 if return_type != []:
-                    return return_type
-        return ["Any"]
+                    return [f"pt_{x}" for x in return_type]
+        else:
+            return ["pt_Any"]
 
 
+@line_profiler.profile
 def get_function_args(element, source, dependent_class, prefix, sub_module_name, type_inferencing_active):
     """Returns a list of all arguments and their characteristics of one target function.
 
@@ -120,7 +125,7 @@ def get_function_args(element, source, dependent_class, prefix, sub_module_name,
     """
     args = []
     element_args = element.args
-    if dependent_class is not None and "staticmethod" not in [ast.get_source_segment(source, x) for x in
+    if dependent_class is not None and "staticmethod" not in [ast.dump(x) for x in
                                                               element.decorator_list]:
         element_args.args = element_args.args[1:]
     if type_inferencing_active:
@@ -137,16 +142,17 @@ def get_function_args(element, source, dependent_class, prefix, sub_module_name,
         if datatype:
             datatype = datatype.replace("\n", "")
             datatype = datatype.replace(" ", "")
+            datatype = datatype.replace('"', '')
             datatype = datatype.split("|")
-
+            datatype = [f"pt_{x}" for x in datatype]
         else:
             if type_inferencing_active:
                 if len(inferred_datatypes_function_dict) == 0:
-                    datatype = ["Any"]
+                    datatype = ["pt_Any"]
                 else:
-                    datatype = inferred_datatypes_function_dict[arg.arg] + ["Any"]
+                    datatype = [f"pt_{x}" for x in (inferred_datatypes_function_dict[arg.arg] + ["Any"])]
             else:
-                datatype = ["Any"]
+                datatype = ["pt_Any"]
         args.append({
             "name": arg.arg,
             "datatype": datatype,
@@ -162,19 +168,19 @@ def get_function_args(element, source, dependent_class, prefix, sub_module_name,
     else:
         default_index = None
     for i, default_val in enumerate(element_args.defaults):
-        function_source = ast.get_source_segment(source, element)
-        args[default_index + i]["default_val"] = ast.get_source_segment(source, default_val)
+        #args[default_index + i]["default_val"] = ast.get_source_segment(source, default_val)
         args[default_index + i]["has_default_val"] = True
     for arg in element_args.kwonlyargs:
         append_arg(arg, True)
     for i, default_val in enumerate(element_args.kw_defaults):
         if default_val:
-            args[len(element_args.args) + i]["default_val"] = ast.get_source_segment(source, default_val)
+            #args[len(element_args.args) + i]["default_val"] = ast.get_source_segment(source, default_val)
             args[len(element_args.args) + i]["has_default_val"] = True
     return args, default_index
 
 
-def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended_class=None, type_inferencing_engine=None):
+def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended_class=None,
+                           type_inferencing_engine=None):
     """Generates function characteristics based on an abstract syntax tree.
 
 
@@ -198,27 +204,38 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
             # source_code = ast.get_source_segment(source, element)
             args, default_index = get_function_args(element, source, depended_class, prefix, sub_module_name,
                                                     type_inferencing_active)
+            method_signature_params_ordered = [f"{x['name']}_({','.join(x['datatype'])})" for x in args]
+            method_signature_params_ordered_nodefault = [f"{x['name']}_({','.join(x['datatype'])})" for x in args if
+                                                         x["default_val"] == "NODEFAULT"]
+            method_signature_params_ordered_kwargs = [f"{x['name']})" for x in args if x["keyword_arg"]]
+            method_signature_params_ordered_default_values = [f"{x['name']}_{x['default_val']}" for x in args]
+            method_signature_return_types = ",".join(
+                get_return_type(element, source, prefix, sub_module_name, depended_class,
+                                type_inferencing_active))
             index_element = {
-                "packagename_fq": prefix + sub_module_name,
-                "method_fq": element.name,
-                "name_fq": depended_class,
-                "methodSignatureParameters": args,
-                "return_types": get_return_type(element, source, prefix, sub_module_name, depended_class,
-                                                type_inferencing_active),
-                "default_index": default_index,
-                "count_positional_args": len([x for x in args if not x["keyword_arg"]]),
-                "count_positional_non_default_args": len(
-                    [x for x in args if not x["has_default_val"] and not x["keyword_arg"]]),
-                "count_kw_args": len([x for x in args if x["keyword_arg"]]),
+                "packagename": prefix + sub_module_name,
+                "method": element.name,
+                "name": depended_class,
+                "methodSignatureParamsOrdered": "|".join(
+                    [str(len(method_signature_params_ordered))] + method_signature_params_ordered),
+                "methodSignatureParamsOrderedNodefault": "|".join(
+                    [str(len(method_signature_params_ordered))] + method_signature_params_ordered_nodefault),
+                "methodSignatureParamsOrderedKwargs": "|".join(method_signature_params_ordered_kwargs),
+                "methodSignatureParamsOrderedDefaultValues": "|".join(method_signature_params_ordered_default_values),
+                "methodSignatureReturnTypes": method_signature_return_types,
                 "lang": "python",
                 "decorators": [ast.get_source_segment(source, x) for x in element.decorator_list]
+                # "methodSignatureParameters": args,
                 # "content": source_code,
                 # "function_calls": get_function_calls(element),
             }
-            index_element["id"] = hashlib.md5((str(index_element["packagename_fq"])+str(index_element["method_fq"])+str(index_element["name_fq"])).encode("utf-8")).hexdigest()
+            index_element["id"] = hashlib.md5(
+                (str(index_element["packagename"]) + str(index_element["method"]) + str(index_element["name"])).encode(
+                    "utf-8")).hexdigest()
             index.append(index_element)
         elif type(element) == ClassDef:
-            index += get_functions_from_ast(element, source, prefix, sub_module_name, path=path, depended_class=element.name)
+            index += get_functions_from_ast(element, source, prefix, sub_module_name, path=path,
+                                            depended_class=element.name)
     return index
 
 
@@ -300,22 +317,43 @@ def get_module_index(module_name, package_name, version, path=None, type_inferen
                 index += get_functions_from_ast(tree, source, prefix, sub_module_name, path, type_inferencing_engine)
             elif isdir(join(path, element)):
                 index += get_module_index(prefix + element, package_name, version, join(path, element))
+    print(f"{module_name} indexed")
     return index
 
-def get_import_name(package_path):
-    return [x for x in os.listdir(package_path) if "dist-info" not in x][0]
+
+def get_import_name(package_name, package_path):
+    folder_names = [[x, distance(package_name, x)] for x in os.listdir(package_path) if "dist-info" not in x]
+    folder_names = sorted(folder_names, key=lambda x: x[1])
+    return folder_names[0][0]
+
+
+def check_package_version(package_name, version):
+    module = importlib.import_module(package_name)
+    if module.__version__ != version:
+        print(f"{package_name} version mismatch: Target {version} - Imported {module.__version__}")
+        del module
+        keys = copy.deepcopy(list(sys.modules.keys()))
+        for key in keys:
+            if key.startswith(f"{package_name}."):
+                del sys.modules[key]
+        del sys.modules[package_name]
+    module = importlib.import_module(package_name)
+    print(f"Mismatch resolved. Now imported {package_name} {module.__version__}")
+
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
-    package_name = "cryptography"
+    package_name = "pandas"
     installHandler = installHandler()
-    _, version = installHandler.install(f"{package_name}")
+    package_name, version = installHandler.install(f"{package_name}")
     package_path = os.path.join(INSTALLED, f"{package_name}-{version}")
-    package_name = get_import_name(package_path)
+    package_name = get_import_name(package_name, package_path)
     sys.path.insert(0, package_path)
+    check_package_version(package_name, version)
     start = time.time()
     #index = get_module_index(package_name, package_name, version, type_inferencing_engine="HiTyper")
     index = get_module_index(package_name, package_name, version)
+
     type_inference.clear_type_inferences()
     sys.path.remove(os.path.join(INSTALLED, f"{package_name}-{version}"))
     print(f"Splitting {package_name} needed {round(time.time() - start, 2)} seconds")

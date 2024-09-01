@@ -14,13 +14,13 @@ except Exception:
 st.markdown("# Search SOLR")
 st.text_input("Function Name", key="name")
 if st.button("Search"):
-    res = solr.search(f"name:{st.session_state.name}", rows=3000)
+    res = solr.search(f"method:{st.session_state.name}", rows=3000)
     for doc in res.docs:
         container = st.container(border=True)
         col1, col2 = container.columns(2)
         col1.write("*Name*")
-        col1.write(f"**{doc['name'][0]}**")
+        col1.write(f"**{doc['method'][0]}**")
         col2.write("*Module*")
-        col2.write(f"**{doc['module'][0]}**")
+        col2.write(f"**{doc['packagename'][0]}**")
         with container.expander("Full Details"):
             st.write(doc)

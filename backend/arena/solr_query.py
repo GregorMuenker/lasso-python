@@ -1,4 +1,4 @@
-from adaptation import InterfaceSpecification
+from backend.arena.adaptation import InterfaceSpecification
 def translate_to_solr_query(interface_spec):
     queries = []
     
@@ -9,11 +9,11 @@ def translate_to_solr_query(interface_spec):
         param_count = len(param_types)
         
         # Query for name and param types
-        param_type_query = " AND ".join([f"arguments.datatype:('{ptype}')" for ptype in param_types])
-        param_type_query = f"name:{method.methodName}~0.1 AND ({param_type_query})"
+        param_type_query = " AND ".join([f"methodSignatureParameters.datatype:('{ptype}')" for ptype in param_types])
+        param_type_query = f"method:{method.methodName} AND ({param_type_query})"
         
         # Query for name and param count
-        param_count_query = f"name:{method.methodName}~0.1 AND count_positional_args:({param_count})"
+        param_count_query = f"method:{method.methodName} AND count_positional_non_default_args:({param_count})"
         
         if (len(param_types) == 0):
             queries.append(f"({param_count_query})")
