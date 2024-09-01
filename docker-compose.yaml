@@ -7,14 +7,67 @@ services:
       - "8000:8000"
     environment:
       - DOCKER=test
-      - SOLR_PATH=http://lasso_solr_quickstart:8983/solr/
-  lasso_solr_quickstart:
+      - SOLR_PATH=http://solr:8983/solr/
+    networks:
+      - lasso_network
+    env_file:
+      - .env
+
+  solr:
     image: solr:9.6.1
-    container_name: lasso_solr_quickstart
+    container_name: solr
     ports:
       - "8983:8983"
     volumes:
-      - ./lassoindex:/var/solr
+      - ./solr/solr-data:/var/solr
     command:
       - solr-precreate
       - lasso_python
+    #entrypoint: ["/bin/bash", "-c", "bash /solr/download_solr_data.sh && solr-foreground"]
+    entrypoint: [solr-foreground"]
+    # restart: unless-stopped
+    networks:
+      - lasso_network
+    env_file:
+      - .env
+
+  nexus:
+    image: sonatype/nexus3:3.72.0
+    container_name: nexus
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./nexus/nexus-data:/opt/sonatype-work/nexus3
+    # entrypoint: ["/bin/bash", "-c", "bash /nexus/download_nexus_data.sh && bin/nexus run"]
+    entrypoint: [bin/nexus run"]
+    # restart: unless-stopped
+    networks:
+      - lasso_network
+    env_file:
+      - .env
+
+  ignite:
+    image: apacheignite/ignite:2.16.0
+    container_name: ignite
+    ports:
+      - "10800:10800"
+      - "11211:11211"
+      - "47100:47100"
+      - "47500:47500"
+      - "49112:49112"
+    volumes:
+      - ./ignite/ignite-config:/apache-ignite/config
+      - ./ignite/ignite-data:/apache-ignite/work
+      - ./ignite/ignite-logs:/apache-ignite/logs
+      - ./ignite/download_ignite_data.sh:/ignite/download_ignite_data.sh
+    # entrypoint: ["/bin/bash", "-c", "bash /ignite/download_ignite_data.sh && ignite.sh"]
+    entrypoint: [ignite.sh"]
+    # restart: unless-stopped
+    networks:
+      - lasso_network
+    env_file:
+      - .env
+
+networks:
+  lasso_network:
+    driver: bridge
