@@ -65,7 +65,7 @@ def parse_class(node):
 
 
 def parse_code(code_string, module_name):
-    from arena.adaptation_identification import ModuleUnderTest
+    from adaptation_identification import ModuleUnderTest
 
     tree = ast.parse(code_string)
     functions = []

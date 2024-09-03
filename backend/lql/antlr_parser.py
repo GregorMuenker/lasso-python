@@ -47,9 +47,10 @@ class LQLCustomVisitor(LQLVisitor):
             print(
                 f"{RED}Warning:{RESET} LASSO Python does not support more than one constructor, only the first one will be considered."
             )
+        constructor = constructors[0] if constructors else None
 
         self.interfaceSpecification = InterfaceSpecification(
-            className, constructors[0], methods
+            className, constructor, methods
         )
         print("Interface Specification:", self.interfaceSpecification)  # Debugging
         return self.interfaceSpecification

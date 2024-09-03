@@ -639,7 +639,7 @@ if __name__ == "__main__":
     path = "./test_data_file.py"  # <-- for testing with handcrafted python file
     with open(path, "r") as file:
         file_content = file.read()  # Read the entire content of the file
-        moduleUnderTest = parse_code(file_content, "numpy.lib.scimath")
+        moduleUnderTest = parse_code(file_content, "Test")
 
     adaptationHandler = AdaptationHandler(
         interfaceSpecification,
@@ -662,7 +662,7 @@ if __name__ == "__main__":
         adaptationHandler,
         moduleUnderTest.moduleName,
         executionEnvironment,
-        testing_mode=True,
+        import_from_file_path="./test_data_file.py",
     )
 
     execute_test(

@@ -29,7 +29,7 @@ def create_adapted_module(
     adaptation_handler: AdaptationHandler,
     module_name: str,
     execution_environment: ExecutionEnvironment,
-    testing_mode: bool = False,
+    import_from_file_path= None,
 ) -> tuple:
     """
     Creates an adapted module using information provided by the AdaptationHandler object. The adapted module can be used to execute stimulus sheets.
@@ -39,23 +39,26 @@ def create_adapted_module(
     adaptation_handler (AdaptationHandler): The AdaptationHandler object containing all necessary information on how to adapt functions/how many submodules to create.
     module_name (str): The name of the module that is used for importing the module via importlib.
     execution_environment (ExecutionEnvironment): The ExecutionEnvironment object that configures this execution.
-    testing_mode (bool): A flag that indicates whether the module should be imported from a single file for testing purposes.
+    import_from_file_path (str): A path for importing a module pointing to a file for testing purposes.
 
     Returns:
     module (object): The adapted module.
     """
     # TODO: Auslagern?
-    module = importlib.import_module(module_name)
-
-    record_metrics = True # TODO put this as configuration variable in ExecutionEnvironment
-
-    if testing_mode:
+    module = None
+    if import_from_file_path != None:
         # Import module from a single file, only for testing
         spec = importlib.util.spec_from_file_location(
-            module_name, "./test_data_file.py"
+            module_name, import_from_file_path
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+    else:
+        module = importlib.import_module(module_name)
+
+    record_metrics = True # TODO put this as configuration variable in ExecutionEnvironment
+
+    
 
     successes = 0
     failed_functions = []
@@ -293,7 +296,7 @@ def instantiate_class(
         parameterTypes = parameterTypes[: constructor.firstDefault]
         print(
             f"Using default values for constructor parameters, last {len(constructor.parameterTypes) - len(parameterTypes)} parameters were dropped."
-        )
+        ) # TODO remove the upper two lines
 
         # Strategy: get standard values for each data type (standard_constructor_values dict) and try to instantiate the class with them, if datatype is unknown use value 1
         class_instantiation_params = tuple(
