@@ -206,7 +206,7 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
                                                     type_inferencing_active)
             method_signature_params_ordered = [f"{x['name']}_({','.join(x['datatype'])})" for x in args]
             method_signature_params_ordered_nodefault = [f"{x['name']}_({','.join(x['datatype'])})" for x in args if not x["has_default_val"]]
-            method_signature_params_ordered_kwargs = [f"{x['name']})" for x in args if x["keyword_arg"]]
+            method_signature_params_ordered_kwargs = [f"{x['name']}" for x in args if x["keyword_arg"]]
             #method_signature_params_ordered_default_values = [f"{x['name']}_{x['default_val']}" for x in args]
             method_signature_return_types = ",".join(
                 get_return_type(element, source, prefix, sub_module_name, depended_class,

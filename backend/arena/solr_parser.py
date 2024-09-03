@@ -1,3 +1,6 @@
+import re
+
+
 def parse_solr_response(response):
     """
     Parses the Solr response and extracts relevant information to create FunctionSignature and ModuleUnderTest objects.
@@ -21,8 +24,12 @@ def parse_solr_response(response):
 
         functionName = doc.get("method", None)[0]
         returnType = doc.get("return_types", ["Any"])[0]
-        parameterTypes = doc.get("methodSignatureParameters.datatype", [])
-        firstDefault = doc.get("default_index", [len(parameterTypes)])[0]
+        parameters = doc.get("methodSignatureParamsOrderedNodefault", [""])[0].split("|")[1:]
+        parameters = [x.split("_", 1) for x in parameters]
+
+        #Extracting only the first possible datatype of a parameter
+        parameterTypes = [re.sub("pt_", '', x[1][1:-1]).split(",")[0] for x in parameters]
+        firstDefault = -1
 
         parentClass = doc.get("name", [None])[0]
         if parentClass == "None":
@@ -31,11 +38,7 @@ def parse_solr_response(response):
             if parentClass not in classDict[moduleName]:
                 classDict[moduleName][parentClass] = []
 
-        parameterNames = doc.get("methodSignatureParameters.name", [])
-        if len(parameterNames) > 0:
-            if parameterNames[0] == "self":
-                parameterTypes = parameterTypes[1:]
-                firstDefault -= 1
+
 
         functionSignature = FunctionSignature(
             functionName, returnType, parameterTypes, parentClass, firstDefault

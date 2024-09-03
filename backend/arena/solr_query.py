@@ -1,32 +1,33 @@
 from backend.arena.adaptation import InterfaceSpecification
-def translate_to_solr_query(interface_spec):
+def translate_to_solr_queries(interface_spec):
     queries = []
     
     # TODO handle queries for constructors
 
     for method in interface_spec.methods:
+        query = []
         param_types = method.parameterTypes
         param_count = len(param_types)
-        
-        # Query for name and param types
-        param_type_query = "methodSignatureParamsOrderedNodefault:*" + '*'.join([f"pt_{ptype}" for ptype in param_types]) + "*"
-        param_type_query = f"method:{method.methodName} AND ({param_type_query})"
-        
-        # Query for name and param count
-        param_count_query = f"method:{method.methodName} AND count_positional_non_default_args:({param_count})"
-        
-        if (len(param_types) == 0):
-            queries.append(f"({param_count_query})")
-        else:
-            queries.append(f"({param_type_query}) OR ({param_count_query})")
 
-    # Combining all queries into one
-    combined_query = " OR ".join(queries)
-    
-    # Adding the group by module part
-    solr_query = f"{combined_query}&group=true&group.field=module"
-    
-    return solr_query
+        method_name_query = f"method:{method.methodName}"
+        param_count_query = f"methodSignatureParamsOrderedNodefault:{param_count}*"
+        name_count_query = f"({method_name_query}) AND ({param_count_query})"
+
+        query.append(f"({param_count_query})")
+        if len(param_types) == 0:
+            query.append(f"({name_count_query})^3")
+        else:
+            param_type_query = "methodSignatureParamsOrderedNodefault:*" + '*'.join(
+                [f"pt_{ptype}" for ptype in param_types]) + "*"
+            name_type_query = f"({method_name_query}) AND ({param_type_query})"
+            name_type_count_query = f"({param_type_query}) OR ({param_count_query})"
+            query.append(f"({param_type_query})")
+            query.append(f"({name_count_query})^2")
+            query.append(f"({name_type_query})^2")
+            query.append(f"({name_type_count_query})^3")
+        queries.append(" OR ".join(query))
+
+    return queries
 
 if __name__ == "__main__":
     from adaptation import MethodSignature
