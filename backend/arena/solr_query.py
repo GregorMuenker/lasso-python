@@ -9,7 +9,7 @@ def translate_to_solr_query(interface_spec):
         param_count = len(param_types)
         
         # Query for name and param types
-        param_type_query = " AND ".join([f"methodSignatureParameters.datatype:('{ptype}')" for ptype in param_types])
+        param_type_query = "methodSignatureParamsOrderedNodefault:*" + '*'.join([f"pt_{ptype}" for ptype in param_types]) + "*"
         param_type_query = f"method:{method.methodName} AND ({param_type_query})"
         
         # Query for name and param count

@@ -205,10 +205,9 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
             args, default_index = get_function_args(element, source, depended_class, prefix, sub_module_name,
                                                     type_inferencing_active)
             method_signature_params_ordered = [f"{x['name']}_({','.join(x['datatype'])})" for x in args]
-            method_signature_params_ordered_nodefault = [f"{x['name']}_({','.join(x['datatype'])})" for x in args if
-                                                         x["default_val"] == "NODEFAULT"]
+            method_signature_params_ordered_nodefault = [f"{x['name']}_({','.join(x['datatype'])})" for x in args if not x["has_default_val"]]
             method_signature_params_ordered_kwargs = [f"{x['name']})" for x in args if x["keyword_arg"]]
-            method_signature_params_ordered_default_values = [f"{x['name']}_{x['default_val']}" for x in args]
+            #method_signature_params_ordered_default_values = [f"{x['name']}_{x['default_val']}" for x in args]
             method_signature_return_types = ",".join(
                 get_return_type(element, source, prefix, sub_module_name, depended_class,
                                 type_inferencing_active))
@@ -219,13 +218,13 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
                 "methodSignatureParamsOrdered": "|".join(
                     [str(len(method_signature_params_ordered))] + method_signature_params_ordered),
                 "methodSignatureParamsOrderedNodefault": "|".join(
-                    [str(len(method_signature_params_ordered))] + method_signature_params_ordered_nodefault),
+                    [str(len(method_signature_params_ordered_nodefault))] + method_signature_params_ordered_nodefault),
                 "methodSignatureParamsOrderedKwargs": "|".join(method_signature_params_ordered_kwargs),
-                "methodSignatureParamsOrderedDefaultValues": "|".join(method_signature_params_ordered_default_values),
                 "methodSignatureReturnTypes": method_signature_return_types,
                 "lang": "python",
-                "decorators": [ast.get_source_segment(source, x) for x in element.decorator_list]
-                # "methodSignatureParameters": args,
+                "decorators": [ast.get_source_segment(source, x) for x in element.decorator_list],
+                "methodSignatureParameters": args,
+                # "methodSignatureParamsOrderedDefaultValues": "|".join(method_signature_params_ordered_default_values),
                 # "content": source_code,
                 # "function_calls": get_function_calls(element),
             }
@@ -343,7 +342,7 @@ def check_package_version(package_name, version):
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
-    package_name = "pandas"
+    package_name = "numpy==2.0.2"
     installHandler = installHandler()
     package_name, version = installHandler.install(f"{package_name}")
     package_path = os.path.join(INSTALLED, f"{package_name}-{version}")

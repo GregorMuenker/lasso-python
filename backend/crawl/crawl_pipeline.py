@@ -15,10 +15,11 @@ def index_package(package_name):
     package_name, version = installHandler.install(package_name)
     installHandler.dump_index()
     sys.path.insert(0, os.path.join(INSTALLED, f"{package_name}-{version}"))
+    splitting.check_package_version(package_name, version)
     index = splitting.get_module_index(package_name, package_name, version)
     upload_index.upload_index(index)
     sys.path.remove(os.path.join(INSTALLED, f"{package_name}-{version}"))
 
 
 if __name__ == "__main__":
-    index_package("urllib3")
+    index_package("numpy==2.0.2")
