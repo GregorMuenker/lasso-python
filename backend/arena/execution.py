@@ -8,7 +8,7 @@ import datetime
 import sys
 
 sys.path.insert(1, "../../backend")
-from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
+from backend.constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 from ignite import CellId, CellValue
 
 

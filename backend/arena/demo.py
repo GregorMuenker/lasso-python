@@ -1,9 +1,9 @@
 import pysolr
 from adaptation import AdaptationHandler, create_adapted_module
 from execution import execute_test
-from lql.antlr_parser import parse_interface_spec
+from backend.lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
-from solr_query import translate_to_solr_query
+from backend.arena.lasso_solr_connector import LassoSolrConnector
 from stimulus_sheet_reader import get_stimulus_sheet
 from ignite import LassoIgniteClient
 
@@ -33,13 +33,9 @@ if __name__ == "__main__":
     print(interfaceSpecification)
 
     solr_url = "http://localhost:8983/solr/lasso_quickstart"
-    solr = pysolr.Solr(solr_url)
-    solr_query = translate_to_solr_query(interfaceSpecification)
-    print("QUERY:", solr_query)
-    results = solr.search(solr_query)
-    print(f"Found {len(results)} results")
+    solr_conn = LassoSolrConnector(solr_url)
 
-    allModulesUnderTest = parse_solr_response(results)
+    allModulesUnderTest = solr_conn.generate_modules_under_test(interfaceSpecification)
     moduleUnderTest = allModulesUnderTest[0]  # only take the first module for now
 
     adaptationHandler = AdaptationHandler(

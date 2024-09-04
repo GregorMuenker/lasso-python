@@ -32,13 +32,11 @@ class MethodSignature:
 
 
 class ModuleUnderTest:
-    def __init__(self, moduleName, functions, classes=None) -> None:
+    def __init__(self, moduleName, functions, class_dict=None) -> None:
         self.moduleName = moduleName
         self.functions = functions  # List of FunctionSignature objects
-        self.classes = (
-            {}
-        )  # This stores class names (keys) and list of their constructors as FunctionSignature objects (values)
-        self.constructors = []  # NOTE this is actually unused so far
+        self.classes = list(class_dict.keys())  # This stores class names (keys) and list of their constructors as FunctionSignature objects (values)
+        self.constructors = class_dict  # NOTE this is actually unused so far
 
     def __repr__(self) -> str:
         return (
