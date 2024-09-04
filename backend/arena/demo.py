@@ -1,5 +1,6 @@
 import pysolr
 from adaptation import AdaptationHandler, create_adapted_module
+from backend.arena.run import move
 from execution import execute_test
 from backend.lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
@@ -35,7 +36,12 @@ if __name__ == "__main__":
     solr_url = "http://localhost:8983/solr/lasso_quickstart"
     solr_conn = LassoSolrConnector(solr_url)
 
-    allModulesUnderTest = solr_conn.generate_modules_under_test(interfaceSpecification)
+    allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
+    loaded_folders = []
+    for package in required_packages:
+        package_name, version = package.split("==")
+        loaded_folders += move(package_name, version)
+
     moduleUnderTest = allModulesUnderTest[0]  # only take the first module for now
 
     adaptationHandler = AdaptationHandler(

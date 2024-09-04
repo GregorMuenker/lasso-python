@@ -101,9 +101,10 @@ class LassoSolrConnector:
 
     def generate_modules_under_test(self, interface_spec):
         response = self.search_matching_methods(interface_spec)
-        response += self.search_matching_constructors(response)
+        response = self.search_matching_constructors(response)
         modules_under_test = self.parse_solr_response(response)
-        return modules_under_test
+        required_packages = set(f"{x['artifactId'][0]}=={x['version'][0]}" for x in response)
+        return modules_under_test, required_packages
 
 if __name__ == "__main__":
     from backend.lql.antlr_parser import parse_interface_spec
@@ -118,5 +119,5 @@ if __name__ == "__main__":
     interface_spec = parse_interface_spec(lql_string)
     solr_url = "http://localhost:8983/solr/lasso_quickstart"
     solr_conn = LassoSolrConnector(solr_url)
-    modules_under_test = solr_conn.generate_modules_under_test(interface_spec)
+    modules_under_test, required_packages = solr_conn.generate_modules_under_test(interface_spec)
     print(modules_under_test)
