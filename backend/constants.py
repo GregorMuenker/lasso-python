@@ -1,7 +1,6 @@
 """constants.py"""
 
 import os
-
 from dotenv import load_dotenv
 import git
 
@@ -25,3 +24,4 @@ REPOSITORY = repo.working_tree_dir
 INSTALLED = f"{REPOSITORY}/backend/crawl/installed"
 INDEX = f"{REPOSITORY}/backend/crawl/index.json"
 TYPE_INFERENCING_TEMP = f"{REPOSITORY}/backend/crawl/temp"
+RUNTIME = f"{REPOSITORY}/backend/arena/runtime"
