@@ -6,12 +6,13 @@ import os
 import tarfile
 import io
 import re
+import json
 import git
 
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.constants import INSTALLED, RUNTIME
+from backend.constants import INSTALLED, RUNTIME, INDEX
 
 class Package:
     def __init__(self, name, version, dir, artifact_path=None):
@@ -33,22 +34,29 @@ class Package:
 
 
 class Nexus:
-    def __init__(self):
+    def __new__(cls, nexus_host="http://localhost:8081"):
+        if cls.check_status(nexus_host):
+            return super(Nexus, cls).__new__(cls)
+        else:
+            print(f"Cannot reach Nexus server at {nexus_host}")
+            return None
+
+    def __init__(self, nexus_host="http://localhost:8081"):
         # Configuration
+        self.nexus_host = nexus_host
         self.repository = "pypi-raw"
-        self.nexus_host = "http://localhost:8081"
         self.nexus_url = f'{self.nexus_host}/repository/{self.repository}'
         self.username = 'admin'
         self.password = '9Fa4tLiZKnRJnUm'
-        #TODO: Ping Nexus
 
-    def check_status(self):
+    @staticmethod
+    def check_status(nexus_host):
         """Checks if Nexus service is reachable.
 
         Returns:
             boolean: Depending on whether or not Nexus can be reached.
         """
-        url = f"{self.nexus_host}/service/rest/v1/status"
+        url = f"{nexus_host}/service/rest/v1/status"
         try:
             response = requests.get(url)
             if response.status_code == 200:
@@ -80,10 +88,16 @@ class Nexus:
             if response.status_code == 201:
                 print(
                     f'Successfully uploaded {package.local_file_path} to {upload_url}')
+                # Deleting compressed file.
+                os.remove(package.local_file_path)
+                package.local_file_path = None
+                return True
             else:
+                # TODO: What to do if upload fails.
                 print(
                     f'Failed to upload {self.local_file_path}. HTTP Status Code: {response.status_code}')
-                print('Response:', response.text)
+                # print('Response:', response.text)
+                return False
 
     def download(self, package: Package):
         """Downloads and extracts package file to Runtime folder.
@@ -91,6 +105,7 @@ class Nexus:
         Args:
             package (Package): Package object of package to be downloaded.
         """
+        print(f"Downloading {package.name} {package.version}")
         # Download the file
         response = requests.get(
             f"{self.nexus_url}/{package.artifact_path}/{package.dir}", auth=HTTPBasicAuth(self.username, self.password))
@@ -112,11 +127,21 @@ class Nexus:
                     # Create the relative path by removing the top-level directory
                     member.name = os.path.relpath(member.name, top_level_dir)
                     tar.extract(member, path=RUNTIME)
+            
+            with open(INDEX, 'r') as file:
+                index = json.load(file)
+            dependencies = index[f"{package.name}:{package.version}"]
+            for dep_name, dep_dict in dependencies.items():
+                dep_version = dep_dict["version"]
+                #FIXME: Change Package class constructor?
+                pkg = Package(dep_name, dep_version, f"{dep_name}-{dep_version}.tar.gz", f"{dep_name}/{dep_version}")
+                self.download(pkg)
 
         else:
+            # TODO: What to do if download fails.
             print(
                 f'Failed to download file. HTTP Status Code: {response.status_code}')
-            print('Response:', response.text)
+            # print('Response:', response.text)
 
     def get_versions(self, package):
         """Fetches package versions from Nexus.
@@ -159,13 +184,14 @@ class Nexus:
 
 if __name__ == "__main__":
     nexus = Nexus()
-    nexus.check_status()
+    # nexus.check_status()
 
     # package = Package("six", "1.16.0", "six-1.16.0")
     # package = Package("six", "1.16.0", "six-1.16.0.tar.gz", "six/1.16.0")
+    package = Package("python-dateutil", "2.9.0.post0", "python-dateutil-2.9.0.post0.tar.gz", "python-dateutil/2.9.0.post0")
     
     # package.compress()
 
     # nexus.upload(package)
-    # nexus.download(package)
+    nexus.download(package)
     # nexus.get_versions(package)
