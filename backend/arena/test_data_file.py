@@ -1,9 +1,14 @@
 class Calculator:
-    def add(self, a, b):
-        return a + b
+    def __init__(self, a: int):
+        self.no = a
+        pass
+    
+    def add(self, b: int):
+        self.no += b
+        return self.no
 
-    def subtract(self, a: int, b: float):
-        return a - b
+    def subtract(self, b: int):
+        return self.no - b
 
 
 def multiply(a, b, c):

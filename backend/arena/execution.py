@@ -187,6 +187,16 @@ class ExecutionEnvironment:
         for sequenceExecutionRecord in self.allSequenceExecutionRecords:
             cells = sequenceExecutionRecord.toSheetCells()
             igniteClient.putAll(cells)
+    
+    #def getCorrectMethods(self):
+    #    for sequenceExecutionRecord in self.allSequenceExecutionRecords:
+    #        correct = True
+    #        for rowRecord in sequenceExecutionRecord.rowRecords:
+    #            if rowRecord.oracleValue != rowRecord.returnValue:
+    #                correct = False
+    #                print(f"Method {rowRecord.originalFunctionName} was correct")
+    #        if correct:
+    #            print(f"Mapping {[rowRecord.originalFunctionName for rowRecord in sequenceExecutionRecord.rowRecords]} is correct")
 
 
 class RowRecord:
@@ -210,7 +220,7 @@ class RowRecord:
     def __repr__(self) -> str:
         inputParamsString = ", ".join(map(str, self.inputParams))
         instruction = f"{self.methodName}({inputParamsString})"
-        return f"{CYAN}{instruction}: {self.returnValue}{RESET}, {self.metrics}"
+        return f"{CYAN}{instruction}: {self.returnValue} (expected: {self.oracleValue}){RESET}, {self.metrics}"
 
 
 class Metrics:
@@ -270,6 +280,9 @@ def execute_test(
         
         for index, statement in sequence_spec.statements.items():
             
+            print(sequence_spec)
+            print(sequence_spec.statements)
+            
             for param in statement.inputParams:
                 if isinstance(param, str) and param.startswith("A") and param[1:].isnumeric():
                     statement.inputParams[statement.inputParams.index(param)] = sequence_spec.resolve_reference(param)
@@ -288,6 +301,14 @@ def execute_test(
                     if instance_param in switch_case:
                         try:
                             statement.output = switch_case[instance_param]
+                            rowRecord = RowRecord(
+                                position=index,
+                                methodName=statement.methodName,
+                                originalFunctionName=statement.methodName,
+                                inputParams=statement.inputParams,
+                                oracleValue=statement.oracleValue,
+                            )
+                            rowRecord.returnValue = statement.output
                         except Exception as e:
                             print(f"Error when trying to execute create method for {instance_param}: {e}")
                     else:
@@ -372,10 +393,13 @@ def execute_test(
                 )
 
             # Fill in the results for this execution
+            statement.output = return_value
             rowRecord.returnValue = return_value
             rowRecord.metrics = metrics
 
             sequenceExecutionRecord.rowRecords.append(rowRecord)
+            
+    sequenceExecutionRecord
 
 def run_with_metrics(
     function: object,
