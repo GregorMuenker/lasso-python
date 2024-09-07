@@ -33,7 +33,7 @@ if __name__ == "__main__":
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
 
-    sequenceSpecification = SequenceSpecification("calc4_demo.xlsx")
+    sequenceSpecification = SequenceSpecification("demo.xlsx")
 
     solr_url = "http://localhost:8983/solr/lasso_quickstart"
     solr = pysolr.Solr(solr_url)
@@ -57,18 +57,15 @@ if __name__ == "__main__":
     adaptationHandler.generateMappings()
 
     executionEnvironment = ExecutionEnvironment(
-        adaptationHandler.mappings, sequenceSpecification, interfaceSpecification
+        adaptationHandler.mappings,
+        sequenceSpecification,
+        interfaceSpecification,
     )
 
-    adapted_module = create_adapted_module(
+    execute_test(
+        executionEnvironment,
         adaptationHandler,
-        moduleUnderTest.moduleName,
-        executionEnvironment,
-    )
-
-    allSequenceExecutionRecords = execute_test(
-        adapted_module,
-        executionEnvironment,
+        moduleUnderTest.moduleName
     )
 
     executionEnvironment.printResults()

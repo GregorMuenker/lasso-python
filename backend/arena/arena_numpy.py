@@ -2,30 +2,31 @@ if __name__ == "__main__":
     from execution import execute_test, ExecutionEnvironment
     from module_parser import parse_code
     from sequence_specification_greg import SequenceSpecification
-    from adaptation_implementation import create_adapted_module
     from adaptation_identification import AdaptationHandler
     from lql.antlr_parser import parse_interface_spec
     from ignite import LassoIgniteClient
 
     lql_string = """
-    Calculator {
+    Matrix {
         Calculator(int)->None
-        addme(int)->int
-        subme(int)->int
+        multiply(int)->Any
+        power(int)->Any
     }
     """
 
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
 
-    sequenceSpecification = SequenceSpecification("arena_development.xlsx")
+    sequenceSpecification = SequenceSpecification("arena_numpy.xlsx")
     print(sequenceSpecification.sequenceSheet)
 
-    # Read source code directly from a file. NOTE: This path can also be changed to a sitepackage file (e.g., numpy.lib.scimath.py).
-    path = "./test_data_file.py"
+    # Read source code directly from a file.
+    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" # function_base #user_array #scimath
+    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
+    # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/array_api/_array_object.py"
     with open(path, "r") as file:
         file_content = file.read()
-        moduleUnderTest = parse_code(file_content, "Test")
+        moduleUnderTest = parse_code(file_content, "numpy.matrixlib.defmatrix")
 
     adaptationHandler = AdaptationHandler(
         interfaceSpecification,
@@ -50,13 +51,10 @@ if __name__ == "__main__":
         executionEnvironment,
         adaptationHandler,
         moduleUnderTest.moduleName,
-        import_from_file_path = path,
     )
 
     executionEnvironment.printResults()
     
-    #executionEnvironment.getCorrectMethods()
-
     # TODO enable ignite support, current bug: if create statement row record is read in execution.py toSheetCells()
     # lassoIgniteClient = LassoIgniteClient()
     # executionEnvironment.saveResults(lassoIgniteClient)

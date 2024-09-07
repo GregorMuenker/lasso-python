@@ -44,19 +44,14 @@ adaptationHandler.generateMappings()
 executionEnvironment = ExecutionEnvironment(
     adaptationHandler.mappings,
     sequence_spec,
-    interface_spec
+    interface_spec,
 )
 
-adapted_module = create_adapted_module(
+execute_test(
+    executionEnvironment,
     adaptationHandler,
     module_under_test.moduleName,
-    executionEnvironment,
-    import_from_file_path = "evaluation_output.py",
-)
-
-allSequenceExecutionRecords = execute_test(
-    adapted_module,
-    executionEnvironment,
+    import_from_file_path="evaluation_output.py"
 )
 
 executionEnvironment.printResults()

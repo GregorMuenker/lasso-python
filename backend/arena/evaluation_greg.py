@@ -49,7 +49,7 @@ executionEnvironment = ExecutionEnvironment(
     interface_spec
 )
 
-allSequenceExecutionRecords = execute_test(
+execute_test(
     executionEnvironment,
     adaptationHandler,
     module_under_test.moduleName,

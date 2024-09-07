@@ -147,24 +147,31 @@ class SequenceExecutionRecord:
         return cells
 
     def __repr__(self) -> str:
-        result = f"{self.mapping.identifier} {self.mapping}"
+        result = f"{self.mapping}"
         for rowRecord in self.rowRecords:
             result += f"\n\t{rowRecord}"
         return f"{result}\n"
-    
+
 
 class ExecutionEnvironment:
     """
     Holds multiple SequenceExecutionRecord objects.
     This class is associated with multiple mappings that all are associated with the same module, interface spec and sequence spec.
     """
-    def __init__(self, mappings, sequenceSpecification: SequenceSpecification, interfaceSpecification: InterfaceSpecification) -> None:
+    def __init__(
+        self,
+        mappings: list,
+        sequenceSpecification: SequenceSpecification,
+        interfaceSpecification: InterfaceSpecification,
+        recordMetrics: bool = True
+    ) -> None:
         self.mappings = mappings
         self.interfaceSpecification = interfaceSpecification
         self.sequenceSpecification = sequenceSpecification
+        self.recordMetrics = recordMetrics
 
         self.allSequenceExecutionRecords = []
-        
+
         for mapping in mappings:
             sequenceExecutionRecord = SequenceExecutionRecord(
                 mapping=mapping,
@@ -172,7 +179,7 @@ class ExecutionEnvironment:
                 sequenceSpecification=sequenceSpecification,
             )
             self.allSequenceExecutionRecords.append(sequenceExecutionRecord)
-    
+
     def getSequenceExecutionRecord(self, mapping: Mapping):
         for sequenceExecutionRecord in self.allSequenceExecutionRecords:
             if sequenceExecutionRecord.mapping == mapping:
@@ -187,8 +194,8 @@ class ExecutionEnvironment:
         for sequenceExecutionRecord in self.allSequenceExecutionRecords:
             cells = sequenceExecutionRecord.toSheetCells()
             igniteClient.putAll(cells)
-    
-    #def getCorrectMethods(self):
+
+    # def getCorrectMethods(self):
     #    for sequenceExecutionRecord in self.allSequenceExecutionRecords:
     #        correct = True
     #        for rowRecord in sequenceExecutionRecord.rowRecords:
@@ -216,11 +223,15 @@ class RowRecord:
 
         self.returnValue = None
         self.metrics = None
+        self.errorMessage = None
 
     def __repr__(self) -> str:
         inputParamsString = ", ".join(map(str, self.inputParams))
         instruction = f"{self.methodName}({inputParamsString})"
-        return f"{CYAN}{instruction}: {self.returnValue} (expected: {self.oracleValue}){RESET}, {self.metrics}"
+        result = f"{CYAN}{instruction}: {self.returnValue} (expected: {self.oracleValue}){RESET}, {self.metrics}"
+        if self.errorMessage != None:
+            result += f", Error: {self.errorMessage}"
+        return result
 
 
 class Metrics:
@@ -240,8 +251,25 @@ class Metrics:
         self.allBranchesInFunction = None
         self.coveredBranchesInFunction = None
 
+    def isEmpty(self) -> bool:
+        return (
+            self.executionTime == None
+            and self.allLinesInFile == None
+            and self.coveredLinesInFile == None
+            and self.allLinesInFunction == None
+            and self.coveredLinesInFunction == None
+            and self.coveredLinesInFunctionRatio == None
+            and self.allBranchesInFile == None
+            and self.coveredBranchesInFile == None
+            and self.allBranchesInFunction == None
+            and self.coveredBranchesInFunction == None
+        )
+
     def __repr__(self) -> str:
-        return f"Time: {self.executionTime} microseconds. Covered lines: {self.coveredLinesInFile}/{self.allLinesInFile} in file, {self.coveredLinesInFunction}/{self.allLinesInFunction} in function ({self.coveredLinesInFunctionRatio}%). Covered branches: {self.coveredBranchesInFile}/{self.allBranchesInFile} in file, {self.coveredBranchesInFunction}/{self.allBranchesInFunction} in function."
+        if self.isEmpty():
+            return "No metrics recorded"
+        else:
+            return f"Time: {self.executionTime} microseconds. Covered lines: {self.coveredLinesInFile}/{self.allLinesInFile} in file, {self.coveredLinesInFunction}/{self.allLinesInFunction} in function ({self.coveredLinesInFunctionRatio}%). Covered branches: {self.coveredBranchesInFile}/{self.allBranchesInFile} in file, {self.coveredBranchesInFunction}/{self.allBranchesInFunction} in function."
 
 
 def execute_test(
@@ -280,7 +308,6 @@ def execute_test(
         
         for index, statement in sequence_spec.statements.items():
             
-            print(sequence_spec)
             print(sequence_spec.statements)
             
             for param in statement.inputParams:
@@ -368,29 +395,33 @@ def execute_test(
                 print(
                     f"Error when trying to get method {statement.methodName} from submodule {submodule}. Error: {e}"
                 )
-                rowRecord.returnValue = "Method not found"
+                rowRecord.errorMessage = e
                 continue
 
             # Set the return value
-            return_value = "Execution unsuccessful"
-            metrics = "No metrics recorded"
+            return_value = "UNSUCCESSFUL"
+            metrics = Metrics()
             try:
-                filename = inspect.getfile(adapted_module)
-                # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
-                filename = os.path.abspath(filename)
+                if not execution_environment.recordMetrics:
+                    return_value = method(*statement.inputParams)
+                else:
+                    filename = inspect.getfile(adapted_module)
+                    # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
+                    filename = os.path.abspath(filename)
 
-                cov = coverage.Coverage(source=[adapted_module.__name__], branch=True)
-                return_value, metrics = run_with_metrics(
-                    method,
-                    statement.inputParams,
-                    filename,
-                    cov,
-                    original_function_name,
-                )
+                    cov = coverage.Coverage(source=[adapted_module.__name__], branch=True)
+                    return_value, metrics = run_with_metrics(
+                        method,
+                        statement.inputParams,
+                        filename,
+                        cov,
+                        original_function_name,
+                    )
             except Exception as e:
                 print(
                     f"{RED}{instruction} ({submodule}, {original_function_name}, {adaptationInstruction}) failed{RESET}: {e}"
                 )
+                rowRecord.errorMessage = e
 
             # Fill in the results for this execution
             statement.output = return_value

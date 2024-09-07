@@ -32,13 +32,14 @@ def create_adapted_submodule(
     import_from_file_path= None,
 ) -> object:
     """
-    Creates an adapted module using information provided by the AdaptationHandler object. The adapted module can be used to execute stimulus sheets.
-    The adapted module comprises multiple submodules (mapping0, mapping1, ...) that contain different sets of adapted functions (terminology: one submodule contains one "mapping").
+    Creates an adapted submodule using information provided by the AdaptationHandler object. The adapted module can be used to execute stimulus sheets.
+    The adapted submodule contains a set of adapted functions.
 
     Parameters:
     adaptation_handler (AdaptationHandler): The AdaptationHandler object containing all necessary information on how to adapt functions/how many submodules to create.
     module_name (str): The name of the module that is used for importing the module via importlib.
     execution_environment (ExecutionEnvironment): The ExecutionEnvironment object that configures this execution.
+    submodule_id (int): Identifier of the submodule
     import_from_file_path (str): A path for importing a module pointing to a file for testing purposes.
 
     Returns:
@@ -56,15 +57,13 @@ def create_adapted_submodule(
     else:
         module = importlib.import_module(module_name)
 
-    record_metrics = True # TODO put this as configuration variable in ExecutionEnvironment
-
     failed_functions = []
     mapping = adaptation_handler.mappings[submodule_id]
     
     # Keep track if there occurs an error => if yes, the mapping is not successful
     no_error = True
     print(
-        f"\n-----------------------------\nTRYING ADAPTATION FOR MAPPING\n-----------------------------\n{mapping}."
+        f"\n---------------------------------\nTRYING IMPLEMENTATION FOR MAPPING\n---------------------------------\n{mapping}."
     )
     submodule_name = "mapping" + str(submodule_id)
     submodule = types.ModuleType(submodule_name)
@@ -124,7 +123,7 @@ def create_adapted_submodule(
                     adaptation_handler.constructorAdaptations[parent_class_name],
                     class_constructor,
                     execution_environment.getSequenceExecutionRecord(mapping),
-                    record_metrics
+                    execution_environment.recordMetrics
                 )
                 if successful_instantiation:
                     instantiated_classes[parent_class_name] = parent_class_instance
@@ -479,11 +478,6 @@ def instantiate_class(
         parameterTypes = constructor.parameterTypes
         print(f"Constructor signature: {constructor.functionName}({parameterTypes}).")
 
-        parameterTypes = parameterTypes[: constructor.firstDefault]
-        print(
-            f"Using default values for constructor parameters, last {len(constructor.parameterTypes) - len(parameterTypes)} parameters were dropped."
-        ) # TODO remove the upper two lines
-
         # Strategy: get standard values for each data type (standard_constructor_values dict) and try to instantiate the class with them, if datatype is unknown use value 1
         class_instantiation_params = tuple(
             STANDARD_CONSTRUCTOR_VALUES.get(parameterType, 1)
@@ -547,6 +541,8 @@ def instantiate_class(
         row_record.returnValue = str(parent_class_instance)
     else:
         row_record.returnValue = "Error"
+        row_record.errorMessage = "Could not instantiate class"
+    
     sequence_execution_record.rowRecords.append(row_record)
 
     return successful_instantiation, parent_class_instance
