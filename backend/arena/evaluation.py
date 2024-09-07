@@ -3,14 +3,14 @@ from module_parser import parse_code
 from adaptation_identification import AdaptationHandler
 from lql.antlr_parser import parse_interface_spec
 from execution import ExecutionEnvironment, execute_test
-from sequence_specification import SequenceSpecification
+from sequence_specification_greg import SequenceSpecification
 from adaptation_implementation import create_adapted_module
 import os
 
 file = open('evaluation_sanitized-mbpp.json', 'r')
 data = json.load(file)  
 
-tasks = set([1])
+tasks = [0, 1]
 code = ""
 for task in tasks:
     code += data[task]["code"] + "\n\n"
@@ -24,6 +24,7 @@ module_under_test = parse_code(file_content, "MBPP")
 lql_string = """
     Benchmark {
         not_prime(int)->bool
+        similar(Any, Any)->set
     }
     """
 
