@@ -11,8 +11,8 @@ import sys
 sys.path.insert(1, "../../backend")
 from constants import CYAN, RED, RESET
 from ignite import CellId, CellValue
-from adaptation_identification import InterfaceSpecification, Mapping
-from sequence_specification import SequenceSpecification
+from adaptation_identification import InterfaceSpecification, Mapping, AdaptationHandler
+from sequence_specification_greg import SequenceSpecification
 
 
 class SequenceExecutionRecord:
@@ -235,8 +235,10 @@ class Metrics:
 
 
 def execute_test(
-    adapted_module: object,
     execution_environment: ExecutionEnvironment,
+    adaptation_handler: AdaptationHandler,
+    module_name: str,
+    import_from_file_path = None,
 ) -> None:
     """
     Executes a sequence sheet based on a provided module and stores the results in the ExecutionEnvironment object.
@@ -245,33 +247,86 @@ def execute_test(
     adapted_module: The module that contains the adapted functions in 1 or more submodules (mapping0, mapping1, ...).
     execution_environment: The ExecutionEnvironment object used for this execution.
     """
+    
+    from adaptation_implementation import create_adapted_submodule
     sequence_spec = execution_environment.sequenceSpecification
     mappings = execution_environment.mappings
 
     print(
         f"\n{CYAN}----------------------\nEXECUTE SEQUENCE SHEET\n----------------------{RESET}"
     )
-    print(f"Module: {adapted_module.__name__}")
+    print(f"Module: {module_name}")
     print(f"Number of submodules: {len(mappings)}")
     print(f"\n {sequence_spec.sequenceSheet}\n")
 
     for i, mapping in enumerate(mappings):
-        if not mapping.successful:
-            continue # TODO store error message?
-        
-        submodule = getattr(adapted_module, "mapping" + str(i))
+        #if not mapping.successful:
+        #    print(f"Skipping mapping {i} as it was not successful")
+        #    continue # TODO store error message?
 
         sequenceExecutionRecord = execution_environment.getSequenceExecutionRecord(mapping)
-
+        
+        adopted = False
+        
         for index, statement in sequence_spec.statements.items():
-
+            
+            for param in statement.inputParams:
+                if isinstance(param, str) and param.startswith("A") and param[1:].isnumeric():
+                    statement.inputParams[statement.inputParams.index(param)] = sequence_spec.resolve_reference(param)
+                    
             # Skip the create statement as it already has been covered during creating the adapted module
             if statement.methodName == "create":
+                if statement.instanceParam.startswith("python."):
+                    instance_param = statement.instanceParam[7:]  # Remove "python." from the beginning of the instance param
+                    switch_case = {
+                        "Array": statement.inputParams,
+                        "List": list(statement.inputParams),
+                        "Tupel": tuple(statement.inputParams),
+                        "Set": set(statement.inputParams),
+                        # Add more cases for other modules as needed
+                    }
+                    if instance_param in switch_case:
+                        try:
+                            statement.output = switch_case[instance_param]
+                        except Exception as e:
+                            print(f"Error when trying to execute create method for {instance_param}: {e}")
+                    else:
+                        print(f"Invalid python instance param: {instance_param}")
+                elif "." not in statement.instanceParam:
+                    adapted_module, submodule, class_instance = create_adapted_submodule(
+                        adaptation_handler,
+                        module_name,
+                        execution_environment,
+                        i,
+                        statement.inputParams,
+                        import_from_file_path,
+                    )
+                    adopted = True
+                    statement.output = class_instance
+                elif statement.instanceParam.startswith("numpy."):
+                    print(f"Skipping numpy create statement {statement.instanceParam}")
+                else:
+                    print(f"Skipping 3rd party package create statement {statement.instanceParam}")
                 continue
 
+            print(statement.inputParams)
+            print(mappings[i].adaptationInfo)
+            
+            if not adopted:
+                raise ValueError("No create statement found in sequence sheet")
+                #adapt_submodule = create_adapted_submodule(
+                #    adaptation_handler,
+                #    module_name,
+                #    execution_environment,
+                #    i,
+                #    [],
+                #    import_from_file_path,
+                #)
+            
             original_function_name, adaptationInstruction = mappings[i].adaptationInfo[
                 statement.methodName
             ]
+            
 
             rowRecord = RowRecord(
                 position=index,
@@ -280,7 +335,7 @@ def execute_test(
                 inputParams=statement.inputParams,
                 oracleValue=statement.oracleValue,
             )
-
+            
             # Build the instruction string to output errors in a more readable way
             input_params_string = ", ".join(map(str, statement.inputParams))
             instruction = f"{statement.methodName}({input_params_string})"

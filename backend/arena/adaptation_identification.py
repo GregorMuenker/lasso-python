@@ -279,6 +279,8 @@ class AdaptationHandler:
 
                 self.adaptations[(interfaceMethodName, moduleFunctionQualName)] = []
 
+                print(interfaceMethod)
+                print(moduleFunction)
                 if (
                     interfaceMethod.parameterTypes.__len__()
                     != moduleFunction.parameterTypes.__len__()
@@ -546,6 +548,7 @@ class AdaptationHandler:
             if (
                 potentialMapping.adaptationIds.__len__()
                 == self.interfaceMethods.keys().__len__()
+                and potentialMapping.classNames.__len__() <= 1
             ):
                 # Add constructor adaptations to the potential mapping
                 for className in potentialMapping.classNames:

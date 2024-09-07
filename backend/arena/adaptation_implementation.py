@@ -23,14 +23,200 @@ from constants import (
     TYPE_MAPPING,
     LIST_LIKE_TYPES,
 )
+def create_adapted_submodule(
+    adaptation_handler: AdaptationHandler,
+    module_name: str,
+    execution_environment: ExecutionEnvironment,
+    submodule_id: int,
+    class_instantiation_params: list,
+    import_from_file_path= None,
+) -> object:
+    """
+    Creates an adapted module using information provided by the AdaptationHandler object. The adapted module can be used to execute stimulus sheets.
+    The adapted module comprises multiple submodules (mapping0, mapping1, ...) that contain different sets of adapted functions (terminology: one submodule contains one "mapping").
 
+    Parameters:
+    adaptation_handler (AdaptationHandler): The AdaptationHandler object containing all necessary information on how to adapt functions/how many submodules to create.
+    module_name (str): The name of the module that is used for importing the module via importlib.
+    execution_environment (ExecutionEnvironment): The ExecutionEnvironment object that configures this execution.
+    import_from_file_path (str): A path for importing a module pointing to a file for testing purposes.
+
+    Returns:
+    module (object): The adapted module.
+    """
+    # TODO: Auslagern?
+    module = None
+    if import_from_file_path != None:
+        # Import module from a single file, only for testing
+        spec = importlib.util.spec_from_file_location(
+            module_name, import_from_file_path
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    else:
+        module = importlib.import_module(module_name)
+
+    record_metrics = True # TODO put this as configuration variable in ExecutionEnvironment
+
+    failed_functions = []
+    mapping = adaptation_handler.mappings[submodule_id]
+    
+    # Keep track if there occurs an error => if yes, the mapping is not successful
+    no_error = True
+    print(
+        f"\n-----------------------------\nTRYING ADAPTATION FOR MAPPING\n-----------------------------\n{mapping}."
+    )
+    submodule_name = "mapping" + str(submodule_id)
+    submodule = types.ModuleType(submodule_name)
+
+    instantiated_classes = {}
+    for adaptationId in mapping.adaptationIds:
+        interfaceMethodName, moduleFunctionQualName, iteration = adaptationId
+
+        if (moduleFunctionQualName) in failed_functions:
+            print(
+                f"Cancelling adaptation for mapping {mapping} as {moduleFunctionQualName} failed previously."
+            )
+            no_error = False
+            break
+
+        adaptationInstruction = adaptation_handler.adaptations[
+            (interfaceMethodName, moduleFunctionQualName)
+        ][iteration]
+
+        function = None
+        parent_class_instance = None
+
+        try:
+            parent_class_name = adaptation_handler.moduleFunctions[
+                moduleFunctionQualName
+            ].parentClass
+
+            # function is a class method that has already been instantiated
+            if parent_class_name and parent_class_name in instantiated_classes:
+                print(f"Using already instantiated class {parent_class_name}.")
+                parent_class_instance = instantiated_classes[parent_class_name]
+
+                # use the simple function name (without the class as prefix) to get the function object
+                simple_function_name = adaptation_handler.moduleFunctions[
+                    moduleFunctionQualName
+                ].functionName
+                function = getattr(parent_class_instance, simple_function_name)
+
+            # function is a class method that has not been instantiated yet
+            elif parent_class_name:
+                if adaptation_handler.classConstructors[parent_class_name]:
+                    class_constructor = adaptation_handler.classConstructors[parent_class_name]
+                else:
+                    # Generate a dummy constructor if the class has no constructor
+                    class_constructor = FunctionSignature(
+                        functionName="None",
+                        returnType="Any",
+                        parameterTypes=[],
+                        parentClass=parent_class_name,
+                        firstDefault=0,
+                    )
+
+                successful_instantiation, parent_class_instance = instantiate_class(
+                    module,
+                    parent_class_name,
+                    class_instantiation_params,
+                    adaptation_handler.constructorAdaptations[parent_class_name],
+                    class_constructor,
+                    execution_environment.getSequenceExecutionRecord(mapping),
+                    record_metrics
+                )
+                if successful_instantiation:
+                    instantiated_classes[parent_class_name] = parent_class_instance
+
+                    # use the simple function name (without the class as prefix) to get the function object
+                    simple_function_name = adaptation_handler.moduleFunctions[
+                        moduleFunctionQualName
+                    ].functionName
+                    function = getattr(parent_class_instance, simple_function_name)
+                else:
+                    failed_functions.append(moduleFunctionQualName)
+                    print(f"Failed to instantiate class {parent_class_name}.")
+                    no_error = False
+                    break
+
+            # function is a standalone function
+            else:
+                function = getattr(module, moduleFunctionQualName)
+
+        except Exception as e:
+            failed_functions.append(moduleFunctionQualName)
+            print(
+                f"For function '{moduleFunctionQualName}' there is an error: {e}."
+            )
+            no_error = False
+            break
+        else:
+            # function was found in the module, continue with adaptation: create a submodule that contains the adapted function
+            new_function = function
+            setattr(
+                submodule, moduleFunctionQualName, new_function
+            )  # Add the new function to the submodule
+
+            if adaptationInstruction.areAdaptationsNeeded():
+
+                new_return_type = None
+                convert_to_types = None
+                new_param_order = None
+                blind_new_param_order = None
+
+                if adaptationInstruction.returnTypeAdaptation:
+                    new_return_type = adaptationInstruction.returnTypeAdaptation
+                    print(
+                        f"Trying to adapt return type of {new_function} to {new_return_type}."
+                    )
+
+                if adaptationInstruction.parameterTypeConversion:
+                    convert_to_types = adaptationInstruction.parameterTypeConversion
+                    print(
+                        f"Trying to adapt parameter types of {new_function} to {convert_to_types}."
+                    )
+
+                if adaptationInstruction.parameterOrderAdaptation:
+                    new_param_order = adaptationInstruction.parameterOrderAdaptation
+                    print(f"Trying to adapt parameter order of {new_function}.")
+
+                if adaptationInstruction.blindParameterOrderAdaptation:
+                    blind_new_param_order = (
+                        adaptationInstruction.blindParameterOrderAdaptation
+                    )
+                    print(
+                        f"Trying to blindly adapt parameter order of {new_function}."
+                    )
+
+                new_function = adapt_function(
+                    new_function,
+                    new_return_type,
+                    convert_to_types,
+                    new_param_order,
+                    blind_new_param_order,
+                )
+
+                if adaptationInstruction.nameAdaptation:
+                    setattr(submodule, interfaceMethodName, new_function)
+                    print(
+                        f"Adapted name of function {new_function} to {interfaceMethodName}."
+                    )
+
+    if no_error:
+        print(
+            f"{GREEN}Successful creation of submodule {submodule_id} for this mapping.{RESET}"
+        )
+        mapping.successful = True
+
+    return (module,submodule,parent_class_instance)
 
 def create_adapted_module(
     adaptation_handler: AdaptationHandler,
     module_name: str,
     execution_environment: ExecutionEnvironment,
     import_from_file_path= None,
-) -> tuple:
+) -> object:
     """
     Creates an adapted module using information provided by the AdaptationHandler object. The adapted module can be used to execute stimulus sheets.
     The adapted module comprises multiple submodules (mapping0, mapping1, ...) that contain different sets of adapted functions (terminology: one submodule contains one "mapping").
