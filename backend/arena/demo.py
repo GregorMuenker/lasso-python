@@ -4,7 +4,12 @@ from adaptation_implementation import create_adapted_module
 from execution import execute_test, ExecutionEnvironment
 from lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
-from backend.arena.run import move
+import git
+import sys
+
+repo = git.Repo(search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
+
 from backend.crawl import import_helper
 from backend.crawl.nexus import Nexus, Package
 from backend.arena.lasso_solr_connector import LassoSolrConnector

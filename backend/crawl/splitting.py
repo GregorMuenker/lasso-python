@@ -13,7 +13,6 @@ from os.path import isfile, join, isdir
 import json
 import sys, os
 from Levenshtein import distance
-import line_profiler
 
 from backend.crawl.install import installHandler
 from backend.crawl import type_inference, import_helper
@@ -112,7 +111,7 @@ def get_return_type(element, source, prefix, sub_module_name, dependent_class, t
             return ["pt_Any"]
 
 
-@line_profiler.profile
+
 def get_function_args(element, source, dependent_class, prefix, sub_module_name, type_inferencing_active):
     """Returns a list of all arguments and their characteristics of one target function.
 

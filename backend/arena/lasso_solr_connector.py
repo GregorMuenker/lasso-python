@@ -6,6 +6,7 @@ class LassoSolrConnector:
         self.solr = pysolr.Solr(solr_url)
 
     def search_matching_methods(self, interface_spec):
+        print(interface_spec, flush=True)
         queries = []
         for method in interface_spec.methods:
             query = []
@@ -31,6 +32,7 @@ class LassoSolrConnector:
             queries.append(" OR ".join(query))
         response = []
         for query in queries:
+            print(query, flush=True)
             response += self.solr.search(query)
         return response
 
@@ -46,7 +48,7 @@ class LassoSolrConnector:
         Parses the Solr response and extracts relevant information to create FunctionSignature and ModuleUnderTest objects.
         As of now, only the first module is considered.
         """
-        from backend.arena.adaptation import FunctionSignature, ModuleUnderTest
+        from backend.arena.adaptation_identification import FunctionSignature, ModuleUnderTest
 
         functionSignatureDict = (
             {}
