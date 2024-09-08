@@ -352,8 +352,11 @@ def execute_test(
             print(sequence_spec.statements)
             
             for param in statement.inputParams:
-                if isinstance(param, str) and param.startswith("A") and param[1:].isnumeric():
+                if isinstance(param, str) and param[0].isupper() and param[1:].isnumeric():
                     statement.inputParams[statement.inputParams.index(param)] = sequence_spec.resolve_reference(param)
+            
+            if statement.oracleValue is not None and isinstance(statement.oracleValue, str) and statement.oracleValue[0].isupper() and statement.oracleValue[1:].isnumeric():
+                statement.oracleValue = sequence_spec.resolve_reference(statement.oracleValue)
                     
             # Skip the create statement as it already has been covered during creating the adapted module
             if statement.methodName == "create":
@@ -377,6 +380,7 @@ def execute_test(
                                 oracleValue=statement.oracleValue,
                             )
                             rowRecord.returnValue = statement.output
+                            sequenceExecutionRecord.rowRecords.append(rowRecord)
                         except Exception as e:
                             print(f"Error when trying to execute create method for {instance_param}: {e}")
                     else:
@@ -397,7 +401,20 @@ def execute_test(
                 else:
                     print(f"Skipping 3rd party package create statement {statement.instanceParam}")
                 continue
-
+            
+            if statement.methodName.startswith("__") and statement.methodName.endswith("__"):
+                statement = execute_default_functions(statement)
+                rowRecord = RowRecord(
+                                position=index,
+                                methodName=statement.methodName,
+                                originalFunctionName=statement.methodName,
+                                inputParams=statement.inputParams,
+                                oracleValue=statement.oracleValue,
+                )
+                rowRecord.returnValue = statement.output
+                sequenceExecutionRecord.rowRecords.append(rowRecord)
+                continue
+            
             print(statement.inputParams)
             print(mappings[i].adaptationInfo)
             
@@ -472,6 +489,22 @@ def execute_test(
             sequenceExecutionRecord.rowRecords.append(rowRecord)
             
     sequenceExecutionRecord
+    
+def execute_default_functions(statement):
+    if len(statement.inputParams) == 1:
+        if statement.methodName == "__len__":
+            statement.output = len(statement.inputParams[0])
+    if statement.methodName == "__getitem__":
+        statement.output = statement.inputParams[0][statement.inputParams[1]]
+    if statement.methodName == "__setitem__":
+        statement.inputParams[0][statement.inputParams[1]] = statement.inputParams[2]
+    if statement.methodName == "__delitem__":
+        del statement.inputParams[0][statement.inputParams[1]]
+    if statement.methodName == "__iter__":
+        statement.output = iter(statement.inputParams[0])
+    if statement.methodName == "__next__":
+        statement.output = next(statement.inputParams[0])
+    return statement
 
 def run_with_metrics(
     function: object,
