@@ -428,7 +428,7 @@ def execute_test(
                 #    [],
                 #    import_from_file_path,
                 #)
-            
+            print(mappings[i].adaptationInfo)
             original_function_name, adaptationInstruction = mappings[i].adaptationInfo[
                 statement.methodName
             ]

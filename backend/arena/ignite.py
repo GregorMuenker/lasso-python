@@ -15,7 +15,7 @@ import pandas as pd
 class LassoIgniteClient:
     def __init__(self) -> None:
         self.client = Client(compact_footer=False)
-        self.client.connect("127.0.0.1", 10800)
+        self.client.connect("localhost", 10800)
 
         self.cache = self.client.create_cache(
             {

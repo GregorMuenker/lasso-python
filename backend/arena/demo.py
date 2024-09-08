@@ -32,7 +32,7 @@ For this demo to work you need to:
 if __name__ == "__main__":
     lql_string = """
     Calculator {
-        mean(list)->float
+        mean(int)->float
     }
     """
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     )
     adaptationHandler.identifyAdaptations()
     adaptationHandler.identifyConstructorAdaptations()
-    adaptationHandler.visualizeAdaptations()
+    #adaptationHandler.visualizeAdaptations()
     adaptationHandler.generateMappings()
 
     executionEnvironment = ExecutionEnvironment(
@@ -78,14 +78,12 @@ if __name__ == "__main__":
         sequenceSpecification,
         interfaceSpecification,
     )
-
+    
     execute_test(
         executionEnvironment,
-    )
-
-    allSequenceExecutionRecords = execute_test(
-        adapted_module,
-        executionEnvironment,
+        adaptationHandler,
+        moduleUnderTest.moduleName,
+        #import_from_file_path = path,
     )
 
     executionEnvironment.printResults()

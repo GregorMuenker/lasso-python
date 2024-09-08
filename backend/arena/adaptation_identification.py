@@ -425,14 +425,15 @@ class AdaptationHandler:
         for className, moduleConstructor in self.classConstructors.items():
 
             # Class has no constructor, use the empty constructor adaptation strategy
-            if moduleConstructor == None:
+            if moduleConstructor == None or moduleConstructor == []:
                 adaptationInstruction = AdaptationInstruction(
                     "create", f"None.{className}", 0
                 )
                 adaptationInstruction.useEmptyConstructor = True
                 self.constructorAdaptations[className] = adaptationInstruction
                 continue
-
+            
+            print(moduleConstructor, flush=True)
             adaptationInstruction = AdaptationInstruction(
                 "create", moduleConstructor.qualName, 0
             )
