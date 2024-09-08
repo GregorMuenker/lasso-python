@@ -31,15 +31,16 @@ For this demo to work you need to:
 # TODO: Dynamic?
 if __name__ == "__main__":
     lql_string = """
-    Calculator {
-        mean(int)->float
+    Matrix {
+        Matrix(arr)->None
+        mean()->Any
     }
     """
 
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
 
-    sequenceSpecification = SequenceSpecification("demo.xlsx")
+    sequenceSpecification = SequenceSpecification("calc7_greg.xlsx")
 
     solr_url = "http://localhost:8983/solr/lasso_quickstart"
     solr_conn = LassoSolrConnector(solr_url)
@@ -60,42 +61,39 @@ if __name__ == "__main__":
 
 
 
-    moduleUnderTest = allModulesUnderTest[0]  # only take the first module for now
+    #moduleUnderTest = allModulesUnderTest[0]  # only take the first module for now
+    for moduleUnderTest in allModulesUnderTest:
+        adaptationHandler = AdaptationHandler(
+            interfaceSpecification,
+            moduleUnderTest,
+            maxParamPermutationTries=2,
+            onlyKeepTopNMappings=10,
+        )
+        adaptationHandler.identifyAdaptations()
+        adaptationHandler.identifyConstructorAdaptations()
+        # adaptationHandler.visualizeAdaptations()
+        adaptationHandler.generateMappings()
 
-    adaptationHandler = AdaptationHandler(
-        interfaceSpecification,
-        moduleUnderTest,
-        maxParamPermutationTries=2,
-        onlyKeepTopNMappings=10,
-    )
-    adaptationHandler.identifyAdaptations()
-    adaptationHandler.identifyConstructorAdaptations()
-    #adaptationHandler.visualizeAdaptations()
-    adaptationHandler.generateMappings()
+        executionEnvironment = ExecutionEnvironment(
+            adaptationHandler.mappings,
+            sequenceSpecification,
+            interfaceSpecification,
+        )
 
-    executionEnvironment = ExecutionEnvironment(
-        adaptationHandler.mappings,
-        sequenceSpecification,
-        interfaceSpecification,
-    )
-    
-    execute_test(
-        executionEnvironment,
-        adaptationHandler,
-        moduleUnderTest.moduleName,
-        #import_from_file_path = path,
-    )
+        execute_test(
+            executionEnvironment,
+            adaptationHandler,
+            moduleUnderTest.moduleName,
+            # import_from_file_path = path,
+        )
 
-    executionEnvironment.printResults()
+        executionEnvironment.printResults()
 
-    lassoIgniteClient = LassoIgniteClient()
-    try:
-        executionEnvironment.saveResults(lassoIgniteClient)
-        df = lassoIgniteClient.getDataFrame()
-        print(df)
-    except Exception as e:
-        print(f"Error with Ignite: {e}")
+    #lassoIgniteClient = LassoIgniteClient()
+    #executionEnvironment.saveResults(lassoIgniteClient)
+    #df = lassoIgniteClient.getDataFrame()
+    #print(df)
 
 
-    lassoIgniteClient.cache.destroy()
-    lassoIgniteClient.client.close()
+    #lassoIgniteClient.cache.destroy()
+    #lassoIgniteClient.client.close()

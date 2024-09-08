@@ -85,7 +85,7 @@ class LassoSolrConnector:
             )
 
             if functionName == "__init__" or functionName == "__new__":
-                classDict[moduleName][parentClass].append(functionSignature)
+                classDict[moduleName][parentClass] = functionSignature
             else:
                 functionSignatureDict[moduleName].append(functionSignature)
 

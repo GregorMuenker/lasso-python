@@ -1,0 +1,110 @@
+Interface Specification: InterfaceSpecification(className=Matrix, constructor=MethodSignature(methodName=Matrix, returnType=None, parameterTypes=['arr']), methods=[MethodSignature(methodName=mean, returnType=Any, parameterTypes=[])])
+InterfaceSpecification(className=Matrix, constructor=MethodSignature(methodName=Matrix, returnType=None, parameterTypes=['arr']), methods=[MethodSignature(methodName=mean, returnType=Any, parameterTypes=[])])
+InterfaceSpecification(className=Matrix, constructor=MethodSignature(methodName=Matrix, returnType=None, parameterTypes=['arr']), methods=[MethodSignature(methodName=mean, returnType=Any, parameterTypes=[])])
+(methodSignatureParamsOrderedNodefault:0*) OR ((method:mean) AND (methodSignatureParamsOrderedNodefault:0*))^3
+numpy.ma.core
+numpy.matrixlib.defmatrix
+numpy._core.arrayprint
+numpy._core.defchararray
+Generated 4 ModuleUnderTest objects.
+Nexus is up and running!
+Downloading numpy 2.0.2
+Resolving numpy version mismatch: Target 2.0.2 - Imported 1.26.3
+
+[95m--------------------
+IDENTIFY ADAPTATIONS
+--------------------[0m
+MethodSignature(methodName=mean, returnType=Any, parameterTypes=[])
+FunctionSignature(functionName='mean', returnType='Any', parameterTypes=[], parentClass='MaskedArray', firstDefault=-1)
+Generated 1 potential mappings.
+0: [mean->MaskedArray.mean via Name][create->MaskedArray.__new__ via StandardConstructorValues][create MaskedArray via StandardConstructorValues] | distance=1
+
+[96m----------------------
+EXECUTE SEQUENCE SHEET
+----------------------[0m
+Module: numpy.ma.core
+Number of submodules: 1
+
+ [[None, 'create', 'python.Array', 2, 3, 5, 3], [None, 'create', 'Matrix', 'A1', None, None, None], [4, 'mean', None, None, None, None, None]]
+
+{0: 0: Oracle Value: None | Method Name: create | Instance Param: python.Array | Input Params: [2, 3, 5, 3], 1: 1: Oracle Value: None | Method Name: create | Instance Param: Matrix | Input Params: ['A1'], 2: 2: Oracle Value: 4 | Method Name: mean | Instance Param: None | Input Params: []}
+{0: 0: Oracle Value: None | Method Name: create | Instance Param: python.Array | Input Params: [2, 3, 5, 3], 1: 1: Oracle Value: None | Method Name: create | Instance Param: Matrix | Input Params: ['A1'], 2: 2: Oracle Value: 4 | Method Name: mean | Instance Param: None | Input Params: []}
+
+---------------------------------
+TRYING IMPLEMENTATION FOR MAPPING
+---------------------------------
+0: [mean->MaskedArray.mean via Name][create->MaskedArray.__new__ via StandardConstructorValues][create MaskedArray via StandardConstructorValues] | distance=1.
+Trying to instantiate class MaskedArray.
+Constructor signature: __new__([]).
+Trying instantiation call with metrics: MaskedArray(()).
+Coverage.py file data not found for /Users/I538955/Documents/GitHub/lasso-python/backend/arena/runtime/numpy/ma/core.py, trying file name only
+Coverage.py file data not found for /Users/I538955/Documents/GitHub/lasso-python/backend/arena/runtime/numpy/ma/core.py, skipping further metrics
+Successfully instantiated class: None.
+Created adapted wrapper function for <bound method MaskedArray.mean of masked_array(data=None,
+             mask=False,
+       fill_value=np.str_('?'),
+            dtype=object)>: New param order: None, New blind param order: None, Param conversion: None, Return conversion: None
+Adapted name of function <function adapt_function.<locals>.decorator.<locals>.wrapper at 0x1558053a0> to mean.
+[92mSuccessful creation of submodule 0 for this mapping.[0m
+{0: 0: Oracle Value: None | Method Name: create | Instance Param: python.Array | Input Params: [2, 3, 5, 3], 1: 1: Oracle Value: None | Method Name: create | Instance Param: Matrix | Input Params: [[2, 3, 5, 3]], 2: 2: Oracle Value: 4 | Method Name: mean | Instance Param: None | Input Params: []}
+[]
+{'mean': ('MaskedArray.mean', Name), 'create': ('MaskedArray.__new__', StandardConstructorValues)}
+{'mean': ('MaskedArray.mean', Name), 'create': ('MaskedArray.__new__', StandardConstructorValues)}
+[91mmean() (<module 'mapping0'>, MaskedArray.mean, Name) failed[0m: unsupported operand type(s) for /: 'NoneType' and 'int'
+0: [mean->MaskedArray.mean via Name][create->MaskedArray.__new__ via StandardConstructorValues][create MaskedArray via StandardConstructorValues] | distance=1
+	[96mcreate(2, 3, 5, 3): [2, 3, 5, 3] (expected: None)[0m, None
+	[96mcreate([2, 3, 5, 3]): None (expected: None)[0m, Time: 135 microseconds. Covered lines: None/None in file, None/None in function (None%). Covered branches: None/None in file, None/None in function.
+	[96mmean(): UNSUCCESSFUL (expected: 4)[0m, No metrics recorded, Error: unsupported operand type(s) for /: 'NoneType' and 'int'
+
+
+[95m--------------------
+IDENTIFY ADAPTATIONS
+--------------------[0m
+MethodSignature(methodName=mean, returnType=Any, parameterTypes=[])
+FunctionSignature(functionName='mean', returnType='Any', parameterTypes=[], parentClass='matrix', firstDefault=-1)
+Generated 1 potential mappings.
+0: [mean->matrix.mean via Name][create->matrix.__new__ via Paramconvert][create matrix via Paramconvert] | distance=1
+
+[96m----------------------
+EXECUTE SEQUENCE SHEET
+----------------------[0m
+Module: numpy.matrixlib.defmatrix
+Number of submodules: 1
+
+ [[None, 'create', 'python.Array', 2, 3, 5, 3], [None, 'create', 'Matrix', 'A1', None, None, None], [4, 'mean', None, None, None, None, None]]
+
+{0: 0: Oracle Value: None | Method Name: create | Instance Param: python.Array | Input Params: [2, 3, 5, 3], 1: 1: Oracle Value: None | Method Name: create | Instance Param: Matrix | Input Params: [[2, 3, 5, 3]], 2: 2: Oracle Value: 4 | Method Name: mean | Instance Param: None | Input Params: []}
+{0: 0: Oracle Value: None | Method Name: create | Instance Param: python.Array | Input Params: [2, 3, 5, 3], 1: 1: Oracle Value: None | Method Name: create | Instance Param: Matrix | Input Params: [[2, 3, 5, 3]], 2: 2: Oracle Value: 4 | Method Name: mean | Instance Param: None | Input Params: []}
+
+---------------------------------
+TRYING IMPLEMENTATION FOR MAPPING
+---------------------------------
+0: [mean->matrix.mean via Name][create->matrix.__new__ via Paramconvert][create matrix via Paramconvert] | distance=1.
+Trying to instantiate class matrix.
+Trying instantiation call with metrics: matrix([[2, 3, 5, 3]]).
+Coverage.py file data not found for /Users/I538955/Documents/GitHub/lasso-python/backend/arena/runtime/numpy/matrixlib/defmatrix.py, trying file name only
+Coverage.py file data not found for /Users/I538955/Documents/GitHub/lasso-python/backend/arena/runtime/numpy/matrixlib/defmatrix.py, skipping further metrics
+Successfully instantiated class: [[2 3 5 3]].
+Created adapted wrapper function for <bound method matrix.mean of matrix([[2, 3, 5, 3]])>: New param order: None, New blind param order: None, Param conversion: None, Return conversion: None
+Adapted name of function <function adapt_function.<locals>.decorator.<locals>.wrapper at 0x1570209a0> to mean.
+[92mSuccessful creation of submodule 0 for this mapping.[0m
+{0: 0: Oracle Value: None | Method Name: create | Instance Param: python.Array | Input Params: [2, 3, 5, 3], 1: 1: Oracle Value: None | Method Name: create | Instance Param: Matrix | Input Params: [[2, 3, 5, 3]], 2: 2: Oracle Value: 4 | Method Name: mean | Instance Param: None | Input Params: []}
+[]
+{'mean': ('matrix.mean', Name), 'create': ('matrix.__new__', Paramconvert)}
+{'mean': ('matrix.mean', Name), 'create': ('matrix.__new__', Paramconvert)}
+Coverage.py file data not found for /Users/I538955/Documents/GitHub/lasso-python/backend/arena/runtime/numpy/matrixlib/defmatrix.py, trying file name only
+Coverage.py file data not found for /Users/I538955/Documents/GitHub/lasso-python/backend/arena/runtime/numpy/matrixlib/defmatrix.py, skipping further metrics
+0: [mean->matrix.mean via Name][create->matrix.__new__ via Paramconvert][create matrix via Paramconvert] | distance=1
+	[96mcreate(2, 3, 5, 3): [2, 3, 5, 3] (expected: None)[0m, None
+	[96mcreate([2, 3, 5, 3]): [[2 3 5 3]] (expected: None)[0m, Time: 111 microseconds. Covered lines: None/None in file, None/None in function (None%). Covered branches: None/None in file, None/None in function.
+	[96mmean(): 3.25 (expected: 4)[0m, Time: 240 microseconds. Covered lines: None/None in file, None/None in function (None%). Covered branches: None/None in file, None/None in function.
+
+
+[95m--------------------
+IDENTIFY ADAPTATIONS
+--------------------[0m
+MethodSignature(methodName=mean, returnType=Any, parameterTypes=[])
+FunctionSignature(functionName='_make_options_dict', returnType='Any', parameterTypes=[], parentClass='None', firstDefault=-1)
+MethodSignature(methodName=mean, returnType=Any, parameterTypes=[])
+FunctionSignature(functionName='set_printoptions', returnType='Any', parameterTypes=[], parentClass='None', firstDefault=-1)
+MethodSignature(methodName=mean, returnType=Any, parameterTypes=[])

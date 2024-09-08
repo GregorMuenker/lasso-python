@@ -432,8 +432,7 @@ class AdaptationHandler:
                 adaptationInstruction.useEmptyConstructor = True
                 self.constructorAdaptations[className] = adaptationInstruction
                 continue
-            
-            print(moduleConstructor, flush=True)
+                
             adaptationInstruction = AdaptationInstruction(
                 "create", moduleConstructor.qualName, 0
             )
