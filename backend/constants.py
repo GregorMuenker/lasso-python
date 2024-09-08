@@ -144,3 +144,5 @@ POSSIBLE_CONVERSIONS = {
 }
 
 LIST_LIKE_TYPES = [list, tuple, set, frozenset]
+TYPE_INFERENCING_TEMP = f"{REPOSITORY}/backend/crawl/temp"
+RUNTIME = f"{REPOSITORY}/backend/arena/runtime"

@@ -19,3 +19,8 @@ class CalcList:
 
     def avg(self):
         return numpy.core.fromnumeric.mean(self.list)
+
+    @staticmethod
+    def print_list(x):
+        for element in x:
+            print(f"Element: {element}")

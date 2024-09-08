@@ -9,13 +9,13 @@ import json
 import re
 from urllib.request import urlopen
 import requests
+from backend.crawl.nexus import Nexus, Package
 import git
 
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
 from backend.constants import INSTALLED, INDEX
-
 
 def get_all_packages():
     """Retrieves all package names from PyPi.
@@ -102,13 +102,12 @@ def tokenize(string):
 
 
 def reformat_dependency(dependency):
-    """Splits given dependency into package name and its version requirements.
+    """Splits given dependency into its version requirements.
 
     Args:
         dependency (string): Dependency.
 
     Returns:
-        project (string): Package name.
         tuples (list of tuple strings): List of tuples, which include an operator and a version.
     """
     # Regex to extract the package name and version requirements
@@ -127,36 +126,6 @@ def reformat_dependency(dependency):
     return tuples
 
 
-def check_request(project, requirements):
-    """Checks if install request is already satisfied.
-
-    Args:
-        project (string): Package name.
-        requirements (list of tuple strings): output of reformat_dependency.
-
-    Returns:
-        result (list of strings): List of local versions that satisfy the requirements.
-    """
-    local_versions = get_local_versions(project)
-    result = []
-
-    if not requirements:
-        latest = get_latest_version(project)
-        if latest in local_versions:
-            result = [latest]
-    else:
-        for local_version in local_versions:
-            satisfy = True
-            for operator, version in requirements:
-                comparison = compare_versions(local_version, operator, version)
-                if not comparison:
-                    satisfy = False
-                    break
-            if satisfy:
-                result.append(local_version)
-    return result
-
-
 def get_local_versions(project):
     """Provides a list of local version for a provided package.
 
@@ -166,9 +135,6 @@ def get_local_versions(project):
     Returns:
         versions (list of strings): List of locally installed versions.
     """
-    #FIXME: names with - -> _ (typing-extensions)
-    # folders = [folder for folder in os.listdir(
-    #     INSTALLED) if folder.startswith(project)]
     pattern = rf"^{re.escape(project)}-\d+(\.\d+)*"
     folders = [folder for folder in os.listdir(
         INSTALLED) if re.match(pattern, folder)]
@@ -192,6 +158,12 @@ def compare_versions(left, operator, right):
     Returns:
         boolean: Result of version comparison.
     """
+    #FIXME: Versions with trailing * not supported! e.g. !=3.1.* Clean fix?
+    if "*" in right and operator == "!=":
+        if right.strip("*") in left:
+            return False
+        else:
+            return True
     v1 = Version(left)
     v2 = Version(right)
     result = eval(f"v1 {operator} v2")
@@ -232,13 +204,16 @@ def satisfy_condition(dependency):
         elif "python_version" in condition:
             _, operator, version = tokenize(condition.strip())
             version = version.strip("'")
-            if not compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version.strip('"')):
+            version = version.strip('"')
+            if not check_python_version(operator, version):
                 return
     return dependency
 
+def check_python_version(operator, version):
+    return compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version)
 
 def get_latest_version(package_name):
-    """Retrieves latest version of a given package from PyPi.
+    """Retrieves latest version of a given package from PyPi that is supported by the local python version.
 
     Args:
         package_name (string): Package name.
@@ -250,14 +225,46 @@ def get_latest_version(package_name):
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        latest_version = data["info"]["version"]
-        return latest_version
+        # latest_version = data["info"]["version"]
+        releases = data["releases"]
+        result = []
+        for release, dists in releases.items():
+            requires_python = [item["requires_python"] for item in dists]
+            requires_python = list(dict.fromkeys(requires_python))
+            if requires_python:
+                requirement = requires_python[0]
+                if requirement:
+                    pattern = r"([<>=!]+)([^\,]+(\..)*)"
+                    matches = re.finditer(pattern, requirement)
+                    # requirement = requirement.split(",")
+                    requirement = [(match.group(1), match.group(2)) for match in matches]
+            else:
+                requirement = None
+            result.append((release, requirement))
+        for release, requirement in sorted(result, key=lambda x: Version(x[0]), reverse=True):
+            if not requirement:
+                return release
+            else:
+                print(requirement)
+                check = [check_python_version(operator, version) for operator, version in requirement]
+                if all(check):
+                    return release
+
     else:
+        #TODO: What to do if information cannot be fetched?
         return None
 
 
 class installHandler:
-    def __init__(self):
+    def __new__(cls, nexus: Nexus):
+        if nexus.check_status(nexus.nexus_host):
+            return super(installHandler, cls).__new__(cls)
+        else:
+            print(f"Cannot reach Nexus server at {nexus.nexus_host}")
+            return None
+    
+    def __init__(self, nexus: Nexus):
+        self.nexus = nexus
         if not os.path.exists(INDEX):
             self.index = {}
         else:
@@ -281,35 +288,88 @@ class installHandler:
             raise BaseException("Could not identify package name.")
 
         requirements = reformat_dependency(package)
-        satisfactory_versions = check_request(name, requirements)
+        satisfactory_versions = self.check_request(name, requirements)
 
         if not satisfactory_versions:
             path = f"{INSTALLED}/tmp"
-            # TODO: Catch exception?
+            # TODO: What to do when installation fails?
             subprocess.check_call([sys.executable, "-m", "pip",
                                    "install", package, "--no-deps", "-q", "-t", path])
             print(f"Installing {name}")
             local_path = f"tmp"
+
+            info = [get_info(f"{local_path}/{item}") for item in os.listdir(
+                path) if item.endswith(".dist-info")][0]
+            # name, version, dependencies = info["name"], info["version"], info["dependencies"]
+            version, dependencies = info["version"], info["dependencies"]
+            destination = f"{name}-{version}"
+            shutil.move(path, f"{INSTALLED}/{destination}")
+
+            pkg = Package(name, version, destination)
+            pkg.compress()
+            # TODO: What to do if upload fails?
+            if not self.nexus.upload(pkg):
+                pass
+            
+            deps = {}
+            for dependency in dependencies:
+                if short_dependency := satisfy_condition(dependency):
+                    deps[get_package_name(dependency)] = {"requirements": short_dependency, "version": None}
+            self.index[f"{name}:{version}"] = deps
+            self.dump_index()
+            
+            # deps = []
+            for dependency in dependencies:
+                if short_dependency := satisfy_condition(dependency):
+                    dep_name, dep_version = self.install(short_dependency)
+                    # print(dep_name, dep_version)
+                    # deps.append((dep_name, dep_version))
+                    self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
+
+            # self.index[f"{name}:{version}"] = deps
+            already_installed = False
         else:
             print(f"{name} already installed!")
-            path = f"{INSTALLED}/{name}-{satisfactory_versions[0]}"
-            local_path = f"{name}-{satisfactory_versions[0]}"
-        info = [get_info(f"{local_path}/{item}") for item in os.listdir(
-            path) if item.endswith(".dist-info")][0]
+            version = satisfactory_versions[0]
+            already_installed = True
+            #TODO: Check Index for missing dependencies? Maybe save requirements in index?
 
-        name, version, dependencies = info["name"], info["version"], info["dependencies"]
-        destination = f"{INSTALLED}/{name}-{version}"
-        shutil.move(path, destination)
+        self.dump_index()
+        return name, version, already_installed
 
-        deps = []
-        for dependency in dependencies:
-            if short_dependency := satisfy_condition(dependency):
-                dep_name, dep_version = self.install(short_dependency)
-                print(dep_name, dep_version)
-                deps.append((dep_name, dep_version))
+    def check_request(self, project, requirements):
+        """Checks if install request is already satisfied.
 
-        self.index[f"{name}:{version}"] = deps
-        return name, version
+        Args:
+            project (string): Package name.
+            requirements (list of tuple strings): output of reformat_dependency.
+
+        Returns:
+            result (list of strings): List of local versions that satisfy the requirements.
+        """
+        # local_versions = get_local_versions(project)
+        local_versions = self.nexus.get_versions(project)
+        # print(local_versions)
+
+        result = []
+
+        if not requirements:
+            latest = get_latest_version(project)
+            print(latest)
+            if latest in local_versions:
+                result = [latest]
+        else:
+            for local_version in local_versions:
+                satisfy = True
+                for operator, version in requirements:
+                    comparison = compare_versions(
+                        local_version, operator, version)
+                    if not comparison:
+                        satisfy = False
+                        break
+                if satisfy:
+                    result.append(local_version)
+        return result
 
     def dump_index(self):
         out_file = open(INDEX, "w")
@@ -317,9 +377,11 @@ class installHandler:
 
 
 if __name__ == "__main__":
+    nexus = Nexus()
     packages = get_most_downloaded()
-    installHandler = installHandler()
+    installHandler = installHandler(nexus)
     for package in packages[:20]:
         installHandler.install(package)
-    # installHandler.install("attrs")
+    # installHandler.install("yarl")
     installHandler.dump_index()
+    # print(get_latest_version("pandas"))

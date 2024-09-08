@@ -14,6 +14,7 @@ from backend.constants import INSTALLED, INDEX
 
 sys.path.insert(0, "runtime")
 
+# obsolete with nexus?
 def move(package, version):
     """Moves package folder into runtime folder.
 
