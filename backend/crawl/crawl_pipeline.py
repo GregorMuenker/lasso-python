@@ -38,6 +38,5 @@ def index_package(package_name):
     upload_index.upload_index(index)
     #imp_help.unload_package()
 
-
 if __name__ == "__main__":
     index_package("numpy==2.0.2")
