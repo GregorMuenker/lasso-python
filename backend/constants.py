@@ -23,6 +23,7 @@ repo = git.Repo(search_parent_directories=True)
 REPOSITORY = repo.working_tree_dir
 INSTALLED = f"{REPOSITORY}/backend/crawl/installed"
 INDEX = f"{REPOSITORY}/backend/crawl/index.json"
+RUNTIME = f"{REPOSITORY}/backend/arena/runtime"
 
 STANDARD_CONSTRUCTOR_VALUES = {
     "str": "",
