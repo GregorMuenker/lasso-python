@@ -26,8 +26,7 @@ For this demo to work you need to:
 if __name__ == "__main__":
     lql_string = """
     Calculator {
-        log(int, int)->float
-        sqrd(int)->float
+        mean(list)->float
     }
     """
 
@@ -71,11 +70,10 @@ if __name__ == "__main__":
         use_constructor_default_values=True,
     )
 
-    stimulus_sheet = get_stimulus_sheet("calc4_demo.csv")
+    stimulus_sheet = get_stimulus_sheet("calc6_demo.csv")
     allSequenceExecutionRecords = execute_test(stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification)
     for sequenceExecutionRecord in allSequenceExecutionRecords:
-        print(sequenceExecutionRecord)    
-
+        print(sequenceExecutionRecord)
     lassoIgniteClient = LassoIgniteClient()
     for sequenceExecutionRecord in allSequenceExecutionRecords:
         cells = sequenceExecutionRecord.toSheetCells()
