@@ -55,14 +55,13 @@ if __name__ == "__main__":
 
     executionEnvironment.printResults()
     
-    #executionEnvironment.getCorrectMethods()
+    lassoIgniteClient = LassoIgniteClient()
+    try:
+        executionEnvironment.saveResults(lassoIgniteClient)
+        df = lassoIgniteClient.getDataFrame()
+        print(df)
+    except Exception as e:
+        print(f"Error with Ignite: {e}")
 
-    # TODO enable ignite support, current bug: if create statement row record is read in execution.py toSheetCells()
-    # lassoIgniteClient = LassoIgniteClient()
-    # executionEnvironment.saveResults(lassoIgniteClient)
-
-    # df = lassoIgniteClient.getDataFrame()
-    # print(df)
-
-    # lassoIgniteClient.cache.destroy()
-    # lassoIgniteClient.client.close()
+    lassoIgniteClient.cache.destroy()
+    lassoIgniteClient.client.close()

@@ -5,6 +5,7 @@ import coverage
 import datetime
 import json
 import io
+import uuid
 
 import sys
 
@@ -13,86 +14,107 @@ from constants import CYAN, RED, RESET
 from ignite import CellId, CellValue
 from adaptation_identification import InterfaceSpecification, Mapping, AdaptationHandler
 from sequence_specification_greg import SequenceSpecification
-
+from pyignite.datatypes import TimestampObject
 
 class SequenceExecutionRecord:
+    
     def __init__(
         self,
         mapping: Mapping,
         interfaceSpecification: InterfaceSpecification,
         sequenceSpecification: SequenceSpecification,
+        executionId,
     ) -> None:
         self.interfaceSpecification = interfaceSpecification
         self.mapping = mapping
         self.sequenceSpecification = sequenceSpecification
         self.rowRecords = []  # List[RownRecord]
+        self.executionId = executionId
 
     def toSheetCells(self) -> list:
         """
         This method converts the sequence execution record into pairs of (CellId, CellValue) that can be put into the Ignite cache.
-        The following type of stats are covered:
-        - 'value' (TODO oracle value?),
-        - 'op' (operation)
-        - 'input_value'
-        - metrics
-        Not covered
-        - 'seq' (Randoop)
-        - 'exseq' (Randoop)
-        - 'loader.classes_loaded',
-        - 'loader.artifacts'
 
         Returns:
         list: A list of (CellId, CellValue) tuples that represent the cells in the sequence sheet.
         """
         cells = []
+        serializedStrLength = 15
 
         for rowRecord in self.rowRecords:
-            original_function_name, adaptation_instruction = (
+            # NOTE no handling of python operations (creating a list etc.)
+            
+            originalFunctionName, adaptationInstruction = (
                 self.mapping.adaptationInfo[rowRecord.methodName]
             )
+            adaptationId = str(adaptationInstruction.identifier)
 
-            # Value
+            # Return value
             cellId = CellId(
-                EXECUTIONID="",
+                EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
                 ACTIONID="",
                 ARENAID="execute",
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID="",
-                VARIANTID=str(self.mapping.identifier),
-                ADAPTERID=str(adaptation_instruction.identifier),
+                VARIANTID="original",
+                ADAPTERID=adaptationId,
                 X=0,
                 Y=rowRecord.position,
                 TYPE="value",
             )
             cellValue = CellValue(
-                VALUE=str(rowRecord.returnValue),
+                VALUE=str(rowRecord.returnValue)[:serializedStrLength],
                 RAWVALUE=str(rowRecord.returnValue),
                 VALUETYPE=str(type(rowRecord.returnValue)),
-                LASTMODIFIED=datetime.date.today(),
+                LASTMODIFIED=datetime.datetime.now(),
                 EXECUTIONTIME=rowRecord.metrics.executionTime,
             )
             cells.append((cellId, cellValue))
 
+            # Oracle
+            if rowRecord.oracleValue != None:
+                cellId = CellId(
+                    EXECUTIONID=str(self.executionId),
+                    ABSTRACTIONID=self.interfaceSpecification.className,
+                    ACTIONID="",
+                    ARENAID="execute",
+                    SHEETID=self.sequenceSpecification.name,
+                    SYSTEMID="oracle",
+                    VARIANTID="oracle",
+                    ADAPTERID="oracle",
+                    X=0,
+                    Y=rowRecord.position,
+                    TYPE="oracle",
+                )
+                cellValue = CellValue(
+                    VALUE=str(rowRecord.oracleValue)[:serializedStrLength],
+                    RAWVALUE=str(rowRecord.oracleValue),
+                    VALUETYPE=str(type(rowRecord.oracleValue)),
+                    LASTMODIFIED=datetime.datetime.now(),
+                    EXECUTIONTIME=rowRecord.metrics.executionTime,
+                )
+                cells.append((cellId, cellValue))
+
             # Operation
             cellId = CellId(
-                EXECUTIONID="",
+                EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
                 ACTIONID="",
                 ARENAID="execute",
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID="",
-                VARIANTID=str(self.mapping.identifier),
-                ADAPTERID=str(adaptation_instruction.identifier),
+                VARIANTID="original",
+                ADAPTERID=adaptationId,
                 X=1,
                 Y=rowRecord.position,
                 TYPE="op",
             )
             cellValue = CellValue(
-                VALUE=original_function_name,
-                RAWVALUE=original_function_name,
+                VALUE=originalFunctionName[:serializedStrLength],
+                RAWVALUE=originalFunctionName,
                 VALUETYPE="function",
-                LASTMODIFIED=datetime.date.today(),
+                LASTMODIFIED=datetime.datetime.now(),
                 EXECUTIONTIME=rowRecord.metrics.executionTime,
             )
             cells.append((cellId, cellValue))
@@ -100,49 +122,54 @@ class SequenceExecutionRecord:
             # Input values
             for xPosition, inputParam in enumerate(rowRecord.inputParams):
                 cellId = CellId(
-                    EXECUTIONID="",
+                    EXECUTIONID=str(self.executionId),
                     ABSTRACTIONID=self.interfaceSpecification.className,
                     ACTIONID="",
                     ARENAID="execute",
                     SHEETID=self.sequenceSpecification.name,
                     SYSTEMID="",
-                    VARIANTID=str(self.mapping.identifier),
-                    ADAPTERID=str(adaptation_instruction.identifier),
+                    VARIANTID="original",
+                    ADAPTERID=adaptationId,
                     X=3 + xPosition,
                     Y=rowRecord.position,
                     TYPE="input_value",
                 )
                 cellValue = CellValue(
-                    VALUE=str(inputParam),
+                    VALUE=str(inputParam)[:serializedStrLength],
                     RAWVALUE=str(inputParam),
                     VALUETYPE=str(type(inputParam)),
-                    LASTMODIFIED=datetime.date.today(),
+                    LASTMODIFIED=datetime.datetime.now(),
                     EXECUTIONTIME=-1,
                 )
                 cells.append((cellId, cellValue))
 
             # Metrics
-            cellId = CellId(
-                EXECUTIONID="",
-                ABSTRACTIONID=self.interfaceSpecification.className,
-                ACTIONID="",
-                ARENAID="execute",
-                SHEETID=self.sequenceSpecification.name,
-                SYSTEMID="",
-                VARIANTID=str(self.mapping.identifier),
-                ADAPTERID=str(adaptation_instruction.identifier),
-                X=-1,
-                Y=rowRecord.position,
-                TYPE="coverage_ratio",
-            )
-            cellValue = CellValue(
-                VALUE=f"{rowRecord.metrics.coveredLinesInFunctionRatio}%",
-                RAWVALUE=f"{rowRecord.metrics.coveredLinesInFunctionRatio}",
-                VALUETYPE="percentage",
-                LASTMODIFIED=datetime.date.today(),
-                EXECUTIONTIME=-1,
-            )
-            cells.append((cellId, cellValue))
+            if not rowRecord.metrics.isEmpty():
+                for key, value in rowRecord.metrics.toDict().items():
+                    if value == None:
+                        continue
+
+                    cellId = CellId(
+                        EXECUTIONID=str(self.executionId),
+                        ABSTRACTIONID=self.interfaceSpecification.className,
+                        ACTIONID="",
+                        ARENAID="metrics",
+                        SHEETID=self.sequenceSpecification.name,
+                        SYSTEMID="",
+                        VARIANTID="original",
+                        ADAPTERID=adaptationId,
+                        X=-1,
+                        Y=rowRecord.position,
+                        TYPE=key,
+                    )
+                    cellValue = CellValue(
+                        VALUE=str(value)[:serializedStrLength],
+                        RAWVALUE=str(value),
+                        VALUETYPE=str(type(value)),
+                        LASTMODIFIED=datetime.datetime.now(),
+                        EXECUTIONTIME=-1,
+                    )
+                    cells.append((cellId, cellValue))
 
         return cells
 
@@ -169,6 +196,7 @@ class ExecutionEnvironment:
         self.interfaceSpecification = interfaceSpecification
         self.sequenceSpecification = sequenceSpecification
         self.recordMetrics = recordMetrics
+        self.uuid = uuid.uuid4() # Later used as execution id when saving observations in Ignite
 
         self.allSequenceExecutionRecords = []
 
@@ -177,6 +205,7 @@ class ExecutionEnvironment:
                 mapping=mapping,
                 interfaceSpecification=interfaceSpecification,
                 sequenceSpecification=sequenceSpecification,
+                executionId=self.uuid
             )
             self.allSequenceExecutionRecords.append(sequenceExecutionRecord)
 
@@ -265,6 +294,21 @@ class Metrics:
             and self.coveredBranchesInFunction == None
         )
 
+    def toDict(self) -> dict:
+        return {
+            "metrics_execution_time": self.executionTime,
+            "metrics_all_lines_in_file": self.allLinesInFile,
+            "metrics_covered_lines_in_file": self.coveredLinesInFile,
+            "metrics_all_lines_in_function": self.allLinesInFunction,
+            "metrics_covered_lines_in_function": self.coveredLinesInFunction,
+            "metrics_covered_lines_in_function_ratio": self.coveredLinesInFunctionRatio,
+            "metrics_all_branches_in_file": self.allBranchesInFile,
+            "metrics_covered_branches_in_file": self.coveredBranchesInFile,
+            "metrics_all_branches_in_function": self.allBranchesInFunction,
+            "metrics_covered_branches_in_function": self.coveredBranchesInFunction,
+        }
+
+
     def __repr__(self) -> str:
         if self.isEmpty():
             return "No metrics recorded"
@@ -298,9 +342,6 @@ def execute_test(
     print(f"\n {sequence_spec.sequenceSheet}\n")
 
     for i, mapping in enumerate(mappings):
-        #if not mapping.successful:
-        #    print(f"Skipping mapping {i} as it was not successful")
-        #    continue # TODO store error message?
 
         sequenceExecutionRecord = execution_environment.getSequenceExecutionRecord(mapping)
         

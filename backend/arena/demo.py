@@ -5,7 +5,7 @@ from execution import execute_test, ExecutionEnvironment
 from lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
 from solr_query import translate_to_solr_query
-from sequence_specification import SequenceSpecification
+from sequence_specification_greg import SequenceSpecification
 from ignite import LassoIgniteClient
 
 """
@@ -71,10 +71,13 @@ if __name__ == "__main__":
     executionEnvironment.printResults()
 
     lassoIgniteClient = LassoIgniteClient()
-    executionEnvironment.saveResults(lassoIgniteClient)
+    try:
+        executionEnvironment.saveResults(lassoIgniteClient)
+        df = lassoIgniteClient.getDataFrame()
+        print(df)
+    except Exception as e:
+        print(f"Error with Ignite: {e}")
 
-    df = lassoIgniteClient.getDataFrame()
-    print(df)
 
     lassoIgniteClient.cache.destroy()
     lassoIgniteClient.client.close()

@@ -111,7 +111,7 @@ class LassoIgniteClient:
                             },
                             {
                                 "name": "LASTMODIFIED",
-                                "type_name": "java.lang.Date",
+                                "type_name": "java.sql.Timestamp",
                             },
                             {
                                 "name": "EXECUTIONTIME",

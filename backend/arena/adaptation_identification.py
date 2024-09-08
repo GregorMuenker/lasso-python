@@ -13,8 +13,6 @@ from constants import (
     RESET,
     POSSIBLE_CONVERSIONS,
 )
-from sequence_specification import SequenceSpecification
-
 
 class MethodSignature:
     def __init__(self, methodName: str, returnType: str, parameterTypes: list) -> None:
@@ -535,10 +533,12 @@ class AdaptationHandler:
                     # Check if the function has a parent class, if so, check if the class is adaptable
                     className = self.moduleFunctions[moduleFunctionId].parentClass
                     if className:
-                        potentialMapping.classNames.add(className)
-                        if self.classConstructors[className] == None:
+                        if self.constructorAdaptations[className] == None:
                             # The constructor of a class that is used in this mapping is not adaptable, break
                             break
+                        potentialMapping.classNames.add(className)
+                        constructorQualName = self.classConstructors[className].qualName if self.classConstructors[className] else f"{className}.None" # Account for the situation that the class has no constructor, i.e. the constructor is None
+                        potentialMapping.adaptationInfo["create"] = (constructorQualName, self.constructorAdaptations[className])
 
                 else:
                     # At least one module function in the permutation is not adaptable
