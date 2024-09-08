@@ -1,11 +1,11 @@
 import unittest
 
-from adaptation import (
-    adapt_function,
+from adaptation_identification import (
     can_convert_params,
     can_convert_type,
     find_permutation,
 )
+from adaptation_implementation import adapt_function
 
 
 class ExampleFunctions:
@@ -62,54 +62,5 @@ class TestAdaptation(unittest.TestCase):
         target_type_2 = "Any"
         self.assertFalse(can_convert_type(source_type_2, target_type_2))
 
-def test_arena():
-    from execution import execute_test
-    from module_parser import parse_code
-    from stimulus_sheet_reader import get_stimulus_sheet
-    from adaptation import AdaptationHandler, create_adapted_module
-    from lql.antlr_parser import parse_interface_spec
-
-    lql_string = """
-    Matrix {
-        Matrix(str)->None
-        multiply(Any)->Any
-        power(Any)->Any
-    }
-    """
-
-    interfaceSpecification = parse_interface_spec(lql_string)
-    print(interfaceSpecification)
-
-    # Load source of specific file on disk
-    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
-    with open(path, "r") as file:
-        file_content = file.read()
-        moduleUnderTest = parse_code(file_content, "numpy.matrixlib.defmatrix") # Parse the file to obtain a ModuleUnderTest object
-
-    adaptationHandler = AdaptationHandler(
-        interfaceSpecification,
-        moduleUnderTest,
-        excludeClasses=False,
-        useFunctionDefaultValues=False,
-    )
-    adaptationHandler.identifyAdaptations(maxParamPermutationTries=1)
-    adaptationHandler.visualizeAdaptations()
-    adaptationHandler.generateMappings(onlyKeepTopN=20)
-
-    (adapted_module, successful_mappings) = create_adapted_module(
-        adaptationHandler,
-        moduleUnderTest.moduleName,
-        class_instantiation_params=["1 2; 3 4"],
-        use_constructor_default_values=True,
-        testing_mode=False,
-    )
-
-    stimulus_sheet = get_stimulus_sheet("calc5_arena_tests.csv")
-    allSequenceExecutionRecords = execute_test(stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification)
-    for sequenceExecutionRecord in allSequenceExecutionRecords:
-        print(sequenceExecutionRecord)
-
-
 if __name__ == "__main__":
-    test_arena()
     unittest.main()

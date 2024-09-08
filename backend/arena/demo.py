@@ -1,10 +1,11 @@
 import pysolr
-from adaptation import AdaptationHandler, create_adapted_module
-from execution import execute_test
+from adaptation_identification import AdaptationHandler
+from adaptation_implementation import create_adapted_module
+from execution import execute_test, ExecutionEnvironment
 from lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
 from solr_query import translate_to_solr_query
-from stimulus_sheet_reader import get_stimulus_sheet
+from sequence_specification_greg import SequenceSpecification
 from ignite import LassoIgniteClient
 
 """
@@ -19,7 +20,7 @@ For this demo to work you need to:
 """
 
 
-#TODO: Dynamic?
+# TODO: Dynamic?
 if __name__ == "__main__":
     lql_string = """
     Calculator {
@@ -31,6 +32,8 @@ if __name__ == "__main__":
 
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
+
+    sequenceSpecification = SequenceSpecification("demo.xlsx")
 
     solr_url = "http://localhost:8983/solr/lasso_quickstart"
     solr = pysolr.Solr(solr_url)
@@ -45,31 +48,36 @@ if __name__ == "__main__":
     adaptationHandler = AdaptationHandler(
         interfaceSpecification,
         moduleUnderTest,
-        excludeClasses=False,
-        useFunctionDefaultValues=False,
+        maxParamPermutationTries=2,
+        onlyKeepTopNMappings=10,
     )
-    adaptationHandler.identifyAdaptations(maxParamPermutationTries=2)
+    adaptationHandler.identifyAdaptations()
+    adaptationHandler.identifyConstructorAdaptations()
     adaptationHandler.visualizeAdaptations()
-    adaptationHandler.generateMappings(onlyKeepTopN=10)
+    adaptationHandler.generateMappings()
 
-    (adapted_module, successful_mappings) = create_adapted_module(
-        adaptationHandler,
-        moduleUnderTest.moduleName,
-        use_constructor_default_values=True,
+    executionEnvironment = ExecutionEnvironment(
+        adaptationHandler.mappings,
+        sequenceSpecification,
+        interfaceSpecification,
     )
 
-    stimulus_sheet = get_stimulus_sheet("calc4_demo.csv")
-    allSequenceExecutionRecords = execute_test(stimulus_sheet, adapted_module, successful_mappings, interfaceSpecification)
-    for sequenceExecutionRecord in allSequenceExecutionRecords:
-        print(sequenceExecutionRecord)    
+    execute_test(
+        executionEnvironment,
+        adaptationHandler,
+        moduleUnderTest.moduleName
+    )
+
+    executionEnvironment.printResults()
 
     lassoIgniteClient = LassoIgniteClient()
-    for sequenceExecutionRecord in allSequenceExecutionRecords:
-        cells = sequenceExecutionRecord.toSheetCells()
-        lassoIgniteClient.putAll(cells)
+    try:
+        executionEnvironment.saveResults(lassoIgniteClient)
+        df = lassoIgniteClient.getDataFrame()
+        print(df)
+    except Exception as e:
+        print(f"Error with Ignite: {e}")
 
-    df = lassoIgniteClient.getDataFrame()
-    print(df)
 
     lassoIgniteClient.cache.destroy()
     lassoIgniteClient.client.close()

@@ -1,12 +1,14 @@
 class Calculator:
-    def __init__(self):
+    def __init__(self, a: int):
+        self.no = a
         pass
+    
+    def add(self, b: int):
+        self.no += b
+        return self.no
 
-    def add(self, a, b):
-        return a + b
-
-    def subtract(self, a: int, b: float):
-        return a - b
+    def subtract(self, b: int):
+        return self.no - b
 
 
 def multiply(a, b, c):
@@ -17,19 +19,19 @@ def divide(a, b):
     return a / b
 
 
-def square(a):
+def square(a: int) -> int:
     return a * a
 
 
 class Test:
-    def __init__(self, a: float):
-        self.a = a
+    def __init__(self):
+        pass
 
-    def square(self, a: int):
-        return a * a
+    def cubed(self, a: list):
+        return a
 
     def add(self, a: int, b: str):
-        return a + b
+        return f"{a}<>{b}"
 
-    def subtract(self, a: float, b: float):
+    def minus(self, a: float, b: float) -> float:
         return a - b

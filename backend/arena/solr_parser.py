@@ -1,9 +1,11 @@
+from adaptation_identification import FunctionSignature, ModuleUnderTest
+
+
 def parse_solr_response(response):
     """
     Parses the Solr response and extracts relevant information to create FunctionSignature and ModuleUnderTest objects.
     As of now, only the first module is considered.
     """
-    from adaptation import FunctionSignature, ModuleUnderTest
 
     functionSignatureDict = (
         {}
@@ -42,7 +44,7 @@ def parse_solr_response(response):
         )
 
         if functionName == "__init__" or functionName == "__new__":
-            classDict[moduleName][parentClass].append(functionSignature)
+            classDict[moduleName][parentClass] = functionSignature
         else:
             functionSignatureDict[moduleName].append(functionSignature)
 
@@ -52,6 +54,7 @@ def parse_solr_response(response):
         moduleUnderTest = ModuleUnderTest(
             moduleName, functionSignatureDict[moduleName], classDict[moduleName]
         )
+        moduleUnderTest.classConstructors = classDict[moduleName]
         allModulesUnderTest.append(moduleUnderTest)
 
     print(f"Generated {len(allModulesUnderTest)} ModuleUnderTest objects.")
@@ -67,3 +70,4 @@ if __name__ == "__main__":
         file_content = json.load(file)
 
     moduleUnderTest = parse_solr_response(file_content)
+    print(moduleUnderTest)

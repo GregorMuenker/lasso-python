@@ -11,3 +11,4 @@ typing
 coverage
 pyignite
 gitpython
+levenshtein

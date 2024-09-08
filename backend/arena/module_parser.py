@@ -19,7 +19,7 @@ def get_type_annotation(annotation):
 
 
 def parse_function(node, parentClass=None):
-    from adaptation import FunctionSignature
+    from adaptation_identification import FunctionSignature
 
     functionName = node.name
     returnType = get_type_annotation(node.returns)
@@ -54,18 +54,18 @@ def parse_function(node, parentClass=None):
 def parse_class(node):
     className = node.name
     functions = []
-    constructors = []
+    constructor = None
     for item in node.body:
         if isinstance(item, ast.FunctionDef):
             if item.name == "__init__" or item.name == "__new__":
-                constructors.append(parse_function(item, parentClass=className))
+                constructor = parse_function(item, parentClass=className)
             else:
                 functions.append(parse_function(item, parentClass=className))
-    return className, functions, constructors
+    return className, functions, constructor
 
 
 def parse_code(code_string, module_name):
-    from adaptation import ModuleUnderTest
+    from adaptation_identification import ModuleUnderTest
 
     tree = ast.parse(code_string)
     functions = []
@@ -76,21 +76,20 @@ def parse_code(code_string, module_name):
         if isinstance(node, ast.FunctionDef):
             functions.append(parse_function(node))
         elif isinstance(node, ast.ClassDef):
-            className, class_functions, class_constructors = parse_class(node)
-            classes[className] = class_constructors
+            className, class_functions, class_constructor = parse_class(node)
+            classes[className] = class_constructor
             functions.extend(class_functions)
-            constructors.extend(class_constructors)
+            constructors.append(class_constructor)
 
-    module = ModuleUnderTest(module_name, functions)
-    module.classes = classes
-    module.constructors = constructors
+    module = ModuleUnderTest(module_name, functions, classes)
 
     print(f"Module Name: {module.moduleName}")
-    print(f"Classes: {module.classes}")
-    for func in module.constructors:
-        print(
-            f"Constructor Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}, First Default: {func.firstDefault}"
-        )
+    print(f"Classes: {module.classConstructors}")
+    for func in module.classConstructors.values():
+        if func != None:
+            print(
+                f"Constructor Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}, First Default: {func.firstDefault}"
+            )
     for func in module.functions:
         print(
             f"Function Name: {func.functionName}, Parent Class: {func.parentClass}, Parameters: {func.parameterTypes}, Return Type: {func.returnType}, First Default: {func.firstDefault}"
