@@ -9,7 +9,7 @@ import json
 import re
 from urllib.request import urlopen
 import requests
-from nexus import Nexus, Package
+from backend.crawl.nexus import Nexus, Package
 import git
 
 repo = git.Repo(search_parent_directories=True)
@@ -327,14 +327,15 @@ class installHandler:
                     self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
 
             # self.index[f"{name}:{version}"] = deps
-        
+            already_installed = False
         else:
             print(f"{name} already installed!")
             version = satisfactory_versions[0]
+            already_installed = True
             #TODO: Check Index for missing dependencies? Maybe save requirements in index?
 
         self.dump_index()
-        return name, version
+        return name, version, already_installed
 
     def check_request(self, project, requirements):
         """Checks if install request is already satisfied.

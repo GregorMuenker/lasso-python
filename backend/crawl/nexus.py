@@ -95,15 +95,16 @@ class Nexus:
             else:
                 # TODO: What to do if upload fails.
                 print(
-                    f'Failed to upload {self.local_file_path}. HTTP Status Code: {response.status_code}')
+                    f'Failed to upload {package.local_file_path}. HTTP Status Code: {response.status_code}')
                 # print('Response:', response.text)
                 return False
 
-    def download(self, package: Package):
+    def download(self, package: Package, runtime=True):
         """Downloads and extracts package file to Runtime folder.
 
         Args:
             package (Package): Package object of package to be downloaded.
+            runtime: Identifies, whether the package download is for the runtime or for splitting. Default: True
         """
         print(f"Downloading {package.name} {package.version}")
         # Download the file
@@ -126,7 +127,10 @@ class Nexus:
                         continue
                     # Create the relative path by removing the top-level directory
                     member.name = os.path.relpath(member.name, top_level_dir)
-                    tar.extract(member, path=RUNTIME)
+                    if runtime:
+                        tar.extract(member, path=RUNTIME)
+                    else:
+                        tar.extract(member, path=os.path.join(INSTALLED, f"{package.name}-{package.version}"))
             
             with open(INDEX, 'r') as file:
                 index = json.load(file)
@@ -186,9 +190,10 @@ if __name__ == "__main__":
     nexus = Nexus()
     # nexus.check_status()
 
-    # package = Package("six", "1.16.0", "six-1.16.0")
-    # package = Package("six", "1.16.0", "six-1.16.0.tar.gz", "six/1.16.0")
-    package = Package("python-dateutil", "2.9.0.post0", "python-dateutil-2.9.0.post0.tar.gz", "python-dateutil/2.9.0.post0")
+    # package = Package("six", "1.16.0", "six-1.16.0") package = Package("six", "1.16.0", "six-1.16.0.tar.gz",
+    # "six/1.16.0") package = Package("python-dateutil", "2.9.0.post0", "python-dateutil-2.9.0.post0.tar.gz",
+    # "python-dateutil/2.9.0.post0")
+    package = Package("numpy", "2.0.2", "numpy-2.0.2.tar.gz", "numpy/2.0.2")
     
     # package.compress()
 

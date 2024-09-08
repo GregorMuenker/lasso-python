@@ -16,8 +16,9 @@ from Levenshtein import distance
 import line_profiler
 
 from backend.crawl.install import installHandler
-from backend.crawl import type_inference
+from backend.crawl import type_inference, import_helper
 from backend.constants import INSTALLED
+from backend.crawl.nexus import Nexus, Package
 
 
 def get_function_calls(element):
@@ -322,41 +323,29 @@ def get_module_index(module_name, package_name, version, path=None, type_inferen
     return index
 
 
-def get_import_name(package_name, package_path):
-    folder_names = [[x, distance(package_name, x)] for x in os.listdir(package_path) if "dist-info" not in x]
-    folder_names = sorted(folder_names, key=lambda x: x[1])
-    return folder_names[0][0]
-
-
-def check_package_version(package_name, version):
-    module = importlib.import_module(package_name)
-    if module.__version__ != version:
-        print(f"{package_name} version mismatch: Target {version} - Imported {module.__version__}")
-        del module
-        keys = copy.deepcopy(list(sys.modules.keys()))
-        for key in keys:
-            if key.startswith(f"{package_name}."):
-                del sys.modules[key]
-        del sys.modules[package_name]
-    module = importlib.import_module(package_name)
-    print(f"Mismatch resolved. Now imported {package_name} {module.__version__}")
-
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
     package_name = "numpy==2.0.2"
-    installHandler = installHandler()
-    package_name, version = installHandler.install(f"{package_name}")
-    package_path = os.path.join(INSTALLED, f"{package_name}-{version}")
-    package_name = get_import_name(package_name, package_path)
-    sys.path.insert(0, package_path)
-    check_package_version(package_name, version)
+    nexus = Nexus()
+    installHandler = installHandler(nexus)
+    package_name, version, already_installed = installHandler.install(package_name)
+    if already_installed:
+        pkg = Package(package_name, version, f"{package_name}-{version}.tar.gz", f"{package_name}/{version}")
+        nexus.download(pkg, runtime=False)
+    installHandler.dump_index()
+    imp_help = import_helper.ImportHelper()
+    imp_help.pre_load_package(package_name, version)
+    dependencies = installHandler.index[f"{package_name}:{version}"]
+    for dep_name in dependencies:
+        dep_version = dependencies[dep_name]['version']
+        imp_help.pre_load_package(dep_name, dep_version)
+    package_name = import_helper.get_import_name(package_name, version)
     start = time.time()
-    #index = get_module_index(package_name, package_name, version, type_inferencing_engine="HiTyper")
+    # index = get_module_index(package_name, package_name, version, type_inferencing_engine="HiTyper")
     index = get_module_index(package_name, package_name, version)
-
     type_inference.clear_type_inferences()
-    sys.path.remove(os.path.join(INSTALLED, f"{package_name}-{version}"))
+    imp_help.unload_package()
     print(f"Splitting {package_name} needed {round(time.time() - start, 2)} seconds")
 
 #fp = open('search_index.json', 'w')

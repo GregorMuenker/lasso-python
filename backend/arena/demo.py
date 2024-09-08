@@ -1,6 +1,8 @@
 import pysolr
 from adaptation import AdaptationHandler, create_adapted_module
 from backend.arena.run import move
+from backend.crawl import import_helper
+from backend.crawl.nexus import Nexus, Package
 from execution import execute_test
 from backend.lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
@@ -24,7 +26,6 @@ For this demo to work you need to:
 if __name__ == "__main__":
     lql_string = """
     Calculator {
-        Calculator(int)->None
         log(int, int)->float
         sqrd(int)->float
     }
@@ -37,10 +38,20 @@ if __name__ == "__main__":
     solr_conn = LassoSolrConnector(solr_url)
 
     allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
-    loaded_folders = []
+
+    imp_helper = import_helper.ImportHelper(runtime=True)
+    nexus = Nexus()
     for package in required_packages:
         package_name, version = package.split("==")
-        loaded_folders += move(package_name, version)
+        pkg = Package(package_name, version, f"{package_name}-{version}.tar.gz", f"{package_name}/{version}")
+        nexus.download(pkg)
+        imp_helper.pre_load_package(package_name, version)
+        dependencies = import_helper.get_dependencies(package_name, version)
+        for dep_name in dependencies:
+            dep_version = dependencies[dep_name]['version']
+            imp_helper.pre_load_package(dep_name, dep_version)
+
+
 
     moduleUnderTest = allModulesUnderTest[0]  # only take the first module for now
 
