@@ -223,7 +223,7 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
                 "methodSignatureReturnTypes": method_signature_return_types,
                 "lang": "python",
                 "decorators": [ast.get_source_segment(source, x) for x in element.decorator_list],
-                "methodSignatureParameters": args,
+                # "methodSignatureParameters": args,
                 # "methodSignatureParamsOrderedDefaultValues": "|".join(method_signature_params_ordered_default_values),
                 # "content": source_code,
                 # "function_calls": get_function_calls(element),
