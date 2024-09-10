@@ -2,7 +2,6 @@ if __name__ == "__main__":
     from execution import execute_test, ExecutionEnvironment
     from module_parser import parse_code
     from sequence_specification_greg import SequenceSpecification
-    from adaptation_implementation import create_adapted_module
     from adaptation_identification import AdaptationHandler
     from lql.antlr_parser import parse_interface_spec
     from ignite import LassoIgniteClient
@@ -34,7 +33,7 @@ if __name__ == "__main__":
         useFunctionDefaultValues=False,
         maxParamPermutationTries=2,
         typeStrictness=False,
-        onlyKeepTopNMappings=10,
+        onlyKeepTopNMappings=5,
         allowStandardValueConstructorAdaptations=True,
     )
     adaptationHandler.identifyAdaptations()
@@ -43,22 +42,27 @@ if __name__ == "__main__":
     adaptationHandler.generateMappings()
 
     executionEnvironment = ExecutionEnvironment(
-        adaptationHandler.mappings, sequenceSpecification, interfaceSpecification
+        adaptationHandler.mappings,
+        sequenceSpecification,
+        interfaceSpecification,
+        recordMetrics=False,
     )
-    
+
     execute_test(
         executionEnvironment,
         adaptationHandler,
         moduleUnderTest.moduleName,
-        import_from_file_path = path,
+        import_from_file_path=path,
     )
 
     executionEnvironment.printResults()
-    
+
     lassoIgniteClient = LassoIgniteClient()
     try:
         executionEnvironment.saveResults(lassoIgniteClient)
         df = lassoIgniteClient.getDataFrame()
+        df = df[df['Y'] == 2]
+        df = df[['SYSTEMID', 'X', 'Y', 'TYPE', 'RAWVALUE']]
         print(df)
     except Exception as e:
         print(f"Error with Ignite: {e}")

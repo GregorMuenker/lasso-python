@@ -1,6 +1,5 @@
 import pysolr
 from adaptation_identification import AdaptationHandler
-from adaptation_implementation import create_adapted_module
 from execution import execute_test, ExecutionEnvironment
 from lql.antlr_parser import parse_interface_spec
 from solr_parser import parse_solr_response
@@ -19,16 +18,11 @@ from ignite import LassoIgniteClient
 """
 For this demo to work you need to:
 - have the Solr instance lasso_quickstart running on localhost:8983
-- have an Apache Ignite instance running
-    1. download Apache Ignite binaries (NOT SOURCE FILES) version 2.16.0 from https://ignite.apache.org/download.cgi#binaries
-    2. unzip the zip archive
-    3. navigate to the bin folder in the unzipped folder
-    4. run ignite.bat (Windows) or ignite.sh (Unix) via the command line
-- alternatively comment out the part starting from "lassoIgniteClient = LassoIgniteClient() ..."
+- have an Apache Ignite instance running on localhost:10800
+- have a Nexus instance running on localhost:8081
 """
 
 
-# TODO: Dynamic?
 if __name__ == "__main__":
     lql_string = """
     Matrix {
@@ -60,8 +54,10 @@ if __name__ == "__main__":
             imp_helper.pre_load_package(dep_name, dep_version)
 
 
-
-    #moduleUnderTest = allModulesUnderTest[0]  # only take the first module for now
+    # Setup Ignite client
+    lassoIgniteClient = LassoIgniteClient()
+    
+    # Iterate through all modules under test
     for moduleUnderTest in allModulesUnderTest:
         adaptationHandler = AdaptationHandler(
             interfaceSpecification,
@@ -71,13 +67,14 @@ if __name__ == "__main__":
         )
         adaptationHandler.identifyAdaptations()
         adaptationHandler.identifyConstructorAdaptations()
-        # adaptationHandler.visualizeAdaptations()
+        adaptationHandler.visualizeAdaptations()
         adaptationHandler.generateMappings()
 
         executionEnvironment = ExecutionEnvironment(
             adaptationHandler.mappings,
             sequenceSpecification,
             interfaceSpecification,
+            recordMetrics=True,
         )
 
         execute_test(
@@ -88,12 +85,13 @@ if __name__ == "__main__":
         )
 
         executionEnvironment.printResults()
+        executionEnvironment.saveResults(lassoIgniteClient)
+    
 
-    #lassoIgniteClient = LassoIgniteClient()
-    #executionEnvironment.saveResults(lassoIgniteClient)
-    #df = lassoIgniteClient.getDataFrame()
-    #print(df)
+    df = lassoIgniteClient.getDataFrame()
+    print(df)
+    df.to_csv('output.csv', index=False)
 
 
-    #lassoIgniteClient.cache.destroy()
-    #lassoIgniteClient.client.close()
+    lassoIgniteClient.cache.destroy()
+    lassoIgniteClient.client.close()

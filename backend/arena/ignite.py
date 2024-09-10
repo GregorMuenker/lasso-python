@@ -1,5 +1,9 @@
 """
-For Apache Ignite to work you need to:
+Use Apache Ignite with Docker:
+    1. docker pull apacheignite/ignite:2.16.0
+    2. docker run -d -p 10800:10800 apacheignite/ignite:2.16.0
+
+Alternatively, use Apache Ignite as a local installation:
     1. download Apache Ignite binaries (NOT SOURCE FILES) version 2.16.0 from https://ignite.apache.org/download.cgi#binaries
     2. unzip the zip archive
     3. navigate to the bin folder in the unzipped folder

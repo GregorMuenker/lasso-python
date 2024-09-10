@@ -59,6 +59,37 @@ class SequenceSpecification:
             return self.statements[row].inputParams[col-3]
         else:
             return cell
+        
+    def printSequenceSheet(self):
+        """
+        Print the sequence sheet.
+        """
+        for statement in self.statements.values():
+            print(statement)
+
+    def reset(self):
+        """
+        Reset the sequence sheet, needed to remove output values and resolved references.
+        """
+        self.statements = {}
+        i = 0
+        for row in self.sequenceSheet:
+            statement = Statement(
+                i,
+                row[0],
+                row[1],
+                row[2],
+                row[3:],
+            )
+            statement.inputParams = [param for param in statement.inputParams if param is not None]
+            self.statements[i] = statement
+            i += 1
+        validSheet = False
+        for statement in self.statements.values():
+            if statement.methodName == "create" and "." not in statement.instanceParam:
+                validSheet = True
+        if not validSheet:
+            raise ValueError("Invalid sequence sheet. No create statement found.")
 
 class Statement:
     def __init__(self, position, oracleValue, methodName, instanceParam, inputParams) -> None:
@@ -70,12 +101,12 @@ class Statement:
         self.output = None
     
     def __repr__(self) -> str:
-        return f"{self.position}: Oracle Value: {self.oracleValue} | Method Name: {self.methodName} | Instance Param: {self.instanceParam} | Input Params: {self.inputParams}"
+        return f"[{self.position}] Oracle Value: {self.oracleValue} | Output: {self.output} | Method Name: {self.methodName} | Instance Param: {self.instanceParam} | Input Params: {self.inputParams}"
 
 
 def get_sequence_sheet(path) -> list:
     """
-    Read in excel/csv file and return sequence sheet in DataFrame format
+    Read in excel/csv file and return sequence sheet as a list.
     """
     _, file_extension = os.path.splitext(path)
     

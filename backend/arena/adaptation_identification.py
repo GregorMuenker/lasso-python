@@ -167,7 +167,7 @@ class Mapping:
         """
         Creates an empty Mapping object that can be populated with adaptation information.
         """
-        
+
         self.totalDistance = 0
         self.adaptationIds = (
             []
@@ -186,9 +186,13 @@ class Mapping:
         self.successful = False # Whether a submodule was successfully created for this mapping 
 
     def __repr__(self) -> str:
-        result = f"{self.identifier}: "
+        """
+        Returns a string that indicates which interface methods are implemented by which module functions.
+        """
+        result = f"Mapping {self.identifier}: "
         for key, value in self.adaptationInfo.items():
-            result += "[" + key + "->" + value[0] + " via " + str(value[1]) + "]"
+            if key != "create":
+                result += "[" + key + "->" + value[0] + " via " + str(value[1]) + "]"
         for key, value in self.constructorAdaptations.items():
             result += "[create " + key + " via " + str(value) + "]"
         result += f" | distance={self.totalDistance}"
