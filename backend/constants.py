@@ -24,6 +24,7 @@ REPOSITORY = repo.working_tree_dir
 INSTALLED = f"{REPOSITORY}/backend/crawl/installed"
 INDEX = f"{REPOSITORY}/backend/crawl/index.json"
 RUNTIME = f"{REPOSITORY}/backend/arena/runtime"
+CORPUS = f"{REPOSITORY}/nexus/corpus.json"
 
 STANDARD_CONSTRUCTOR_VALUES = {
     "str": "",

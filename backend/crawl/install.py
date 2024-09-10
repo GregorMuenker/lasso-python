@@ -9,13 +9,13 @@ import json
 import re
 from urllib.request import urlopen
 import requests
-from backend.crawl.nexus import Nexus, Package
 import git
 
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
 from backend.constants import INSTALLED, INDEX
+from backend.crawl.nexus import Nexus, Package
 
 def get_all_packages():
     """Retrieves all package names from PyPi.
@@ -158,7 +158,6 @@ def compare_versions(left, operator, right):
     Returns:
         boolean: Result of version comparison.
     """
-    #FIXME: Versions with trailing * not supported! e.g. !=3.1.* Clean fix?
     if "*" in right and operator == "!=":
         if right.strip("*") in left:
             return False
@@ -202,6 +201,7 @@ def satisfy_condition(dependency):
         if "extra" in condition:
             return
         elif "python_version" in condition:
+            # TODO: Modify?
             _, operator, version = tokenize(condition.strip())
             version = version.strip("'")
             version = version.strip('"')
@@ -245,7 +245,7 @@ def get_latest_version(package_name):
             if not requirement:
                 return release
             else:
-                print(requirement)
+                # print(requirement)
                 check = [check_python_version(operator, version) for operator, version in requirement]
                 if all(check):
                     return release
@@ -305,7 +305,7 @@ class installHandler:
             destination = f"{name}-{version}"
             shutil.move(path, f"{INSTALLED}/{destination}")
 
-            pkg = Package(name, version, destination)
+            pkg = Package(name, version)
             pkg.compress()
             # TODO: What to do if upload fails?
             if not self.nexus.upload(pkg):
@@ -321,10 +321,11 @@ class installHandler:
             # deps = []
             for dependency in dependencies:
                 if short_dependency := satisfy_condition(dependency):
-                    dep_name, dep_version = self.install(short_dependency)
+                    dep_name, dep_version, _ = self.install(short_dependency)
                     # print(dep_name, dep_version)
                     # deps.append((dep_name, dep_version))
                     self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
+                    self.dump_index()
 
             # self.index[f"{name}:{version}"] = deps
             already_installed = False
@@ -334,7 +335,7 @@ class installHandler:
             already_installed = True
             #TODO: Check Index for missing dependencies? Maybe save requirements in index?
 
-        self.dump_index()
+        # self.dump_index()
         return name, version, already_installed
 
     def check_request(self, project, requirements):
@@ -355,7 +356,7 @@ class installHandler:
 
         if not requirements:
             latest = get_latest_version(project)
-            print(latest)
+            # print(latest)
             if latest in local_versions:
                 result = [latest]
         else:
@@ -378,10 +379,10 @@ class installHandler:
 
 if __name__ == "__main__":
     nexus = Nexus()
-    packages = get_most_downloaded()
-    installHandler = installHandler(nexus)
-    for package in packages[:20]:
-        installHandler.install(package)
-    # installHandler.install("yarl")
-    installHandler.dump_index()
-    # print(get_latest_version("pandas"))
+    # packages = get_most_downloaded()
+    # installHandler = installHandler(nexus)
+    # for package in packages[:15]:
+    #     installHandler.install(package)
+    package = Package("boto3", "1.35.15")
+    nexus.download(package)
+
