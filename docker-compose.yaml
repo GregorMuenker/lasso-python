@@ -29,24 +29,24 @@ services:
   #  environment:
   #    - DOCKER=test
   #    - SOLR_PATH=http://lasso_solr_quickstart:8983/solr/
-  #lasso_solr_quickstart:
-  #  container_name: lasso_solr_quickstart
-  #  image: solr:9.6.1
-  #  ports:
-  #    - "8983:8983"
-  #  volumes:
-  #    - ./lassoindex:/var/solr
-  #  command:
-  #    - solr-precreate
-  #    - lasso_python
-  #nexus:
-  #  container_name: lasso_nexus
-  #  build:
-  #    context: ./nexus
-  #  ports:
-  #    - "10800:10800"
-  #ignite:
-  #  container_name: lasso_ignite
-  #  image: apacheignite/ignite
-  #  ports:
-  #    - "10800:10800"
+  lasso_solr_quickstart:
+    container_name: lasso_solr_quick
+    image: solr:9.6.1
+    ports:
+      - "8983:8983"
+    volumes:
+      - ./lassoindex:/var/solr
+    command:
+      - solr-precreate
+      - lasso_python
+  nexus:
+    container_name: lasso_nexus
+    build:
+      context: ./nexus
+    ports:
+      - "8081:8081"
+  ignite:
+    container_name: lasso_ignite
+    image: apacheignite/ignite
+    ports:
+      - "10800:10800"
