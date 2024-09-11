@@ -373,16 +373,12 @@ class installHandler:
             self.index[f"{name}:{version}"] = deps
             self.dump_index()
             
-            # deps = []
             for dependency in dependencies:
                 if short_dependency := satisfy_condition(dependency):
                     dep_name, dep_version, _ = self.install(short_dependency)
                     # print(dep_name, dep_version)
-                    # deps.append((dep_name, dep_version))
                     self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
                     self.dump_index()
-
-            # self.index[f"{name}:{version}"] = deps
             already_installed = False
         else:
             print(f"{name} already installed!")

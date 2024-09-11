@@ -139,8 +139,12 @@ class Nexus:
             dependencies = index[f"{package.name}:{package.version}"]
             for dep_name, dep_dict in dependencies.items():
                 dep_version = dep_dict["version"]
-                pkg = Package(dep_name, dep_version)
-                self.download(pkg)
+                if dep_version:
+                    pkg = Package(dep_name, dep_version)
+                    self.download(pkg)
+                else:
+                    # TODO: What if dependency is missing. Handle at the start?
+                    pass
 
         else:
             # TODO: What to do if download fails.
