@@ -2,20 +2,20 @@ import subprocess
 import sys
 import os
 import shutil
-from io import StringIO
-from tokenize import generate_tokens, TokenError
-from packaging.version import Version
+from packaging.version import Version, InvalidVersion
+from packaging.specifiers import SpecifierSet
 import json
 import re
 from urllib.request import urlopen
 import requests
-from backend.crawl.nexus import Nexus, Package
+import platform
 import git
 
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
 from backend.constants import INSTALLED, INDEX
+from backend.crawl.nexus import Nexus, Package
 
 def get_all_packages():
     """Retrieves all package names from PyPi.
@@ -65,40 +65,39 @@ def get_info(folder):
             dependencies (list of strings): List of package dependencies.
     """
     path = f"{INSTALLED}/{folder}/METADATA"
-    file = open(path, "r", encoding="utf-8")
-    dependencies = []
-    for line in file:
-        if line.startswith("Name: "):
-            name = line.split(":")[1].strip()
-        if line.startswith("Version: "):
-            version = line.split(":")[1].strip()
-        if line.startswith("Requires-Dist: "):
-            dependencies.append(line.split(":")[1].strip())
+    with open(path, "r", encoding="utf-8") as file:
+        # Initialize default values
+        name = None
+        version = None
+        dependencies = []
+
+        # Compile regex patterns
+        name_pattern = re.compile(r"^Name:\s*(.+)$")
+        version_pattern = re.compile(r"^Version:\s*(.+)$")
+        requires_dist_pattern = re.compile(r"^Requires-Dist:\s*(.+)$")
+
+        # Process each line in the file
+        for line in file:
+            # Match name
+            name_match = name_pattern.match(line)
+            if name_match and name is None:
+                name = name_match.group(1).strip()
+
+            # Match version
+            version_match = version_pattern.match(line)
+            if version_match and version is None:
+                version = version_match.group(1).strip()
+
+            # Match dependencies
+            requires_dist_match = requires_dist_pattern.match(line)
+            if requires_dist_match:
+                dependencies.append(requires_dist_match.group(1).strip())
+
     return {
         "name": name,
         "version": version,
         "dependencies": dependencies
     }
-
-
-def tokenize(string):
-    """Tokenizes a given string.
-
-    Args:
-        string (string): String.
-
-    Returns:
-        list of strings: List of tokens.
-    """
-    STRING = 1
-    tokens = []
-    try:
-        for token in generate_tokens(StringIO(string).readline):
-            if token[STRING]:
-                tokens.append(token[STRING])
-    except TokenError:
-        pass
-    return tokens
 
 
 def reformat_dependency(dependency):
@@ -111,14 +110,14 @@ def reformat_dependency(dependency):
         tuples (list of tuple strings): List of tuples, which include an operator and a version.
     """
     # Regex to extract the package name and version requirements
-    match = re.match(r'^([^<>=!]+)(.*)', dependency)
+    match = re.match(r'^([^<>=!~]+)(.*)', dependency)
     if not match:
         raise ValueError(f"Invalid dependency format: {dependency}")
 
     version_part = match.group(2).strip()
 
     # Regex to match each version constraint
-    version_constraints = re.findall(r'([<>=!]+)\s*([\d\w.]+)', version_part)
+    version_constraints = re.findall(r'([<>=!~]+)\s*([\d\w.]+)', version_part)
 
     tuples = [(operator.strip(), version.strip())
               for operator, version in version_constraints]
@@ -158,16 +157,11 @@ def compare_versions(left, operator, right):
     Returns:
         boolean: Result of version comparison.
     """
-    #FIXME: Versions with trailing * not supported! e.g. !=3.1.* Clean fix?
-    if "*" in right and operator == "!=":
-        if right.strip("*") in left:
-            return False
-        else:
-            return True
+    if right.endswith(".") and operator == "!=":
+        return not (right in left)
+    specifier = SpecifierSet(operator+right)
     v1 = Version(left)
-    v2 = Version(right)
-    result = eval(f"v1 {operator} v2")
-    return result
+    return v1 in specifier
 
 
 def get_package_name(string):
@@ -186,34 +180,71 @@ def get_package_name(string):
         print("No project name found!")
         return
 
+def check_environment(operator, reference, condition_type):
+    """Checks dependency condition variables.
+
+    Args:
+        operator (str): Operator.
+        reference (str): Reference value from condition.
+        condition_type (str): Type of condition.
+
+    Returns:
+        boolean: Whether condition is satisfied or not.
+    """
+    if condition_type == "python_version":
+        return check_python_version(operator, reference)
+    elif condition_type == "os_name":
+        value = os.name
+    elif condition_type == "platform_system":
+        value = platform.system()
+    elif condition_type == "sys_platform":
+        value = sys.platform
+
+    return eval(f"value {operator} reference")
+
+def check_python_version(operator, version):
+    """Checks Python Version requirement.
+
+    Args:
+        operator (str): Operator.
+        version (str): Version number.
+
+    Returns:
+        boolean: Whether local python version complies with requirement.
+    """
+    return compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version)
 
 def satisfy_condition(dependency):
-    """Checks if dependency condition (after ";") is satisfied.
+    """Checks if dependency condition (after ";") is satisfied, including python_version, os_name, platform_system, and sys_platform.
 
     Args:
         dependency (string): Dependency string.
 
     Returns:
-        boolean: Result of check.
+        string: The dependency name if conditions are satisfied, else None.
     """
     parts = dependency.split(";")
     if len(parts) > 1:
         dependency, condition = parts
         if "extra" in condition:
             return
-        elif "python_version" in condition:
-            _, operator, version = tokenize(condition.strip())
-            version = version.strip("'")
-            version = version.strip('"')
-            if not check_python_version(operator, version):
-                return
-    return dependency
 
-def check_python_version(operator, version):
-    return compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version)
+        # Define regex to match conditions like python_version, os_name, platform_system, and sys_platform
+        condition_pattern = r"(python_version|os_name|platform_system|sys_platform)\s*([<>=!]+)\s*['\"]?([^'\"]+)['\"]?"
+        matches = re.finditer(condition_pattern, condition.strip())
+
+        # Process each condition match
+        for match in matches:
+            condition_type, operator, value = match.groups()
+            if not check_environment(operator, value, condition_type):
+                return
+
+    return dependency  # Return the dependency if no conditions fail
+
 
 def get_latest_version(package_name):
-    """Retrieves latest version of a given package from PyPi that is supported by the local python version.
+    """Retrieves the latest version of a given package from PyPi that is supported by the local python version,
+    while also filtering out yanked and pre-release versions.
 
     Args:
         package_name (string): Package name.
@@ -225,33 +256,53 @@ def get_latest_version(package_name):
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        # latest_version = data["info"]["version"]
         releases = data["releases"]
         result = []
+
         for release, dists in releases.items():
-            requires_python = [item["requires_python"] for item in dists]
+            # Filter out yanked versions by checking if any distribution is marked as yanked
+            is_yanked = all(dist.get("yanked", False) for dist in dists)
+            if is_yanked:
+                continue  # Skip this release if it's yanked
+
+            requires_python = [item.get("requires_python") for item in dists]
             requires_python = list(dict.fromkeys(requires_python))
-            if requires_python:
-                requirement = requires_python[0]
-                if requirement:
-                    pattern = r"([<>=!]+)([^\,]+(\..)*)"
-                    matches = re.finditer(pattern, requirement)
-                    # requirement = requirement.split(",")
-                    requirement = [(match.group(1), match.group(2)) for match in matches]
+            if requires_python and requires_python[0]:
+                pattern = r"([<>=!~]+)([^\,]+(\..)*)"
+                matches = re.finditer(pattern, requires_python[0])
+                requirement = [(match.group(1), match.group(2)) for match in matches]
             else:
                 requirement = None
             result.append((release, requirement))
-        for release, requirement in sorted(result, key=lambda x: Version(x[0]), reverse=True):
-            if not requirement:
-                return release
-            else:
-                print(requirement)
-                check = [check_python_version(operator, version) for operator, version in requirement]
-                if all(check):
-                    return release
 
+        valid_versions = []
+        skipped_versions = []  # To keep track of versions that were skipped
+
+        # Check each release for version validity and Python requirements
+        for release, requirement in result:
+            try:
+                valid_release = Version(release)  # Check if it's a valid PEP 440 version
+                if valid_release.is_prerelease:
+                    continue  # Skip pre-release versions
+                valid_versions.append((valid_release, requirement))
+            except InvalidVersion:
+                skipped_versions.append(release)
+                continue  # Skip invalid versions
+
+        # Log or print any skipped versions
+        if skipped_versions:
+            print(f"Warning: Skipped invalid versions: {', '.join(skipped_versions)}")
+
+        # Sort versions by release number, and return the highest valid one
+        for release, requirement in sorted(valid_versions, key=lambda x: x[0], reverse=True):
+            if not requirement:
+                return str(release)
+            else:
+                check = [check_python_version(op, ver) for op, ver in requirement]
+                if all(check):
+                    return str(release)
+    
     else:
-        #TODO: What to do if information cannot be fetched?
         return None
 
 
@@ -287,6 +338,7 @@ class installHandler:
             # TODO: Exception or just print?
             raise BaseException("Could not identify package name.")
 
+        print(package)
         requirements = reformat_dependency(package)
         satisfactory_versions = self.check_request(name, requirements)
 
@@ -303,9 +355,12 @@ class installHandler:
             # name, version, dependencies = info["name"], info["version"], info["dependencies"]
             version, dependencies = info["version"], info["dependencies"]
             destination = f"{name}-{version}"
-            shutil.move(path, f"{INSTALLED}/{destination}")
+            # shutil.move(path, f"{INSTALLED}/{destination}")
+            shutil.copytree(path, f"{INSTALLED}/{destination}", dirs_exist_ok=True)
+            shutil.rmtree(path)
 
-            pkg = Package(name, version, destination)
+
+            pkg = Package(name, version)
             pkg.compress()
             # TODO: What to do if upload fails?
             if not self.nexus.upload(pkg):
@@ -318,21 +373,22 @@ class installHandler:
             self.index[f"{name}:{version}"] = deps
             self.dump_index()
             
-            # deps = []
             for dependency in dependencies:
                 if short_dependency := satisfy_condition(dependency):
-                    dep_name, dep_version = self.install(short_dependency)
+                    dep_name, dep_version, _ = self.install(short_dependency)
                     # print(dep_name, dep_version)
-                    # deps.append((dep_name, dep_version))
                     self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
-
-            # self.index[f"{name}:{version}"] = deps
+                    self.dump_index()
             already_installed = False
         else:
             print(f"{name} already installed!")
             version = satisfactory_versions[0]
+            for dep_name, dep_dict in self.index[f"{name}:{version}"].items():
+                if not dep_dict["version"]:
+                    _, dep_version, _  = self.install(dep_dict["requirements"])
+                    self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
+                    self.dump_index()
             already_installed = True
-            #TODO: Check Index for missing dependencies? Maybe save requirements in index?
 
         self.dump_index()
         return name, version, already_installed
@@ -349,7 +405,7 @@ class installHandler:
         """
         # local_versions = get_local_versions(project)
         local_versions = self.nexus.get_versions(project)
-        # print(local_versions)
+        print(local_versions)
 
         result = []
 
@@ -380,8 +436,10 @@ if __name__ == "__main__":
     nexus = Nexus()
     packages = get_most_downloaded()
     installHandler = installHandler(nexus)
-    for package in packages[:20]:
+    # installHandler.install("google-api-core[grpc] !=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0dev,>=1.34.1")
+    for package in packages[:1]:
         installHandler.install(package)
-    # installHandler.install("yarl")
-    installHandler.dump_index()
-    # print(get_latest_version("pandas"))
+    # installHandler.install("tb-nightly")
+    # package = Package("boto3", "1.35.15")
+    # nexus.download(package)
+

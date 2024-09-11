@@ -1,6 +1,5 @@
 import requests
 from requests.auth import HTTPBasicAuth
-from bs4 import BeautifulSoup
 import sys
 import os
 import tarfile
@@ -12,15 +11,15 @@ import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.constants import INSTALLED, RUNTIME, INDEX
+from backend.constants import INSTALLED, RUNTIME, INDEX, CORPUS
 
 class Package:
-    def __init__(self, name, version, dir, artifact_path=None):
+    def __init__(self, name, version):
         self.name = name
         self.version = version
-        self.dir = dir
-        self.local_dir_path = f'{INSTALLED}/{dir}'
-        self.artifact_path = artifact_path
+        self.dir = f"{name}-{version}"
+        self.local_dir_path = f'{INSTALLED}/{self.dir}'
+        self.artifact_path = f'{self.name}/{self.version}/{self.dir}.tar.gz'
 
     def compress(self):
         """Compresses package directory to tar.gz file.
@@ -30,12 +29,13 @@ class Package:
         with tarfile.open(self.local_file_path, "w:gz") as tar:
             tar.add(self.local_dir_path,
                     arcname=os.path.basename(self.local_dir_path))
-        self.artifact_path = f'{self.name}/{self.version}/{filename}'
 
 
 class Nexus:
     def __new__(cls, nexus_host="http://localhost:8081"):
-        if cls.check_status(nexus_host):
+        with open(CORPUS, 'r') as file:
+            corpus = json.load(file)
+        if cls.check_status(corpus["artifactRepository"]["url"]):
             return super(Nexus, cls).__new__(cls)
         else:
             print(f"Cannot reach Nexus server at {nexus_host}")
@@ -43,11 +43,13 @@ class Nexus:
 
     def __init__(self, nexus_host="http://localhost:8081"):
         # Configuration
-        self.nexus_host = nexus_host
-        self.repository = "pypi-raw"
-        self.nexus_url = f'{self.nexus_host}/repository/{self.repository}'
-        self.username = 'admin'
-        self.password = '9Fa4tLiZKnRJnUm'
+        with open(CORPUS, 'r') as file:
+            corpus = json.load(file)["artifactRepository"]
+        self.nexus_host = corpus["url"]
+        self.repository = corpus["repoName"]
+        self.nexus_url = corpus["deploymentUrl"]
+        self.username = corpus["user"]
+        self.password = corpus["pass"]
 
     @staticmethod
     def check_status(nexus_host):
@@ -109,7 +111,7 @@ class Nexus:
         print(f"Downloading {package.name} {package.version}")
         # Download the file
         response = requests.get(
-            f"{self.nexus_url}/{package.artifact_path}/{package.dir}", auth=HTTPBasicAuth(self.username, self.password))
+            f"{self.nexus_url}/{package.artifact_path}", auth=HTTPBasicAuth(self.username, self.password))
 
         if response.status_code == 200:
             # Create a BytesIO object to handle the downloaded content in memory
@@ -137,9 +139,12 @@ class Nexus:
             dependencies = index[f"{package.name}:{package.version}"]
             for dep_name, dep_dict in dependencies.items():
                 dep_version = dep_dict["version"]
-                #FIXME: Change Package class constructor?
-                pkg = Package(dep_name, dep_version, f"{dep_name}-{dep_version}.tar.gz", f"{dep_name}/{dep_version}")
-                self.download(pkg)
+                if dep_version:
+                    pkg = Package(dep_name, dep_version)
+                    self.download(pkg)
+                else:
+                    # TODO: What if dependency is missing. Handle at the start?
+                    pass
 
         else:
             # TODO: What to do if download fails.
@@ -188,15 +193,8 @@ class Nexus:
 
 if __name__ == "__main__":
     nexus = Nexus()
-    # nexus.check_status()
-
-    # package = Package("six", "1.16.0", "six-1.16.0") package = Package("six", "1.16.0", "six-1.16.0.tar.gz",
-    # "six/1.16.0") package = Package("python-dateutil", "2.9.0.post0", "python-dateutil-2.9.0.post0.tar.gz",
-    # "python-dateutil/2.9.0.post0")
-    package = Package("numpy", "2.0.2", "numpy-2.0.2.tar.gz", "numpy/2.0.2")
-    
-    # package.compress()
-
-    # nexus.upload(package)
+    package = Package("numpy", "2.0.2")
+    package.compress()
+    nexus.upload(package)
     nexus.download(package)
     # nexus.get_versions(package)

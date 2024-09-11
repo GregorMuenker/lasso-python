@@ -64,4 +64,3 @@ if __name__ == "__main__":
     installHandler = installHandler()
     for package in packages[:10]:
         installHandler.install(package)
-    installHandler.dump_index()

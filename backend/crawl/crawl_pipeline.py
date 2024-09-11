@@ -18,15 +18,16 @@ def index_package(package_name):
     """This function provides a pipeline for the steps of crawling and splitting a package. At the last step the
     created index will be uploaded to the solr index.
 
-    :param name: Name of requested pypi package
+    Args:
+        package_name(str): Name of requested pypi package
     """
     nexus = Nexus()
     install_handler = install.installHandler(nexus)
     package_name, version, already_installed = install_handler.install(package_name)
     if already_installed:
-        pkg = Package(package_name, version, f"{package_name}-{version}.tar.gz", f"{package_name}/{version}")
+        pkg = Package(package_name, version)
         nexus.download(pkg, runtime=False)
-    install_handler.dump_index()
+    # install_handler.dump_index()
     imp_help = import_helper.ImportHelper()
     imp_help.pre_load_package(package_name, version)
     dependencies = install_handler.index[f"{package_name}:{version}"]
