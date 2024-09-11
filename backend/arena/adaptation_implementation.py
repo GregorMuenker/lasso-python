@@ -31,11 +31,10 @@ from backend.constants import (
 
 def create_adapted_submodule(
     adaptation_handler: AdaptationHandler,
-    module_name: str,
+    module: object,
     execution_environment: ExecutionEnvironment,
     submodule_id: int,
     statement: Statement,
-    import_from_file_path= None,
 ) -> tuple:
     """
     Creates an adapted submodule using information provided by the AdaptationHandler object. The adapted module can be used to execute stimulus sheets.
@@ -43,25 +42,14 @@ def create_adapted_submodule(
 
     Parameters:
     adaptation_handler (AdaptationHandler): The AdaptationHandler object containing all necessary information on how to adapt functions/how many submodules to create.
-    module_name (str): The name of the module that is used for importing the module via importlib.
+    module_name (object): The module used for execution.
     execution_environment (ExecutionEnvironment): The ExecutionEnvironment object that configures this execution.
     submodule_id (int): Identifier of the submodule
     import_from_file_path (str): A path for importing a module pointing to a file for testing purposes.
 
     Returns:
-    module (object): The adapted module.
+    tuple: The full module (including the submodule), the adapted submodule, and the instance of the parent class (if applicable).
     """
-    # TODO: Auslagern?
-    module = None
-    if import_from_file_path != None:
-        # Import module from a single file, only for testing
-        spec = importlib.util.spec_from_file_location(
-            module_name, import_from_file_path
-        )
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-    else:
-        module = importlib.import_module(module_name)
 
     failed_functions = []
     mapping = adaptation_handler.mappings[submodule_id]

@@ -8,6 +8,7 @@ import io
 import uuid
 import warnings
 import sys
+import importlib
 
 sys.path.insert(1, "../../backend")
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
@@ -397,6 +398,8 @@ def execute_test(
     Parameters:
     adapted_module: The module that contains the adapted functions in 1 or more submodules (mapping0, mapping1, ...).
     execution_environment: The ExecutionEnvironment object used for this execution.
+    module_name: The name of the module used for execution.
+    import_from_file_path: The path to a file that should be imported instead of the module name. This is only used for testing purposes.
     """
 
     from adaptation_implementation import create_adapted_submodule
@@ -411,6 +414,22 @@ def execute_test(
     print(f"Execution Id: {execution_environment.uuid}")
     print("Sequence sheet:")
     sequence_spec.printSequenceSheet()
+
+    # Try to import the module
+    module = None
+    try:
+        if import_from_file_path != None:
+            # Import module from a single file, only for testing
+            spec = importlib.util.spec_from_file_location(
+                module_name, import_from_file_path
+            )
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        else:
+            module = importlib.import_module(module_name)
+    except Exception as e:
+        print(f"Error when trying to import module {module_name}, terminating execution: {e}")
+        return
 
     for i, mapping in enumerate(mappings):
 
@@ -473,13 +492,12 @@ def execute_test(
                     else:
                         print(f"Invalid python instance param: {instance_param}")
                 elif "." not in statement.instanceParam:
-                    adapted_module, submodule, class_instance = create_adapted_submodule(
+                    module, submodule, class_instance = create_adapted_submodule(
                         adaptation_handler,
-                        module_name,
+                        module,
                         execution_environment,
                         i,
                         statement,
-                        import_from_file_path,
                     )
                     adapted = True
                     statement.output = class_instance
@@ -555,11 +573,11 @@ def execute_test(
                 if not execution_environment.recordMetrics:
                     return_value = method(*statement.inputParams)
                 else:
-                    filename = inspect.getfile(adapted_module)
+                    filename = inspect.getfile(module)
                     # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
                     filename = os.path.abspath(filename)
 
-                    cov = coverage.Coverage(source=[adapted_module.__name__], branch=True)
+                    cov = coverage.Coverage(source=[module.__name__], branch=True)
                     return_value, metrics = run_with_metrics(
                         method,
                         statement.inputParams,

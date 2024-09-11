@@ -45,7 +45,7 @@ if __name__ == "__main__":
         #     imp_helper.pre_load_package(dep_name, dep_version)
 
 
-    # # Setup Ignite client
+    # Setup Ignite client
     # lassoIgniteClient = LassoIgniteClient()
     
     # # Iterate through all modules under test
