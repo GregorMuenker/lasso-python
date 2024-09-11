@@ -9,6 +9,8 @@ import re
 from urllib.request import urlopen
 import requests
 import platform
+import certifi
+import ssl
 import git
 
 repo = git.Repo(search_parent_directories=True)
@@ -23,7 +25,8 @@ def get_all_packages():
     Returns:
         list of strings: List of package names.
     """
-    contents = urlopen('https://pypi.org/simple/').read().decode('utf-8')
+    context = ssl.create_default_context(cafile=certifi.where())
+    contents = urlopen('https://pypi.org/simple/', context=context).read().decode('utf-8')
     pattern = re.compile(r'>([^<]+)</a>')
     package_list = [match[1] for match in re.finditer(pattern, contents)]
     # print(package_list)
@@ -40,8 +43,9 @@ def get_most_downloaded(download_count=False):
     Returns:
         list of strings: List of package names.
     """
+    context = ssl.create_default_context(cafile=certifi.where())
     url = "https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json"
-    response = urlopen(url)
+    response = urlopen(url, context=context)
     data_json = json.loads(response.read())
     # most = [(pkg["project"], pkg["download_count"]) for pkg in data_json["rows"]]
     if download_count:
