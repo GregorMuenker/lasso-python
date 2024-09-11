@@ -51,6 +51,7 @@ ENV NEXUS_HOME=${SONATYPE_DIR}/nexus \
     NEXUS_CONTEXT='' \
     SONATYPE_WORK=${SONATYPE_DIR}/sonatype-work \
     DOCKER_TYPE='rh-docker'
+ENV NEXUS_SECURITY_RANDOMPASSWORD=false
 
 # Install Java & tar
 RUN microdnf update -y \
