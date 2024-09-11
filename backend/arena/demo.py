@@ -45,7 +45,7 @@ if __name__ == "__main__":
     nexus = Nexus()
     for package in required_packages:
         package_name, version = package.split("==")
-        pkg = Package(package_name, version, f"{package_name}-{version}.tar.gz", f"{package_name}/{version}")
+        pkg = Package(package_name, version)
         nexus.download(pkg)
         imp_helper.pre_load_package(package_name, version)
         dependencies = import_helper.get_dependencies(package_name, version)
