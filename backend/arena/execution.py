@@ -14,7 +14,7 @@ from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 from ignite import CellId, CellValue
 from adaptation_identification import InterfaceSpecification, Mapping, AdaptationHandler, AdaptationInstruction
 from sequence_specification import SequenceSpecification
-from pyignite.datatypes import TimestampObject
+
 
 class SequenceExecutionRecord:
     
@@ -298,16 +298,6 @@ class ExecutionEnvironment:
             cells = sequenceExecutionRecord.toSheetCells()
             igniteClient.putAll(cells)
 
-    # def getCorrectMethods(self):
-    #    for sequenceExecutionRecord in self.allSequenceExecutionRecords:
-    #        correct = True
-    #        for rowRecord in sequenceExecutionRecord.rowRecords:
-    #            if rowRecord.oracleValue != rowRecord.returnValue:
-    #                correct = False
-    #                print(f"Method {rowRecord.originalFunctionName} was correct")
-    #        if correct:
-    #            print(f"Mapping {[rowRecord.originalFunctionName for rowRecord in sequenceExecutionRecord.rowRecords]} is correct")
-
 
 class RowRecord:
     def __init__(
@@ -335,7 +325,8 @@ class RowRecord:
     def __repr__(self) -> str:
         inputParamsString = ", ".join(map(str, self.inputParams))
         instruction = f"{str(self.instanceParam)[:15]}.{self.methodName}({inputParamsString})"
-        result = f"{CYAN}[{self.position}] {instruction}: {self.returnValue} (expected: {self.oracleValue}){RESET}, {self.metrics}"
+        result = f"{CYAN}[{self.position}] {instruction}: {self.returnValue}{RESET} (expected: {self.oracleValue}), {self.metrics}"
+        
         if self.errorMessage != None:
             result += f", Error: {self.errorMessage}"
         return result
@@ -597,17 +588,9 @@ def execute_test(
 def execute_default_functions(statement):
     if statement.methodName == "__len__":
         statement.output = len(statement.instanceParam)
-    # TODO implement rest of these or delete them
     if statement.methodName == "__getitem__":
-        statement.output = statement.inputParams[0][statement.inputParams[1]]
-    if statement.methodName == "__setitem__":
-        statement.inputParams[0][statement.inputParams[1]] = statement.inputParams[2]
-    if statement.methodName == "__delitem__":
-        del statement.inputParams[0][statement.inputParams[1]]
-    if statement.methodName == "__iter__":
-        statement.output = iter(statement.inputParams[0])
-    if statement.methodName == "__next__":
-        statement.output = next(statement.inputParams[0])
+        statement.output = statement.instanceParam[statement.inputParams[0]]
+
     return statement
 
 def run_with_metrics(
