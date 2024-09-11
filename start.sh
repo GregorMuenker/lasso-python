@@ -1,3 +1,8 @@
+
+
+
+
+
 docker run -d -v "./lassoindex:/var/solr/" -p 8983:8983 --name lasso_solr_quickstart solr solr-precreate lasso_quickstart
 
 docker build -t backend ./backend

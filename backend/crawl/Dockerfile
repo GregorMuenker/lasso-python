@@ -31,12 +31,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Set the environment variable for runtime environment to "docker"
 ENV RUNTIME_ENVIRONMENT="docker"
-ENV INSTALLED="/crawl/installed"
-ENV INDEX="/crawl/index.json"
-ENV RUNTIME="/arena/runtime"
-ENV CORPUS="/nexus/corpus.json"
-ENV TYPE_INFERENCING_TEMP="/crawl/temp"
-ENV RUNTIME="/arena/runtime"
 
 # Make port 80 available to the world outside this container
 EXPOSE 8000
