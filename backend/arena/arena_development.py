@@ -45,7 +45,7 @@ if __name__ == "__main__":
         adaptationHandler.mappings,
         sequenceSpecification,
         interfaceSpecification,
-        recordMetrics=False,
+        recordMetrics=True,
     )
 
     execute_test(
@@ -61,9 +61,8 @@ if __name__ == "__main__":
     try:
         executionEnvironment.saveResults(lassoIgniteClient)
         df = lassoIgniteClient.getDataFrame()
-        df = df[df['Y'] == 2]
-        df = df[['SYSTEMID', 'X', 'Y', 'TYPE', 'RAWVALUE']]
         print(df)
+        df.to_csv("arena_development.csv", index=False)
     except Exception as e:
         print(f"Error with Ignite: {e}")
 

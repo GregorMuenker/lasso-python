@@ -90,8 +90,6 @@ if __name__ == "__main__":
 
     df = lassoIgniteClient.getDataFrame()
     print(df)
-    df.to_csv('output.csv', index=False)
-
 
     lassoIgniteClient.cache.destroy()
     lassoIgniteClient.client.close()

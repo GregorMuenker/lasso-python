@@ -294,6 +294,9 @@ def instantiate_class(
             STANDARD_CONSTRUCTOR_VALUES.get(parameterType, 1)
             for parameterType in parameterTypes
         )
+        
+        # Retrospectively update the adaptation instruction
+        adaptation_instruction.useStandardConstructorValues = class_instantiation_params
 
     # Instantiate empty Metrics object
     metrics = Metrics()
@@ -351,6 +354,7 @@ def instantiate_class(
         originalFunctionName=constructor_name,
         inputParams=original_class_instantiation_params,
         instanceParam=parent_class_name,
+        adaptationInstruction=adaptation_instruction,
     )
     row_record.metrics = metrics
 

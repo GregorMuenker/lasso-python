@@ -12,7 +12,7 @@ import sys
 sys.path.insert(1, "../../backend")
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 from ignite import CellId, CellValue
-from adaptation_identification import InterfaceSpecification, Mapping, AdaptationHandler
+from adaptation_identification import InterfaceSpecification, Mapping, AdaptationHandler, AdaptationInstruction
 from sequence_specification_greg import SequenceSpecification
 from pyignite.datatypes import TimestampObject
 
@@ -36,20 +36,16 @@ class SequenceExecutionRecord:
         This method converts the sequence execution record into pairs of (CellId, CellValue) that can be put into the Ignite cache.
 
         Returns:
-        list: A list of (CellId, CellValue) tuples that represent the cells in the sequence sheet.
+        A list of (CellId, CellValue) tuples that represent the cells in the sequence sheet.
         """
         cells = []
         serializedStrLength = 15
-
         for rowRecord in self.rowRecords:
-            # NOTE no handling of python operations (creating a list etc.)
-            
-            originalFunctionName, adaptationInstruction = (
-                self.mapping.adaptationInfo.get(rowRecord.methodName, (f"create {rowRecord.instanceParam}", None))
-            )
-            adaptationId = "No adaptation" 
-            if adaptationInstruction != None:
-                adaptationId = str(adaptationInstruction.identifier)
+
+            originalFunctionName = rowRecord.originalFunctionName
+            adaptationId = str(rowRecord.adaptationInstruction.identifier)
+            adaptationInstruction = str(rowRecord.adaptationInstruction.getDetailedInstructions())
+            print(adaptationId, "\n", adaptationInstruction)
 
             if rowRecord.metrics.executionTime == None:
                 executionTime = -1
@@ -59,7 +55,7 @@ class SequenceExecutionRecord:
             systemId = str(self.mapping.identifier) # TODO change to id from Solr
 
             # Return value
-            cellId = CellId(
+            ci1 = CellId(
                 EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
                 ACTIONID="",
@@ -72,18 +68,18 @@ class SequenceExecutionRecord:
                 Y=rowRecord.position,
                 TYPE="value",
             )
-            cellValue = CellValue(
+            cv1 = CellValue(
                 VALUE=str(rowRecord.returnValue)[:serializedStrLength],
                 RAWVALUE=str(rowRecord.returnValue),
                 VALUETYPE=str(type(rowRecord.returnValue)),
                 LASTMODIFIED=datetime.datetime.now(),
                 EXECUTIONTIME=executionTime,
             )
-            cells.append((cellId, cellValue))
+            cells.append((ci1, cv1))
 
             # Oracle
             if rowRecord.oracleValue != None:
-                cellId = CellId(
+                ci2 = CellId(
                     EXECUTIONID=str(self.executionId),
                     ABSTRACTIONID=self.interfaceSpecification.className,
                     ACTIONID="",
@@ -96,17 +92,17 @@ class SequenceExecutionRecord:
                     Y=rowRecord.position,
                     TYPE="oracle",
                 )
-                cellValue = CellValue(
+                cv2 = CellValue(
                     VALUE=str(rowRecord.oracleValue)[:serializedStrLength],
                     RAWVALUE=str(rowRecord.oracleValue),
                     VALUETYPE=str(type(rowRecord.oracleValue)),
                     LASTMODIFIED=datetime.datetime.now(),
                     EXECUTIONTIME=executionTime,
                 )
-                cells.append((cellId, cellValue))
+                cells.append((ci2, cv2))
 
             # Operation
-            cellId = CellId(
+            ci3 = CellId(
                 EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
                 ACTIONID="",
@@ -119,18 +115,65 @@ class SequenceExecutionRecord:
                 Y=rowRecord.position,
                 TYPE="op",
             )
-            cellValue = CellValue(
+            cv3 = CellValue(
                 VALUE=originalFunctionName[:serializedStrLength],
                 RAWVALUE=originalFunctionName,
                 VALUETYPE="function",
                 LASTMODIFIED=datetime.datetime.now(),
                 EXECUTIONTIME=executionTime,
             )
-            cells.append((cellId, cellValue))
+            cells.append((ci3, cv3))
+
+            # Adaptation instruction
+            ci4 = CellId(
+                EXECUTIONID=str(self.executionId),
+                ABSTRACTIONID=self.interfaceSpecification.className,
+                ACTIONID="",
+                ARENAID="execute",
+                SHEETID=self.sequenceSpecification.name,
+                SYSTEMID=systemId,
+                VARIANTID="original",
+                ADAPTERID=adaptationId,
+                X=1,
+                Y=rowRecord.position,
+                TYPE="adaptation_instruction",
+            )
+            cv4 = CellValue(
+                VALUE=adaptationInstruction[:serializedStrLength],
+                RAWVALUE=adaptationInstruction,
+                VALUETYPE="AdaptationInstruction",
+                LASTMODIFIED=datetime.datetime.now(),
+                EXECUTIONTIME=-1,
+            )
+            cells.append((ci4, cv4))
+
+            # Error message
+            if rowRecord.errorMessage != None:
+                ci5 = CellId(
+                EXECUTIONID=str(self.executionId),
+                ABSTRACTIONID=self.interfaceSpecification.className,
+                ACTIONID="",
+                ARENAID="execute",
+                SHEETID=self.sequenceSpecification.name,
+                SYSTEMID=systemId,
+                VARIANTID="original",
+                ADAPTERID=adaptationId,
+                X=1,
+                Y=rowRecord.position,
+                TYPE="error_message",
+                )
+                cv5 = CellValue(
+                VALUE=str(rowRecord.errorMessage)[:serializedStrLength],
+                RAWVALUE=str(rowRecord.errorMessage),
+                VALUETYPE=str(type(rowRecord.errorMessage)),
+                LASTMODIFIED=datetime.datetime.now(),
+                EXECUTIONTIME=executionTime,
+            )
+                cells.append((ci5, cv5))
 
             # Input values
             for xPosition, inputParam in enumerate(rowRecord.inputParams):
-                cellId = CellId(
+                ci6 = CellId(
                     EXECUTIONID=str(self.executionId),
                     ABSTRACTIONID=self.interfaceSpecification.className,
                     ACTIONID="",
@@ -143,17 +186,17 @@ class SequenceExecutionRecord:
                     Y=rowRecord.position,
                     TYPE="input_value",
                 )
-                cellValue = CellValue(
+                cv6 = CellValue(
                     VALUE=str(inputParam)[:serializedStrLength],
                     RAWVALUE=str(inputParam),
                     VALUETYPE=str(type(inputParam)),
                     LASTMODIFIED=datetime.datetime.now(),
                     EXECUTIONTIME=-1,
                 )
-                cells.append((cellId, cellValue))
+                cells.append((ci6, cv6))
             
             # Instance param
-            cellId = CellId(
+            ci7 = CellId(
                 EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
                 ACTIONID="",
@@ -166,25 +209,26 @@ class SequenceExecutionRecord:
                 Y=rowRecord.position,
                 TYPE="input_value",
             )
-            cellValue = CellValue(
+            cv7 = CellValue(
                 VALUE=str(rowRecord.instanceParam)[:serializedStrLength],
                 RAWVALUE=str(rowRecord.instanceParam),
                 VALUETYPE=str(type(rowRecord.instanceParam)),
                 LASTMODIFIED=datetime.datetime.now(),
                 EXECUTIONTIME=-1,
             )
-            cells.append((cellId, cellValue))
+            cells.append((ci7, cv7))
 
+            # Metrics
             if not rowRecord.metrics.isEmpty():
                 for key, value in rowRecord.metrics.toDict().items():
                     if value == None:
                         continue
 
-                    cellId = CellId(
+                    ci8 = CellId(
                         EXECUTIONID=str(self.executionId),
                         ABSTRACTIONID=self.interfaceSpecification.className,
                         ACTIONID="",
-                        ARENAID="metrics",
+                        ARENAID="execute",
                         SHEETID=self.sequenceSpecification.name,
                         SYSTEMID=systemId,
                         VARIANTID="original",
@@ -193,14 +237,14 @@ class SequenceExecutionRecord:
                         Y=rowRecord.position,
                         TYPE=key,
                     )
-                    cellValue = CellValue(
+                    cv8 = CellValue(
                         VALUE=str(value)[:serializedStrLength],
                         RAWVALUE=str(value),
                         VALUETYPE=str(type(value)),
                         LASTMODIFIED=datetime.datetime.now(),
                         EXECUTIONTIME=-1,
                     )
-                    cells.append((cellId, cellValue))
+                    cells.append((ci8, cv8))
 
         return cells
 
@@ -273,15 +317,17 @@ class RowRecord:
         methodName: str,
         originalFunctionName: str,
         inputParams: list,
+        instanceParam: object,
+        adaptationInstruction: AdaptationInstruction,
         oracleValue=None,
-        instanceParam=None,
     ) -> None:
         self.position = position  # The y coordinate of the row in the sequence sheet
         self.methodName = methodName
         self.originalFunctionName = originalFunctionName
         self.inputParams = inputParams
-        self.oracleValue = oracleValue
         self.instanceParam = instanceParam
+        self.adaptationInstruction = adaptationInstruction
+        self.oracleValue = oracleValue
 
         self.returnValue = None
         self.metrics = None
@@ -289,7 +335,7 @@ class RowRecord:
 
     def __repr__(self) -> str:
         inputParamsString = ", ".join(map(str, self.inputParams))
-        instruction = f"{self.methodName}({inputParamsString})"
+        instruction = f"{str(self.instanceParam)[:15]}.{self.methodName}({inputParamsString})"
         result = f"{CYAN}[{self.position}] {instruction}: {self.returnValue} (expected: {self.oracleValue}){RESET}, {self.metrics}"
         if self.errorMessage != None:
             result += f", Error: {self.errorMessage}"
@@ -362,7 +408,7 @@ def execute_test(
     adapted_module: The module that contains the adapted functions in 1 or more submodules (mapping0, mapping1, ...).
     execution_environment: The ExecutionEnvironment object used for this execution.
     """
-    
+
     from adaptation_implementation import create_adapted_submodule
     sequence_spec = execution_environment.sequenceSpecification
     mappings = execution_environment.mappings
@@ -372,29 +418,33 @@ def execute_test(
     )
     print(f"Module: {module_name}")
     print(f"Number of submodules: {len(mappings)}")
+    print(f"Execution Id: {execution_environment.uuid}")
+    print("Sequence sheet:")
     sequence_spec.printSequenceSheet()
 
     for i, mapping in enumerate(mappings):
 
         sequenceExecutionRecord = execution_environment.getSequenceExecutionRecord(mapping)
-        
-        adopted = False
-        
+
+        adapted = False
+
+        class_instance = None
+
         for index, statement in sequence_spec.statements.items():
-                        
-            # Resolve references in input params
+
+            # Resolve references in column input params
             for param in statement.inputParams:
                 if isinstance(param, str) and param[0].isupper() and param[1:].isnumeric():
                     statement.inputParams[statement.inputParams.index(param)] = sequence_spec.resolve_reference(param)
-            
-            # Resolve references in oracle values
+
+            # Resolve references in column oracle values
             if statement.oracleValue is not None and isinstance(statement.oracleValue, str) and statement.oracleValue[0].isupper() and statement.oracleValue[1:].isnumeric():
                 statement.oracleValue = sequence_spec.resolve_reference(statement.oracleValue)
 
-            # Resolve references in instance params
+            # Resolve references in column instance params
             if statement.instanceParam is not None and isinstance(statement.instanceParam, str) and statement.instanceParam[0].isupper() and statement.instanceParam[1:].isnumeric():
                 statement.instanceParam = sequence_spec.resolve_reference(statement.instanceParam)
-                    
+
             # Some logic for handling create statements
             if statement.methodName == "create":
                 if statement.instanceParam.startswith("python."):
@@ -417,6 +467,11 @@ def execute_test(
                                 inputParams=statement.inputParams,
                                 oracleValue=statement.oracleValue,
                                 instanceParam=statement.instanceParam,
+                                adaptationInstruction=AdaptationInstruction(
+                                    interfaceMethodName="create",
+                                    moduleFunctionQualName="createPythonObject",
+                                    iteration=0,
+                                ),
                             )
                             rowRecord.returnValue = statement.output
                             # For completeness, an empty metrics object is created for python.* calls
@@ -436,7 +491,7 @@ def execute_test(
                         statement,
                         import_from_file_path,
                     )
-                    adopted = True
+                    adapted = True
                     statement.output = class_instance
 
                 elif statement.instanceParam.startswith("numpy."):
@@ -444,53 +499,66 @@ def execute_test(
                 else:
                     print(f"Skipping 3rd party package create statement {statement.instanceParam}")
                 continue
-            
+
             if statement.methodName.startswith("__") and statement.methodName.endswith("__"):
                 statement = execute_default_functions(statement)
                 rowRecord = RowRecord(
-                                position=index,
-                                methodName=statement.methodName,
-                                originalFunctionName=statement.methodName,
-                                inputParams=statement.inputParams,
-                                oracleValue=statement.oracleValue,
-                                instanceParam=statement.instanceParam,
+                    position=index,
+                    methodName=statement.methodName,
+                    originalFunctionName=statement.methodName,
+                    inputParams=statement.inputParams,
+                    oracleValue=statement.oracleValue,
+                    instanceParam=statement.instanceParam,
+                    adaptationInstruction=AdaptationInstruction(
+                        interfaceMethodName=statement.methodName,
+                        moduleFunctionQualName=statement.methodName,
+                        iteration=0,
+                    ),
                 )
                 rowRecord.returnValue = statement.output
                 rowRecord.metrics = Metrics() # Use empty metrics object for default functions
                 sequenceExecutionRecord.rowRecords.append(rowRecord)
                 continue
-            
+
             print(statement.inputParams)
             print(mappings[i].adaptationInfo)
-            
-            if not adopted:
+
+            if not adapted:
                 raise ValueError("No create statement found in sequence sheet")
-                #adapt_submodule = create_adapted_submodule(
+                # adapt_submodule = create_adapted_submodule(
                 #    adaptation_handler,
                 #    module_name,
                 #    execution_environment,
                 #    i,
                 #    [],
                 #    import_from_file_path,
-                #)
+                # )
             print(mappings[i].adaptationInfo)
             original_function_name, adaptationInstruction = mappings[i].adaptationInfo[
                 statement.methodName
             ]
-            
+
+            # Determine the actual instance param for generating a RowRecord
+            actual_instance = class_instance
+            if (mappings[i].functionSignatures[original_function_name].parentClass == None):
+                # If the function is a standalone function, the actual instance param is set to "-"
+                actual_instance = "-"
+
             rowRecord = RowRecord(
                 position=index,
                 methodName=statement.methodName,
                 originalFunctionName=original_function_name,
                 inputParams=statement.inputParams,
                 oracleValue=statement.oracleValue,
-                instanceParam=statement.instanceParam,
+                instanceParam=actual_instance,
+                adaptationInstruction=adaptationInstruction,
             )
-            
+
             # Build the instruction string to output errors in a more readable way
             input_params_string = ", ".join(map(str, statement.inputParams))
             instruction = f"{statement.methodName}({input_params_string})"
 
+            # Retrieve the function object from the submodule
             method = None
             try:
                 method = getattr(submodule, statement.methodName)
@@ -501,7 +569,7 @@ def execute_test(
                 rowRecord.errorMessage = e
                 continue
 
-            # Set the return value
+            # Set the return value by executing the function
             return_value = "UNSUCCESSFUL"
             metrics = Metrics()
             try:
@@ -532,12 +600,12 @@ def execute_test(
             rowRecord.metrics = metrics
 
             sequenceExecutionRecord.rowRecords.append(rowRecord)
-        
-        # Reset the sequence sheet to remove output values and resolved references
+
+        # After executing all statements for a mapping, reset the sequence sheet to remove output values and resolved references
         sequence_spec.reset()
-    
+
     sequenceExecutionRecord
-    
+
 def execute_default_functions(statement):
     if len(statement.inputParams) == 1:
         if statement.methodName == "__len__":

@@ -160,6 +160,30 @@ class AdaptationInstruction:
             return result
         else:
             return "NoAdapter"
+        
+    def getDetailedInstructions(self) -> str:
+        """
+        Returns a detailed string representation of the adaptation instruction.
+        """
+        result = ""
+        if self.areAdaptationsNeeded():
+            if self.nameAdaptation != None:
+                result += f"NameAdaptation: {self.nameAdaptation}\n"
+            if self.returnTypeAdaptation != None:
+                result += f"ReturnTypeAdaptation: {self.returnTypeAdaptation}\n"
+            if self.parameterOrderAdaptation != None:
+                result += f"ParameterOrderAdaptation: {self.parameterOrderAdaptation}\n"
+            if self.blindParameterOrderAdaptation != None:
+                result += f"BlindParameterOrderAdaptation: {self.blindParameterOrderAdaptation}\n"
+            if self.parameterTypeConversion != None:
+                result += f"ParameterTypeConversion: {self.parameterTypeConversion}\n"
+            if self.useStandardConstructorValues != None:
+                result += f"UseStandardConstructorValues: {self.useStandardConstructorValues}\n"
+            if self.useEmptyConstructor != None:
+                result += f"UseEmptyConstructor: {self.useEmptyConstructor}"
+        else:
+            result = "No adaptations needed"
+        return result
 
 
 class Mapping:
