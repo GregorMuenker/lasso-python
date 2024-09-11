@@ -7,8 +7,11 @@ import Levenshtein
 
 import sys
 
-sys.path.insert(1, "../../backend")
-from constants import (
+import sys
+import git
+repo = git.Repo(search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
+from backend.constants import (
     MAGENTA,
     RESET,
     POSSIBLE_CONVERSIONS,

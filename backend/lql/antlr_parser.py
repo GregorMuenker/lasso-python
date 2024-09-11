@@ -7,6 +7,9 @@ java -jar antlr-4.13.2-complete.jar -Dlanguage=Python3 -visitor LQL.g4
 """
 
 import sys
+import git
+repo = git.Repo(search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
 
 sys.path.insert(1, "../lql")
 sys.path.insert(1, "../arena")
@@ -16,8 +19,8 @@ from antlr4 import *
 from LQLLexer import LQLLexer
 from LQLParser import LQLParser
 from LQLVisitor import LQLVisitor
-from arena.adaptation_identification import MethodSignature, InterfaceSpecification
-from constants import RED, RESET
+from backend.arena.adaptation_identification import MethodSignature, InterfaceSpecification
+from backend.constants import RED, RESET
 
 
 class LQLCustomVisitor(LQLVisitor):
