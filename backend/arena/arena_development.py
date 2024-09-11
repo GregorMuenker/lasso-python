@@ -62,7 +62,7 @@ if __name__ == "__main__":
         executionEnvironment.saveResults(lassoIgniteClient)
         df = lassoIgniteClient.getDataFrame()
         print(df)
-        df.to_csv("arena_development.csv", index=False)
+        # df.to_csv("arena_development.csv", index=False)
     except Exception as e:
         print(f"Error with Ignite: {e}")
 

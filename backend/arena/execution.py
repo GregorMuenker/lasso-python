@@ -45,7 +45,6 @@ class SequenceExecutionRecord:
             originalFunctionName = rowRecord.originalFunctionName
             adaptationId = str(rowRecord.adaptationInstruction.identifier)
             adaptationInstruction = str(rowRecord.adaptationInstruction.getDetailedInstructions())
-            print(adaptationId, "\n", adaptationInstruction)
 
             if rowRecord.metrics.executionTime == None:
                 executionTime = -1
@@ -97,7 +96,7 @@ class SequenceExecutionRecord:
                     RAWVALUE=str(rowRecord.oracleValue),
                     VALUETYPE=str(type(rowRecord.oracleValue)),
                     LASTMODIFIED=datetime.datetime.now(),
-                    EXECUTIONTIME=executionTime,
+                    EXECUTIONTIME=-1,
                 )
                 cells.append((ci2, cv2))
 
@@ -520,20 +519,9 @@ def execute_test(
                 sequenceExecutionRecord.rowRecords.append(rowRecord)
                 continue
 
-            print(statement.inputParams)
-            print(mappings[i].adaptationInfo)
-
             if not adapted:
                 raise ValueError("No create statement found in sequence sheet")
-                # adapt_submodule = create_adapted_submodule(
-                #    adaptation_handler,
-                #    module_name,
-                #    execution_environment,
-                #    i,
-                #    [],
-                #    import_from_file_path,
-                # )
-            print(mappings[i].adaptationInfo)
+
             original_function_name, adaptationInstruction = mappings[i].adaptationInfo[
                 statement.methodName
             ]
@@ -607,9 +595,9 @@ def execute_test(
     sequenceExecutionRecord
 
 def execute_default_functions(statement):
-    if len(statement.inputParams) == 1:
-        if statement.methodName == "__len__":
-            statement.output = len(statement.inputParams[0])
+    if statement.methodName == "__len__":
+        statement.output = len(statement.instanceParam)
+    # TODO implement rest of these or delete them
     if statement.methodName == "__getitem__":
         statement.output = statement.inputParams[0][statement.inputParams[1]]
     if statement.methodName == "__setitem__":
