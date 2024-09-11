@@ -1,23 +1,24 @@
 import builtins
-import copy
 import hashlib
 import importlib
 import inspect
-import pickle
 import pkgutil
 import time
 from _ast import *
 import ast
 from os import listdir
 from os.path import isfile, join, isdir
-import json
 import sys, os
-from Levenshtein import distance
 
 from backend.crawl.install import installHandler
 from backend.crawl import type_inference, import_helper
-from backend.constants import INSTALLED
 from backend.crawl.nexus import Nexus, Package
+from dotenv import load_dotenv
+load_dotenv()
+if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
+    INSTALLED = os.getenv("INSTALLED")
+else:
+    from backend.constants import INSTALLED
 
 
 def get_function_calls(element):

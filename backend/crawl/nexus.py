@@ -6,13 +6,21 @@ import tarfile
 import io
 import re
 import json
-import git
 
+import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.constants import INSTALLED, RUNTIME, INDEX, CORPUS
-
+from dotenv import load_dotenv
+load_dotenv()
+if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
+    INSTALLED = os.getenv("INSTALLED")
+    RUNTIME = os.getenv("RUNTIME")
+    INDEX = os.getenv("INDEX")
+    CORPUS = os.getenv("CORPUS")
+else:
+    from backend.constants import INSTALLED, RUNTIME, INDEX, CORPUS
+    
 class Package:
     def __init__(self, name, version):
         self.name = name

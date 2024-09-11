@@ -1,7 +1,12 @@
 import json
 import os
 import subprocess
-from backend.constants import TYPE_INFERENCING_TEMP
+from dotenv import load_dotenv
+load_dotenv()
+if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
+    TYPE_INFERENCING_TEMP = os.getenv("TYPE_INFERENCING_TEMP")
+else:
+    from backend.constants import TYPE_INFERENCING_TEMP
 
 
 def parse_file(module_path, module_name_with_prefix):

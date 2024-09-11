@@ -11,12 +11,18 @@ import requests
 import platform
 import certifi
 import ssl
-import git
 
+import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.constants import INSTALLED, INDEX
+from dotenv import load_dotenv
+load_dotenv()
+if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
+    INSTALLED = os.getenv("INSTALLED")
+    INDEX = os.getenv("INDEX")
+else:
+    from backend.constants import INSTALLED, INDEX
 from backend.crawl.nexus import Nexus, Package
 
 def get_all_packages():
