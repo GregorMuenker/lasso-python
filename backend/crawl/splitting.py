@@ -330,7 +330,7 @@ if __name__ == "__main__":
     installHandler = installHandler(nexus)
     package_name, version, already_installed = installHandler.install(package_name)
     if already_installed:
-        pkg = Package(package_name, version, f"{package_name}-{version}.tar.gz", f"{package_name}/{version}")
+        pkg = Package(package_name, version)
         nexus.download(pkg, runtime=False)
     installHandler.dump_index()
     imp_help = import_helper.ImportHelper()
