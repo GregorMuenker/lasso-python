@@ -7,7 +7,14 @@ import sys
 
 from Levenshtein import distance
 
-from backend.constants import INSTALLED, RUNTIME, INDEX
+from dotenv import load_dotenv
+load_dotenv()
+if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
+    INSTALLED = os.getenv("INSTALLED")
+    RUNTIME = os.getenv("RUNTIME")
+    INDEX = os.getenv("INDEX")
+else:
+    from backend.constants import INSTALLED, RUNTIME, INDEX
 
 
 def get_import_name(package_name, version, runtime=False):

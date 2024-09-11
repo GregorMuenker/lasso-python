@@ -6,7 +6,6 @@ from packaging.metadata import parse_email
 from io import StringIO
 from tokenize import generate_tokens
 import os
-import json
 import site
 
 from download import get_latest_tar

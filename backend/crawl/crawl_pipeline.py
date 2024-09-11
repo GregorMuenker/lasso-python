@@ -1,22 +1,21 @@
-import copy
-import importlib
-import os
 import sys
-
 import git
-import sys
-
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.constants import INSTALLED
 from backend.crawl import install, splitting, upload_index, import_helper
 from backend.crawl.nexus import Nexus, Package
 import json
 import os
-from backend.constants import *
-import os
 import uuid
+
+from dotenv import load_dotenv
+load_dotenv()
+if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
+    INSTALLED = os.getenv("INSTALLED")
+    INDEX = os.getenv("INDEX")
+else:
+    from backend.constants import INSTALLED, INDEX
 
 
 def parse_llm_code(llm_file):

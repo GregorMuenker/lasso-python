@@ -1,9 +1,14 @@
-import importlib
 import json
 import os
 import sys
 
-from backend.constants import INSTALLED, TYPE_INFERENCING_TEMP
+from dotenv import load_dotenv
+load_dotenv()
+if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
+    INSTALLED = os.getenv("INSTALLED")
+    TYPE_INFERENCING_TEMP = os.getenv("TYPE_INFERENCING_TEMP")
+else:
+    from backend.constants import INSTALLED, TYPE_INFERENCING_TEMP
 from backend.crawl.inference_engines import hityper
 
 

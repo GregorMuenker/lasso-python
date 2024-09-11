@@ -1,0 +1,22 @@
+services:
+  lasso_solr_quickstart:
+    image: solr:9.6.1
+    container_name: lasso_solr_quickstart
+    ports:
+      - "8983:8983"
+    volumes:
+      - ./lassoindex:/var/solr
+    command:
+      - solr-precreate
+      - lasso_python
+  nexus:
+    container_name: lasso_nexus
+    build:
+      context: ./nexus
+    ports:
+      - "8081:8081"
+  ignite:
+    image: apacheignite/ignite
+    container_name: lasso_ignite
+    ports:
+      - "10800:10800"

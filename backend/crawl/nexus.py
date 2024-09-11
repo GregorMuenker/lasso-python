@@ -6,13 +6,23 @@ import tarfile
 import io
 import re
 import json
-import git
 
+import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.constants import INSTALLED, RUNTIME, INDEX, CORPUS
-
+NEXUS_HOST="http://localhost:8081"
+from dotenv import load_dotenv
+load_dotenv()
+if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
+    INSTALLED = os.getenv("INSTALLED")
+    RUNTIME = os.getenv("RUNTIME")
+    INDEX = os.getenv("INDEX")
+    CORPUS = os.getenv("CORPUS")
+    NEXUS_HOST = os.getenv("NEXUS_HOST")
+else:
+    from backend.constants import INSTALLED, RUNTIME, INDEX, CORPUS
+    
 class Package:
     def __init__(self, name, version):
         self.name = name
@@ -32,7 +42,7 @@ class Package:
 
 
 class Nexus:
-    def __new__(cls, nexus_host="http://localhost:8081"):
+    def __new__(cls, nexus_host=NEXUS_HOST):
         with open(CORPUS, 'r') as file:
             corpus = json.load(file)
         if cls.check_status(corpus["artifactRepository"]["url"]):
@@ -41,7 +51,7 @@ class Nexus:
             print(f"Cannot reach Nexus server at {nexus_host}")
             return None
 
-    def __init__(self, nexus_host="http://localhost:8081"):
+    def __init__(self, nexus_host=NEXUS_HOST):
         # Configuration
         with open(CORPUS, 'r') as file:
             corpus = json.load(file)["artifactRepository"]
