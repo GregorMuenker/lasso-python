@@ -1,13 +1,4 @@
 services:
-  app:
-    container_name: lasso_python
-    build:
-      context: ./backend
-    ports:
-      - "8000:8000"
-    environment:
-      - DOCKER=test
-      - SOLR_PATH=http://lasso_solr_quickstart:8983/solr/
   lasso_solr_quickstart:
     image: solr:9.6.1
     container_name: lasso_solr_quickstart
@@ -22,5 +13,10 @@ services:
     container_name: lasso_nexus
     build:
       context: ./nexus
+    ports:
+      - "8081:8081"
+  ignite:
+    image: apacheignite/ignite
+    container_name: lasso_ignite
     ports:
       - "10800:10800"
