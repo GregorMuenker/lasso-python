@@ -180,30 +180,39 @@ def get_package_name(string):
         print("No project name found!")
         return
 
+def check_environment(operator, reference, condition_type):
+    """Checks dependency condition variables.
 
-def check_os_name(operator, os_name_value):
-    current_os = os.name  # Get the current os name ('nt' for Windows, 'posix' for Unix)
-    if operator == "==":
-        return current_os == os_name_value
-    elif operator == "!=":
-        return current_os != os_name_value
-    return False
+    Args:
+        operator (str): Operator.
+        reference (str): Reference value from condition.
+        condition_type (str): Type of condition.
 
-def check_platform_system(operator, system_value):
-    current_system = platform.system()  # Get the platform system (e.g., 'Windows', 'Linux', 'Darwin')
-    if operator == "==":
-        return current_system == system_value
-    elif operator == "!=":
-        return current_system != system_value
-    return False
+    Returns:
+        boolean: Whether condition is satisfied or not.
+    """
+    if condition_type == "python_version":
+        return check_python_version(operator, reference)
+    elif condition_type == "os_name":
+        value = os.name
+    elif condition_type == "platform_system":
+        value = platform.system()
+    elif condition_type == "sys_platform":
+        value = sys.platform
 
-def check_sys_platform(operator, platform_value):
-    current_platform = sys.platform  # Get the system platform (e.g., 'win32', 'linux', 'darwin')
-    if operator == "==":
-        return current_platform == platform_value
-    elif operator == "!=":
-        return current_platform != platform_value
-    return False
+    return eval(f"value {operator} reference")
+
+def check_python_version(operator, version):
+    """Checks Python Version requirement.
+
+    Args:
+        operator (str): Operator.
+        version (str): Version number.
+
+    Returns:
+        boolean: Whether local python version complies with requirement.
+    """
+    return compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version)
 
 def satisfy_condition(dependency):
     """Checks if dependency condition (after ";") is satisfied, including python_version, os_name, platform_system, and sys_platform.
@@ -227,32 +236,10 @@ def satisfy_condition(dependency):
         # Process each condition match
         for match in matches:
             condition_type, operator, value = match.groups()
-            
-            # Handle python_version condition
-            if condition_type == "python_version":
-                if not check_python_version(operator, value):
-                    return
-
-            # Handle os_name condition
-            elif condition_type == "os_name":
-                if not check_os_name(operator, value):
-                    return
-
-            # Handle platform_system condition
-            elif condition_type == "platform_system":
-                if not check_platform_system(operator, value):
-                    return
-
-            # Handle sys_platform condition
-            elif condition_type == "sys_platform":
-                if not check_sys_platform(operator, value):
-                    return
+            if not check_environment(operator, value, condition_type):
+                return
 
     return dependency  # Return the dependency if no conditions fail
-
-
-def check_python_version(operator, version):
-    return compare_versions(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}", operator, version)
 
 
 def get_latest_version(package_name):
@@ -316,7 +303,7 @@ def get_latest_version(package_name):
                     return str(release)
     
     else:
-        return None  # Handle failed request gracefully
+        return None
 
 
 class installHandler:
@@ -368,7 +355,10 @@ class installHandler:
             # name, version, dependencies = info["name"], info["version"], info["dependencies"]
             version, dependencies = info["version"], info["dependencies"]
             destination = f"{name}-{version}"
-            shutil.move(path, f"{INSTALLED}/{destination}")
+            # shutil.move(path, f"{INSTALLED}/{destination}")
+            shutil.copytree(path, f"{INSTALLED}/{destination}", dirs_exist_ok=True)
+            shutil.rmtree(path)
+
 
             pkg = Package(name, version)
             pkg.compress()
@@ -397,10 +387,14 @@ class installHandler:
         else:
             print(f"{name} already installed!")
             version = satisfactory_versions[0]
+            for dep_name, dep_dict in self.index[f"{name}:{version}"].items():
+                if not dep_dict["version"]:
+                    _, dep_version, _  = self.install(dep_dict["requirements"])
+                    self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
+                    self.dump_index()
             already_installed = True
-            #TODO: Check Index for missing dependencies? Maybe save requirements in index?
 
-        # self.dump_index()
+        self.dump_index()
         return name, version, already_installed
 
     def check_request(self, project, requirements):
@@ -447,8 +441,9 @@ if __name__ == "__main__":
     packages = get_most_downloaded()
     installHandler = installHandler(nexus)
     # installHandler.install("google-api-core[grpc] !=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0dev,>=1.34.1")
-    for package in packages[:300]:
+    for package in packages[:1]:
         installHandler.install(package)
+    # installHandler.install("tb-nightly")
     # package = Package("boto3", "1.35.15")
     # nexus.download(package)
 
