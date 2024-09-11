@@ -5,20 +5,15 @@ pip3 install antlr4-python3-runtime
 java -jar antlr-4.13.2-complete.jar LQL.g4 -Dlanguage=Python3
 java -jar antlr-4.13.2-complete.jar -Dlanguage=Python3 -visitor LQL.g4
 """
-
+from antlr4 import *
 import sys
 import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-sys.path.insert(1, "../lql")
-sys.path.insert(1, "../arena")
-sys.path.insert(1, "../../backend")
-
-from antlr4 import *
-from LQLLexer import LQLLexer
-from LQLParser import LQLParser
-from LQLVisitor import LQLVisitor
+from backend.lql.LQLLexer import LQLLexer
+from backend.lql.LQLParser import LQLParser
+from backend.lql.LQLVisitor import LQLVisitor
 from backend.arena.adaptation_identification import MethodSignature, InterfaceSpecification
 from backend.constants import RED, RESET
 

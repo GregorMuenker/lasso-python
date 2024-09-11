@@ -1,7 +1,3 @@
-from adaptation_identification import AdaptationHandler
-from execution import execute_test, ExecutionEnvironment
-from lql.antlr_parser import parse_interface_spec
-from solr_parser import parse_solr_response
 import git
 import sys
 
@@ -11,8 +7,11 @@ sys.path.insert(0, repo.working_tree_dir)
 from backend.crawl import import_helper
 from backend.crawl.nexus import Nexus, Package
 from backend.arena.lasso_solr_connector import LassoSolrConnector
-from sequence_specification import SequenceSpecification
-from ignite import LassoIgniteClient
+from backend.arena.sequence_specification import SequenceSpecification
+from backend.arena.ignite import LassoIgniteClient
+from backend.arena.adaptation_identification import AdaptationHandler
+from backend.arena.execution import execute_test, ExecutionEnvironment
+from backend.lql.antlr_parser import parse_interface_spec
 
 if __name__ == "__main__":
     lql_string = """
@@ -38,49 +37,48 @@ if __name__ == "__main__":
         package_name, version = package.split("==")
         pkg = Package(package_name, version)
         nexus.download(pkg)
-        # imp_helper.pre_load_package(package_name, version)
-        # dependencies = import_helper.get_dependencies(package_name, version)
-        # for dep_name in dependencies:
-        #     dep_version = dependencies[dep_name]['version']
-        #     imp_helper.pre_load_package(dep_name, dep_version)
+        imp_helper.pre_load_package(package_name, version)
+        dependencies = import_helper.get_dependencies(package_name, version)
+        for dep_name in dependencies:
+            dep_version = dependencies[dep_name]['version']
+            imp_helper.pre_load_package(dep_name, dep_version)
 
 
     # Setup Ignite client
-    # lassoIgniteClient = LassoIgniteClient()
+    lassoIgniteClient = LassoIgniteClient()
     
-    # # Iterate through all modules under test
-    # for moduleUnderTest in allModulesUnderTest:
-    #     adaptationHandler = AdaptationHandler(
-    #         interfaceSpecification,
-    #         moduleUnderTest,
-    #         maxParamPermutationTries=2,
-    #         onlyKeepTopNMappings=10,
-    #     )
-    #     adaptationHandler.identifyAdaptations()
-    #     adaptationHandler.identifyConstructorAdaptations()
-    #     adaptationHandler.visualizeAdaptations()
-    #     adaptationHandler.generateMappings()
+    # Iterate through all modules under test
+    for moduleUnderTest in allModulesUnderTest:
+        adaptationHandler = AdaptationHandler(
+            interfaceSpecification,
+            moduleUnderTest,
+            maxParamPermutationTries=1,
+            onlyKeepTopNMappings=1,
+        )
+        adaptationHandler.identifyAdaptations()
+        adaptationHandler.identifyConstructorAdaptations()
+        adaptationHandler.visualizeAdaptations()
+        adaptationHandler.generateMappings()
 
-    #     executionEnvironment = ExecutionEnvironment(
-    #         adaptationHandler.mappings,
-    #         sequenceSpecification,
-    #         interfaceSpecification,
-    #         recordMetrics=True,
-    #     )
+        executionEnvironment = ExecutionEnvironment(
+            adaptationHandler.mappings,
+            sequenceSpecification,
+            interfaceSpecification,
+            recordMetrics=True,
+        )
 
-    #     execute_test(
-    #         executionEnvironment,
-    #         adaptationHandler,
-    #         moduleUnderTest.moduleName,
-    #         import_from_file_path = path,
-    #     )
+        execute_test(
+            executionEnvironment,
+            adaptationHandler,
+            moduleUnderTest.moduleName,
+        )
 
-    #     executionEnvironment.printResults()
-    #     executionEnvironment.saveResults(lassoIgniteClient)
+        executionEnvironment.printResults()
+        executionEnvironment.saveResults(lassoIgniteClient)
     
 
-    # df = lassoIgniteClient.getDataFrame()
-    # print(df)
+    df = lassoIgniteClient.getDataFrame()
+    print(df)
 
-    # lassoIgniteClient.cache.destroy()
-    # lassoIgniteClient.client.close()
+    lassoIgniteClient.cache.destroy()
+    lassoIgniteClient.client.close()

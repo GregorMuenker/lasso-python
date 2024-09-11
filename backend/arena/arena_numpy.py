@@ -1,10 +1,15 @@
 if __name__ == "__main__":
-    from execution import execute_test, ExecutionEnvironment
-    from module_parser import parse_code
-    from sequence_specification import SequenceSpecification
-    from adaptation_identification import AdaptationHandler
-    from lql.antlr_parser import parse_interface_spec
-    from ignite import LassoIgniteClient
+    import sys
+    import git
+    repo = git.Repo(search_parent_directories=True)
+    sys.path.insert(0, repo.working_tree_dir)
+    
+    from backend.arena.execution import execute_test, ExecutionEnvironment
+    from backend.arena.module_parser import parse_code
+    from backend.arena.sequence_specification import SequenceSpecification
+    from backend.arena.adaptation_identification import AdaptationHandler
+    from backend.lql.antlr_parser import parse_interface_spec
+    from backend.arena.ignite import LassoIgniteClient
 
     lql_string = """
     Matrix {

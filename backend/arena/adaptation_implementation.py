@@ -1,12 +1,4 @@
-from adaptation_identification import (
-    AdaptationHandler,
-    AdaptationInstruction,
-    FunctionSignature,
-)
-from execution import ExecutionEnvironment, SequenceExecutionRecord, RowRecord, Metrics
-from sequence_specification import Statement
 import copy
-import importlib
 import types
 from collections.abc import Iterable
 import coverage
@@ -16,11 +8,11 @@ import time
 import io
 import json
 import warnings
+
 import sys
 import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
-
 from backend.constants import (
     GREEN,
     RESET,
@@ -28,6 +20,19 @@ from backend.constants import (
     TYPE_MAPPING,
     LIST_LIKE_TYPES,
 )
+from backend.arena.adaptation_identification import (
+    AdaptationHandler,
+    AdaptationInstruction,
+    FunctionSignature,
+)
+from backend.arena.execution import (
+    ExecutionEnvironment,
+    SequenceExecutionRecord,
+    RowRecord,
+    Metrics,
+)
+from backend.arena.sequence_specification import Statement
+
 
 def create_adapted_submodule(
     adaptation_handler: AdaptationHandler,
@@ -53,7 +58,7 @@ def create_adapted_submodule(
 
     failed_functions = []
     mapping = adaptation_handler.mappings[submodule_id]
-    
+
     # Keep track if there occurs an error => if yes, the mapping is not successful
     no_error = True
     print(
@@ -99,7 +104,9 @@ def create_adapted_submodule(
             # function is a class method that has not been instantiated yet
             elif parent_class_name:
                 if adaptation_handler.classConstructors[parent_class_name]:
-                    class_constructor = adaptation_handler.classConstructors[parent_class_name]
+                    class_constructor = adaptation_handler.classConstructors[
+                        parent_class_name
+                    ]
                 else:
                     # Generate a dummy constructor if the class has no constructor
                     class_constructor = FunctionSignature(
@@ -117,9 +124,9 @@ def create_adapted_submodule(
                     adaptation_handler.constructorAdaptations[parent_class_name],
                     class_constructor,
                     execution_environment.getSequenceExecutionRecord(mapping),
-                    execution_environment.recordMetrics
+                    execution_environment.recordMetrics,
                 )
-                
+
                 if successful_instantiation:
                     instantiated_classes[parent_class_name] = parent_class_instance
 
@@ -140,9 +147,7 @@ def create_adapted_submodule(
 
         except Exception as e:
             failed_functions.append(moduleFunctionQualName)
-            print(
-                f"For function '{moduleFunctionQualName}' there is an error: {e}."
-            )
+            print(f"For function '{moduleFunctionQualName}' there is an error: {e}.")
             no_error = False
             break
         else:
@@ -179,9 +184,7 @@ def create_adapted_submodule(
                     blind_new_param_order = (
                         adaptationInstruction.blindParameterOrderAdaptation
                     )
-                    print(
-                        f"Trying to blindly adapt parameter order of {new_function}."
-                    )
+                    print(f"Trying to blindly adapt parameter order of {new_function}.")
 
                 new_function = adapt_function(
                     new_function,
@@ -242,7 +245,9 @@ def instantiate_class(
 
     class_instantiation_params = statement.inputParams
     # Create a copy to possibly use the original parameters later
-    original_class_instantiation_params = list(copy.deepcopy(class_instantiation_params))
+    original_class_instantiation_params = list(
+        copy.deepcopy(class_instantiation_params)
+    )
 
     if use_empty_constructor:
         class_instantiation_params = []
@@ -285,7 +290,7 @@ def instantiate_class(
             STANDARD_CONSTRUCTOR_VALUES.get(parameterType, 1)
             for parameterType in parameterTypes
         )
-        
+
         # Retrospectively update the adaptation instruction
         adaptation_instruction.useStandardConstructorValues = class_instantiation_params
 
@@ -305,7 +310,9 @@ def instantiate_class(
             )
 
             filename = inspect.getfile(module)
-            filename = os.path.abspath(filename) # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
+            filename = os.path.abspath(
+                filename
+            )  # NOTE: Using the absolute path is neccessary as a relative path will mess up the coverage report
 
             cov = coverage.Coverage(source=[module.__name__], branch=True)
 
@@ -338,7 +345,9 @@ def instantiate_class(
             successful_instantiation = True
 
     # Generate RowRecord for the constructor call
-    constructor_name = constructor.qualName if constructor else f"{parent_class_name}.None" # Account for the situation that the class has no constructor, i.e. the constructor is None
+    constructor_name = (
+        constructor.qualName if constructor else f"{parent_class_name}.None"
+    )  # Account for the situation that the class has no constructor, i.e. the constructor is None
     row_record = RowRecord(
         position=statement.position,
         methodName="create",

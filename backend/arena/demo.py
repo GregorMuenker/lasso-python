@@ -1,8 +1,3 @@
-import pysolr
-from adaptation_identification import AdaptationHandler
-from execution import execute_test, ExecutionEnvironment
-from lql.antlr_parser import parse_interface_spec
-from solr_parser import parse_solr_response
 import git
 import sys
 
@@ -12,8 +7,11 @@ sys.path.insert(0, repo.working_tree_dir)
 from backend.crawl import import_helper
 from backend.crawl.nexus import Nexus, Package
 from backend.arena.lasso_solr_connector import LassoSolrConnector
-from sequence_specification import SequenceSpecification
-from ignite import LassoIgniteClient
+from backend.arena.sequence_specification import SequenceSpecification
+from backend.arena.ignite import LassoIgniteClient
+from backend.arena.adaptation_identification import AdaptationHandler
+from backend.arena.execution import execute_test, ExecutionEnvironment
+from backend.lql.antlr_parser import parse_interface_spec
 
 """
 For this demo to work you need to:

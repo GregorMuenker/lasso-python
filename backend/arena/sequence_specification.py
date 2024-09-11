@@ -1,11 +1,10 @@
 import os
-import pandas as pd
 import openpyxl as px
 
 import sys
-
-#sys.path.insert(1, "../../backend")
-#from constants import RED, RESET
+import git
+repo = git.Repo(search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
 
 
 class SequenceSpecification:

@@ -28,7 +28,7 @@ def parse_llm_code(llm_file):
 
     # Define the folder and file structure
     version_folder = "lasso-llm-0.0.1"
-    subfolder = "lasso_llm"
+    subfolder = "lasso-llm"
     file_name = f"{uuid.uuid4()}.py"
 
     # Full path creation
@@ -51,7 +51,7 @@ def parse_llm_code(llm_file):
     print(f"LLM code parsed and saved at: {file_path}")
 
     index = json.load(open(INDEX, "r"))
-    index[f"lasso-llm:0.0.1"] = []
+    index[f"lasso-llm:0.0.1"] = {}
     json.dump(index, open(INDEX, "w"))
 
     pkg = Package("lasso-llm", "0.0.1")
@@ -92,4 +92,5 @@ def index_package(package_name, llm_file=None):
 
 if __name__ == "__main__":
     index_package("numpy==2.0.2")
-    # index_package("lasso-llm", llm_file="../arena/evaluation_sanitized-mbpp.json")
+    index_package("lasso-llm", llm_file="../arena/evaluation_sanitized-mbpp.json")
+

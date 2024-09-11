@@ -6,8 +6,6 @@ import pandas as pd
 import Levenshtein
 
 import sys
-
-import sys
 import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)

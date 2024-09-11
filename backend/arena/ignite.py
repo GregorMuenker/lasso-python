@@ -14,6 +14,10 @@ from pyignite import Client, GenericObjectMeta
 from pyignite.datatypes import *
 from pyignite.datatypes.prop_codes import *
 import pandas as pd
+import sys
+import git
+repo = git.Repo(search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
 
 
 class LassoIgniteClient:
@@ -21,7 +25,7 @@ class LassoIgniteClient:
         self.client = Client(compact_footer=False)
         self.client.connect("localhost", 10800)
 
-        self.cache = self.client.create_cache(
+        self.cache = self.client.get_or_create_cache(
             {
                 PROP_NAME: "SQL_SRM",
                 PROP_SQL_SCHEMA: "PUBLIC",
@@ -129,6 +133,7 @@ class LassoIgniteClient:
                 ],
             }
         )
+
 
     def putAll(self, cells: list) -> bool:
         """

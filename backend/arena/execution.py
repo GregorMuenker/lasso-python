@@ -7,13 +7,20 @@ import json
 import io
 import uuid
 import warnings
-import sys
 import importlib
+import sys
+import git
+repo = git.Repo(search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
 
-sys.path.insert(1, "../../backend")
-from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
+from backend.constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 from ignite import CellId, CellValue
-from adaptation_identification import InterfaceSpecification, Mapping, AdaptationHandler, AdaptationInstruction
+from adaptation_identification import (
+    InterfaceSpecification,
+    Mapping,
+    AdaptationHandler,
+    AdaptationInstruction,
+)
 from sequence_specification import SequenceSpecification
 
 
