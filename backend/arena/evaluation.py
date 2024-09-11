@@ -3,7 +3,7 @@ from module_parser import parse_code
 from adaptation_identification import AdaptationHandler
 from lql.antlr_parser import parse_interface_spec
 from execution import ExecutionEnvironment, execute_test
-from sequence_specification_greg import SequenceSpecification
+from sequence_specification import SequenceSpecification
 import os
 
 file = open('evaluation_sanitized-mbpp.json', 'r')

@@ -1,7 +1,7 @@
 if __name__ == "__main__":
     from execution import execute_test, ExecutionEnvironment
     from module_parser import parse_code
-    from sequence_specification_greg import SequenceSpecification
+    from sequence_specification import SequenceSpecification
     from adaptation_identification import AdaptationHandler
     from lql.antlr_parser import parse_interface_spec
     from ignite import LassoIgniteClient

@@ -1,7 +1,7 @@
 import json
 
 
-from sequence_specification_greg import SequenceSpecification
+from sequence_specification import SequenceSpecification
 
 #sequenceSpecification = SequenceSpecification("calc4_demo.xlsx")
 #print(sequenceSpecification.statements)

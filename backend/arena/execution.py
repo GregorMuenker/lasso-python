@@ -13,7 +13,7 @@ sys.path.insert(1, "../../backend")
 from constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
 from ignite import CellId, CellValue
 from adaptation_identification import InterfaceSpecification, Mapping, AdaptationHandler, AdaptationInstruction
-from sequence_specification_greg import SequenceSpecification
+from sequence_specification import SequenceSpecification
 from pyignite.datatypes import TimestampObject
 
 class SequenceExecutionRecord:

@@ -12,7 +12,7 @@ sys.path.insert(0, repo.working_tree_dir)
 from backend.crawl import import_helper
 from backend.crawl.nexus import Nexus, Package
 from backend.arena.lasso_solr_connector import LassoSolrConnector
-from sequence_specification_greg import SequenceSpecification
+from sequence_specification import SequenceSpecification
 from ignite import LassoIgniteClient
 
 """

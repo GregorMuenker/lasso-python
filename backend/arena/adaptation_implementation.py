@@ -4,7 +4,7 @@ from adaptation_identification import (
     FunctionSignature,
 )
 from execution import ExecutionEnvironment, SequenceExecutionRecord, RowRecord, Metrics
-from sequence_specification_greg import Statement
+from sequence_specification import Statement
 import copy
 import importlib
 import types
