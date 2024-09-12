@@ -4,7 +4,6 @@ import time
 import coverage
 import datetime
 import json
-import io
 import uuid
 import warnings
 import importlib
@@ -626,7 +625,7 @@ def run_with_metrics(
     original_function_name: str,
 ) -> tuple:
     """
-    Executes a function and records the execution time, code coverage and arc coverage.
+    Executes a function and records the execution time, code line coverage and branch coverage.
 
     Returns:
     tuple: A tuple containing the result of the function and the metrics object.
@@ -642,40 +641,41 @@ def run_with_metrics(
     execution_time = int((end_time - start_time) * 1_000_000)  # Convert to microseconds
     metrics.executionTime = execution_time
 
-    # Modify stdout to capture the coverage report
-    old_stdout = sys.stdout
-    new_stdout = io.StringIO()
-    sys.stdout = new_stdout
+    coverage_report_file_path = "./temp_metrics.json"
 
+    # Coverage likes to generate warnings when generating reports so they have to be catched
     with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")  # Always trigger the warning for capture
+        warnings.simplefilter("always") 
 
-        # Attempt to run json_report
         try:
-            cov.json_report(outfile="-")
+            cov.json_report(outfile=coverage_report_file_path)
+            # NOTE: Generating a temp file is needed here because the LLM evaluation report is too large and using a string buffer will fail
         except Exception as e:
             print(f"Error with getting coverage report: {e}")
+            return (result, metrics)
 
-        # Check if any warnings were raised
         for warning in w:
             print(f"Coverage warning: {warning.message}")
 
-    # Capture the output and reset stdout
-    output = new_stdout.getvalue()
-    sys.stdout = old_stdout
-
-    json_output = None
     try:
-        json_output = json.loads(output)
+        with open('./temp_metrics.json') as file:
+            parsed_json = json.load(file)
+    
     except Exception as e:
-        print("Error when trying to parse coverage report, skipping further metrics", e)
+        print("Error when trying to parse coverage report, skipping further metrics: ", e)
+        
+        try:
+            os.remove(coverage_report_file_path)
+        except FileNotFoundError:
+            print(f"Note: {coverage_report_file_path} could not be deleted as it does not exist.")
+        
         return (result, metrics)
 
     # Some logic for finding coverage data in the json output
-    file_data = None
     file_data_found = False
+    
     try:
-        file_data = json_output["files"][filename]
+        file_data = parsed_json["files"][filename]
     except:
         print(f"Coverage.py file data not found for {filename}, trying file name only")
     else:
@@ -683,28 +683,50 @@ def run_with_metrics(
 
     if not file_data_found:
         try:
-            file_data = json_output["files"][os.path.basename(filename)]
+            file_data = parsed_json["files"][os.path.basename(filename)]
         except:
             # If the file data is still not found, return the result and the metrics object with only the execution time
             print(
-                f"Coverage.py file data not found for {filename}, skipping further metrics"
+                f"Coverage.py file data not found for simple filename {filename}"
             )
-            return (result, metrics)
         else:
             print("Coverage.py file data found for file name only")
             file_data_found = True
 
-    metrics.allLinesInFile = file_data["summary"]["num_statements"]
-    metrics.coveredLinesInFile = file_data["summary"]["covered_lines"]
+    if not file_data_found:
+        try:
+            files_dict = parsed_json["files"]
+            first_key = next(iter(files_dict))
+            print(f"Reading first file {first_key}")
+            file_data = parsed_json["files"][first_key]
+        except:
+            print(
+                f"Coverage data not found for first key"
+            )
+        else:
+            print("Coverage data found for first key")
+            file_data_found = True
 
-    metrics.allLinesInFunction = file_data["functions"][original_function_name]["summary"]["num_statements"]
-    metrics.coveredLinesInFunction = file_data["functions"][original_function_name]["summary"]["covered_lines"]
-    metrics.coveredLinesInFunctionRatio = file_data["functions"][original_function_name]["summary"]["percent_covered"]
+    if file_data_found:
+        try:
+            metrics.allLinesInFile = file_data["summary"]["num_statements"]
+            metrics.coveredLinesInFile = file_data["summary"]["covered_lines"]
 
-    metrics.allBranchesInFile = file_data["summary"]["num_branches"]
-    metrics.coveredBranchesInFile = file_data["summary"]["covered_branches"]
+            metrics.allLinesInFunction = file_data["functions"][original_function_name]["summary"]["num_statements"]
+            metrics.coveredLinesInFunction = file_data["functions"][original_function_name]["summary"]["covered_lines"]
+            metrics.coveredLinesInFunctionRatio = file_data["functions"][original_function_name]["summary"]["percent_covered"]
 
-    metrics.allBranchesInFunction = file_data["functions"][original_function_name]["summary"]["num_branches"]
-    metrics.coveredBranchesInFunction = file_data["functions"][original_function_name]["summary"]["covered_branches"]
+            metrics.allBranchesInFile = file_data["summary"]["num_branches"]
+            metrics.coveredBranchesInFile = file_data["summary"]["covered_branches"]
+
+            metrics.allBranchesInFunction = file_data["functions"][original_function_name]["summary"]["num_branches"]
+            metrics.coveredBranchesInFunction = file_data["functions"][original_function_name]["summary"]["covered_branches"]
+        except Exception as e:
+            print(f"Error with retrieving data from coverage report: {e}")
+    
+    try:
+        os.remove(coverage_report_file_path)
+    except FileNotFoundError:
+        print(f"Note: {coverage_report_file_path} could not be deleted as it does not exist.")
 
     return (result, metrics)
