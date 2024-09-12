@@ -464,39 +464,45 @@ def execute_test(
             if statement.methodName == "create":
                 if statement.instanceParam.startswith("python."):
                     instance_param = statement.instanceParam[7:]  # Remove "python." from the beginning of the instance param
-                    switch_case = {
-                        "Array": statement.inputParams,
-                        "List": list(statement.inputParams),
-                        "Tupel": tuple(statement.inputParams),
-                        "Set": set(statement.inputParams),
-                        # Add more cases for other modules as needed
-                    }
-                    if instance_param in switch_case:
-                        try:
-                            statement.output = switch_case[instance_param]
+                    # switch_case = {
+                    #     "Array": statement.inputParams,
+                    #     "List": list(statement.inputParams),
+                    #     "Tupel": tuple(statement.inputParams),
+                    #     #"Set": set(statement.inputParams), # TODO fix this test id 12
+                    #     # Add more cases for other modules as needed
+                    # }
+                    try:
+                        if instance_param == "Array":
+                            statement.output = statement.inputParams
+                        elif instance_param == "List":
+                            statement.output = list(statement.inputParams)
+                        elif instance_param == "Tupel":
+                            statement.output = tuple(statement.inputParams)
+                        elif instance_param == "Set":
+                            statement.output = set(statement.inputParams)
+                        else:
+                            print(f"Invalid python instance param: {instance_param}")
 
-                            rowRecord = RowRecord(
-                                position=index,
-                                methodName=statement.methodName,
-                                originalFunctionName=statement.methodName,
-                                inputParams=statement.inputParams,
-                                oracleValue=statement.oracleValue,
-                                instanceParam=statement.instanceParam,
-                                adaptationInstruction=AdaptationInstruction(
-                                    interfaceMethodName="create",
-                                    moduleFunctionQualName="createPythonObject",
-                                    iteration=0,
-                                ),
-                            )
-                            rowRecord.returnValue = statement.output
-                            # For completeness, an empty metrics object is created for python.* calls
-                            metrics = Metrics()
-                            rowRecord.metrics = metrics
-                            sequenceExecutionRecord.rowRecords.append(rowRecord)
-                        except Exception as e:
-                            print(f"Error when trying to execute create method for {instance_param}: {e}")
-                    else:
-                        print(f"Invalid python instance param: {instance_param}")
+                        rowRecord = RowRecord(
+                            position=index,
+                            methodName=statement.methodName,
+                            originalFunctionName=statement.methodName,
+                            inputParams=statement.inputParams,
+                            oracleValue=statement.oracleValue,
+                            instanceParam=statement.instanceParam,
+                            adaptationInstruction=AdaptationInstruction(
+                                interfaceMethodName="create",
+                                moduleFunctionQualName="createPythonObject",
+                                iteration=0,
+                            ),
+                        )
+                        rowRecord.returnValue = statement.output
+                        # For completeness, an empty metrics object is created for python.* calls
+                        metrics = Metrics()
+                        rowRecord.metrics = metrics
+                        sequenceExecutionRecord.rowRecords.append(rowRecord)
+                    except Exception as e:
+                        print(f"Error when trying to execute create method for {instance_param}: {e}")
                 elif "." not in statement.instanceParam:
                     module, submodule, class_instance = create_adapted_submodule(
                         adaptation_handler,
