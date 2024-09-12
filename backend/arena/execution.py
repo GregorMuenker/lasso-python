@@ -464,19 +464,12 @@ def execute_test(
             if statement.methodName == "create":
                 if statement.instanceParam.startswith("python."):
                     instance_param = statement.instanceParam[7:]  # Remove "python." from the beginning of the instance param
-                    # switch_case = {
-                    #     "Array": statement.inputParams,
-                    #     "List": list(statement.inputParams),
-                    #     "Tupel": tuple(statement.inputParams),
-                    #     #"Set": set(statement.inputParams), # TODO fix this test id 12
-                    #     # Add more cases for other modules as needed
-                    # }
                     try:
                         if instance_param == "Array":
                             statement.output = statement.inputParams
                         elif instance_param == "List":
                             statement.output = list(statement.inputParams)
-                        elif instance_param == "Tupel":
+                        elif instance_param == "Tuple":
                             statement.output = tuple(statement.inputParams)
                         elif instance_param == "Set":
                             statement.output = set(statement.inputParams)

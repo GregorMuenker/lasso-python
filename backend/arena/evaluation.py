@@ -117,10 +117,11 @@ if __name__ == "__main__":
     tasks = json.load(llm_file)
 
     for index, task in enumerate(tasks):
-        
+
         task_id = task["task_id"]
 
-        if task_id != 11:
+        wip = [2, 3, 4, 6, 8, 9, 11, 12, 14, 16, 17, 18, 19, 20, 56, 57, 58, 59, 61, 62, 63, 64]
+        if task_id != 64:
             continue
 
         lql_string = create_lql(task)
@@ -148,8 +149,6 @@ if __name__ == "__main__":
             for dep_name in dependencies:
                 dep_version = dependencies[dep_name]['version']
                 imp_helper.pre_load_package(dep_name, dep_version)
-
-
 
         # Iterate through all modules under test
         for moduleUnderTest in allModulesUnderTest:
@@ -182,7 +181,6 @@ if __name__ == "__main__":
             break # TODO only use the first module
             # executionEnvironment.saveResults(lassoIgniteClient)
 
-        
     # Setup Ignite client
     # lassoIgniteClient = LassoIgniteClient()
     # df = lassoIgniteClient.getDataFrame()
