@@ -30,6 +30,7 @@ from backend.arena.execution import (
     SequenceExecutionRecord,
     RowRecord,
     Metrics,
+    run_with_metrics,
 )
 from backend.arena.sequence_specification import Statement
 
@@ -316,7 +317,7 @@ def instantiate_class(
 
             cov = coverage.Coverage(source=[module.__name__], branch=True)
 
-            parent_class_instance, metrics = run_constructor_with_metrics(
+            parent_class_instance, metrics = run_with_metrics(
                 parent_class,
                 class_instantiation_params,
                 filename,
@@ -367,92 +368,6 @@ def instantiate_class(
     sequence_execution_record.rowRecords.append(row_record)
 
     return successful_instantiation, parent_class_instance
-
-
-def run_constructor_with_metrics(
-    parent_class: object,
-    args: list,
-    filename: str,
-    cov: object,
-    original_function_name: str,
-):
-    metrics = Metrics()
-
-    cov.start()
-    start_time = time.time()
-    result = parent_class(*args)
-    end_time = time.time()
-    cov.stop()
-
-    execution_time = int((end_time - start_time) * 1_000_000)  # Convert to microseconds
-    metrics.executionTime = execution_time
-
-    old_stdout = sys.stdout
-    new_stdout = io.StringIO()
-    sys.stdout = new_stdout
-
-    # Get the coverage report (outfile="-" -> report is written to stdout). Warnings from coverage have to be catched to avoid termination
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")  # Always trigger the warning for capture
-
-        # Attempt to get json_report
-        try:
-            cov.json_report(outfile="-")
-        except Exception as e:
-            print(f"Error with getting coverage report: {e}")
-
-        # Check if any warnings were raised
-        for warning in w:
-            print(f"Coverage warning: {warning.message}")
-
-    # Capture the output and reset stdout
-    output = new_stdout.getvalue()
-    sys.stdout = old_stdout
-
-    json_output = None
-    try:
-        json_output = json.loads(output)
-    except Exception as e:
-        print("Error when trying to parse coverage report, skipping further metrics", e)
-        return (result, metrics)
-
-    # Some logic for finding coverage data in the json output
-    file_data = None
-    file_data_found = False
-    try:
-        file_data = json_output["files"][filename]
-    except:
-        print(f"Coverage.py file data not found for {filename}, trying file name only")
-    else:
-        file_data_found = True
-
-    if not file_data_found:
-        try:
-            file_data = json_output["files"][os.path.basename(filename)]
-        except:
-            # If the file data is still not found, return the result and the metrics object with only the execution time
-            print(
-                f"Coverage.py file data not found for {filename}, skipping further metrics"
-            )
-            return (result, metrics)
-        else:
-            print("Coverage.py file data found for file name only")
-            file_data_found = True
-
-    metrics.allLinesInFile = file_data["summary"]["num_statements"]
-    metrics.coveredLinesInFile = file_data["summary"]["covered_lines"]
-
-    metrics.allLinesInFunction = file_data["functions"][original_function_name]["summary"]["num_statements"]
-    metrics.coveredLinesInFunction = file_data["functions"][original_function_name]["summary"]["covered_lines"]
-    metrics.coveredLinesInFunctionRatio = file_data["functions"][original_function_name]["summary"]["percent_covered"]
-
-    metrics.allBranchesInFile = file_data["summary"]["num_branches"]
-    metrics.coveredBranchesInFile = file_data["summary"]["covered_branches"]
-
-    metrics.allBranchesInFunction = file_data["functions"][original_function_name]["summary"]["num_branches"]
-    metrics.coveredBranchesInFunction = file_data["functions"][original_function_name]["summary"]["covered_branches"]
-
-    return (result, metrics)
 
 
 def adapt_function(

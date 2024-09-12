@@ -53,18 +53,6 @@
     },
     {
         "source_file": "Benchmark Questions Verification V2.ipynb",
-        "task_id": 7,
-        "prompt": "Write a function to find all words which are at least 4 characters long in a string.",
-        "code": "import re\ndef find_char_long(text):\n  return (re.findall(r\"\\b\\w{4,}\\b\", text))",
-        "test_imports": [],
-        "test_list": [
-            "assert set(find_char_long('Please move back to stream')) == set(['Please', 'move', 'back', 'stream'])",
-            "assert set(find_char_long('Jing Eco and Tech')) == set(['Jing', 'Tech'])",
-            "assert set(find_char_long('Jhingai wulu road Zone 3')) == set(['Jhingai', 'wulu', 'road', 'Zone'])"
-        ]
-    },
-    {
-        "source_file": "Benchmark Questions Verification V2.ipynb",
         "task_id": 8,
         "prompt": "Write a function to find squares of individual elements in a list.",
         "code": "def square_nums(nums):\n square_nums = list(map(lambda x: x ** 2, nums))\n return square_nums",
@@ -2098,18 +2086,6 @@
     },
     {
         "source_file": "Ellen's Copy of Benchmark Questions Verification V2.ipynb",
-        "task_id": 305,
-        "prompt": "Write a function to return two words from a list of words starting with letter 'p'.",
-        "code": "import re\ndef start_withp(words):\n for w in words:\n        m = re.match(\"(P\\w+)\\W(P\\w+)\", w)\n        if m:\n            return m.groups()",
-        "test_imports": [],
-        "test_list": [
-            "assert start_withp([\"Python PHP\", \"Java JavaScript\", \"c c++\"])==('Python', 'PHP')",
-            "assert start_withp([\"Python Programming\",\"Java Programming\"])==('Python','Programming')",
-            "assert start_withp([\"Pqrst Pqr\",\"qrstuv\"])==('Pqrst','Pqr')"
-        ]
-    },
-    {
-        "source_file": "Ellen's Copy of Benchmark Questions Verification V2.ipynb",
         "task_id": 306,
         "prompt": "Write a function to find the maximum sum of increasing subsequence from prefix until ith index and also including a given kth element which is after i, i.e., k > i .",
         "code": "def max_sum_increasing_subseq(a, n, index, k):\n\tdp = [[0 for i in range(n)] \n\t\t\tfor i in range(n)]\n\tfor i in range(n):\n\t\tif a[i] > a[0]:\n\t\t\tdp[0][i] = a[i] + a[0]\n\t\telse:\n\t\t\tdp[0][i] = a[i]\n\tfor i in range(1, n):\n\t\tfor j in range(n):\n\t\t\tif a[j] > a[i] and j > i:\n\t\t\t\tif dp[i - 1][i] + a[j] > dp[i - 1][j]:\n\t\t\t\t\tdp[i][j] = dp[i - 1][i] + a[j]\n\t\t\t\telse:\n\t\t\t\t\tdp[i][j] = dp[i - 1][j]\n\t\t\telse:\n\t\t\t\tdp[i][j] = dp[i - 1][j]\n\treturn dp[index][k]",
@@ -2772,18 +2748,6 @@
     },
     {
         "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
-        "task_id": 440,
-        "prompt": "Write a function to find the first adverb and their positions in a given sentence.",
-        "code": "import re\ndef find_adverb_position(text):\n for m in re.finditer(r\"\\w+ly\", text):\n    return (m.start(), m.end(), m.group(0))",
-        "test_imports": [],
-        "test_list": [
-            "assert find_adverb_position(\"clearly!! we can see the sky\")==(0, 7, 'clearly')",
-            "assert find_adverb_position(\"seriously!! there are many roses\")==(0, 9, 'seriously')",
-            "assert find_adverb_position(\"unfortunately!! sita is going to home\")==(0, 13, 'unfortunately')"
-        ]
-    },
-    {
-        "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
         "task_id": 441,
         "prompt": "Write a function to find the surface area of a cube of a given size.",
         "code": "def surfacearea_cube(l):\n  surfacearea= 6*l*l\n  return surfacearea",
@@ -2924,18 +2888,6 @@
             "assert sumofFactors(18) == 26",
             "assert sumofFactors(30) == 48",
             "assert sumofFactors(6) == 8"
-        ]
-    },
-    {
-        "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
-        "task_id": 454,
-        "prompt": "Write a function that matches a word containing 'z'.",
-        "code": "import re\ndef text_match_wordz(text):\n        patterns = '\\w*z.\\w*'\n        if re.search(patterns,  text):\n                return True\n        else:\n                return False",
-        "test_imports": [],
-        "test_list": [
-            "assert text_match_wordz(\"pythonz.\")==True",
-            "assert text_match_wordz(\"xyz.\")==True",
-            "assert text_match_wordz(\"  lang  .\")==False"
         ]
     },
     {
@@ -3516,18 +3468,6 @@
     },
     {
         "source_file": "Benchmark Questions Verification V2.ipynb",
-        "task_id": 584,
-        "prompt": "Write a function to find the first adverb ending with ly and its positions in a given string.",
-        "code": "import re\ndef find_adverbs(text):\n  for m in re.finditer(r\"\\w+ly\", text):\n    return ('%d-%d: %s' % (m.start(), m.end(), m.group(0)))",
-        "test_imports": [],
-        "test_list": [
-            "assert find_adverbs(\"Clearly, he has no excuse for such behavior.\") == '0-7: Clearly'",
-            "assert find_adverbs(\"Please handle the situation carefuly\") == '28-36: carefuly'",
-            "assert find_adverbs(\"Complete the task quickly\") == '18-25: quickly'"
-        ]
-    },
-    {
-        "source_file": "Benchmark Questions Verification V2.ipynb",
         "task_id": 585,
         "prompt": "Write a function to find the n most expensive items in a given dataset.",
         "code": "import heapq\ndef expensive_items(items,n):\n  expensive_items = heapq.nlargest(n, items, key=lambda s: s['price'])\n  return expensive_items",
@@ -3620,18 +3560,6 @@
             "assert sum_Of_product(3) == 15",
             "assert sum_Of_product(4) == 56",
             "assert sum_Of_product(1) == 1"
-        ]
-    },
-    {
-        "source_file": "Benchmark Questions Verification V2.ipynb",
-        "task_id": 593,
-        "prompt": "Write a function to remove leading zeroes from an ip address.",
-        "code": "import re\ndef removezero_ip(ip):\n string = re.sub('\\.[0]*', '.', ip)\n return string\n",
-        "test_imports": [],
-        "test_list": [
-            "assert removezero_ip(\"216.08.094.196\")==('216.8.94.196')",
-            "assert removezero_ip(\"12.01.024\")==('12.1.24')",
-            "assert removezero_ip(\"216.08.094.0196\")==('216.8.94.196')"
         ]
     },
     {
@@ -4484,18 +4412,6 @@
     },
     {
         "source_file": "Benchmark Questions Verification V2.ipynb",
-        "task_id": 748,
-        "prompt": "Write a function to put spaces between words starting with capital letters in a given string.",
-        "code": "import re\ndef capital_words_spaces(str1):\n  return re.sub(r\"(\\w)([A-Z])\", r\"\\1 \\2\", str1)",
-        "test_imports": [],
-        "test_list": [
-            "assert capital_words_spaces(\"Python\") == 'Python'",
-            "assert capital_words_spaces(\"PythonProgrammingExamples\") == 'Python Programming Examples'",
-            "assert capital_words_spaces(\"GetReadyToBeCodingFreak\") == 'Get Ready To Be Coding Freak'"
-        ]
-    },
-    {
-        "source_file": "Benchmark Questions Verification V2.ipynb",
         "task_id": 749,
         "prompt": "Write a function to sort a given list of strings of numbers numerically. https://www.geeksforgeeks.org/python-sort-numeric-strings-in-a-list/",
         "code": "def sort_numeric_strings(nums_str):\n    result = [int(x) for x in nums_str]\n    result.sort()\n    return result",
@@ -4619,20 +4535,6 @@
             "assert unique_sublists([['green', 'orange'], ['black'], ['green', 'orange'], ['white']])=={('green', 'orange'): 2, ('black',): 1, ('white',): 1}",
             "assert unique_sublists([[10, 20, 30, 40], [60, 70, 50, 50], [90, 100, 200]])=={(10, 20, 30, 40): 1, (60, 70, 50, 50): 1, (90, 100, 200): 1}",
             "assert unique_sublists([['john']])=={('john',): 1}"
-        ]
-    },
-    {
-        "source_file": "Benchmark Questions Verification V2.ipynb",
-        "task_id": 759,
-        "prompt": "Write a function to check whether a given string is a decimal number with a precision of 2.",
-        "code": "def is_decimal(num):\n    import re\n    dnumre = re.compile(r\"\"\"^[0-9]+(\\.[0-9]{1,2})?$\"\"\")\n    result = dnumre.search(num)\n    return bool(result)",
-        "test_imports": [],
-        "test_list": [
-            "assert is_decimal('123.11')==True",
-            "assert is_decimal('e666.86')==False",
-            "assert is_decimal('3.124587')==False",
-            "assert is_decimal('1.11')==True",
-            "assert is_decimal('1.1.11')==False"
         ]
     },
     {
