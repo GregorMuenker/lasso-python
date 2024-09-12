@@ -57,14 +57,13 @@ def create_sequence_sheet_entries(test, element, cell_type):
     return sequence_sheet
 
 
-def generate_llm_test(llm_file):
+def generate_sequence_sheets(llm_file):
     global cell_number
 
     file = open(llm_file, 'r')
     tasks = json.load(file)
     sequence_sheets = {}
     for task in tasks:
-        create_lql(task)
         tests = task["test_list"]
         sequence_sheet = []
         cell_number = 1
@@ -107,76 +106,87 @@ def create_lql(task):
     lql = lql.replace("<begin>", "{").replace("<end>", "}")
     return lql
 
-if __name__ == "__main__":
-    sequence_sheets = generate_llm_test("evaluation_sanitized-mbpp.json")
+if __name__ == "__maind__":
+    sequence_sheets = generate_sequence_sheets("evaluation_sanitized-mbpp.json")
     for task_id in sequence_sheets.keys():
         pd.DataFrame(sequence_sheets[task_id]).to_excel(f"evaluation_sheets/llm_sequence_sheets/task{task_id}.xlsx", index=False, header=False)
 
 
-if __name__ == "__maind__":
-    lql_string = """
-    Task2 {
-        similar_elements(tuple, tuple)->set
-    }
-    """
+if __name__ == "__main__":
+    llm_file = open("evaluation_sanitized-mbpp.json", 'r')
+    tasks = json.load(llm_file)
 
-    interfaceSpecification = parse_interface_spec(lql_string)
+    for index, task in enumerate(tasks):
+        
+        task_id = task["task_id"]
 
-    sequenceSpecification = SequenceSpecification("./evaluation_sheets/2.xlsx")
+        if task_id != 11:
+            continue
 
-    solr_url = "http://localhost:8983/solr/lasso_quickstart"
-    solr_conn = LassoSolrConnector(solr_url)
+        lql_string = create_lql(task)
+        print(lql_string)
 
-    allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
+        interfaceSpecification = parse_interface_spec(lql_string)
 
-    print(required_packages)
+        sequenceSpecification = SequenceSpecification(f"./evaluation_sheets/{task_id}.xlsx")
 
-    imp_helper = import_helper.ImportHelper(runtime=True)
-    nexus = Nexus()
-    for package in required_packages:
-        package_name, version = package.split("==")
-        pkg = Package(package_name, version)
-        nexus.download(pkg)
-        imp_helper.pre_load_package(package_name, version)
-        dependencies = import_helper.get_dependencies(package_name, version)
-        for dep_name in dependencies:
-            dep_version = dependencies[dep_name]['version']
-            imp_helper.pre_load_package(dep_name, dep_version)
+        solr_url = "http://localhost:8983/solr/lasso_quickstart"
+        solr_conn = LassoSolrConnector(solr_url)
 
+        allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
+
+        print(required_packages)
+
+        imp_helper = import_helper.ImportHelper(runtime=True)
+        nexus = Nexus()
+        for package in required_packages:
+            package_name, version = package.split("==")
+            pkg = Package(package_name, version)
+            nexus.download(pkg)
+            imp_helper.pre_load_package(package_name, version)
+            dependencies = import_helper.get_dependencies(package_name, version)
+            for dep_name in dependencies:
+                dep_version = dependencies[dep_name]['version']
+                imp_helper.pre_load_package(dep_name, dep_version)
+
+
+
+        # Iterate through all modules under test
+        for moduleUnderTest in allModulesUnderTest:
+            adaptationHandler = AdaptationHandler(
+                interfaceSpecification,
+                moduleUnderTest,
+                maxParamPermutationTries=1,
+                onlyKeepTopNMappings=1,
+            )
+            adaptationHandler.identifyAdaptations()
+            adaptationHandler.identifyConstructorAdaptations()
+            adaptationHandler.visualizeAdaptations()
+            adaptationHandler.generateMappings()
+
+            executionEnvironment = ExecutionEnvironment(
+                adaptationHandler.mappings,
+                sequenceSpecification,
+                interfaceSpecification,
+                recordMetrics=True,
+            )
+
+            execute_test(
+                executionEnvironment,
+                adaptationHandler,
+                moduleUnderTest.moduleName,
+            )
+
+            executionEnvironment.printResults()
+
+            break # TODO only use the first module
+            # executionEnvironment.saveResults(lassoIgniteClient)
+
+        
     # Setup Ignite client
-    lassoIgniteClient = LassoIgniteClient()
+    # lassoIgniteClient = LassoIgniteClient()
+    # df = lassoIgniteClient.getDataFrame()
+    # print(df)
 
-    # Iterate through all modules under test
-    for moduleUnderTest in allModulesUnderTest:
-        adaptationHandler = AdaptationHandler(
-            interfaceSpecification,
-            moduleUnderTest,
-            maxParamPermutationTries=1,
-            onlyKeepTopNMappings=1,
-        )
-        adaptationHandler.identifyAdaptations()
-        adaptationHandler.identifyConstructorAdaptations()
-        adaptationHandler.visualizeAdaptations()
-        adaptationHandler.generateMappings()
-
-        executionEnvironment = ExecutionEnvironment(
-            adaptationHandler.mappings,
-            sequenceSpecification,
-            interfaceSpecification,
-            recordMetrics=True,
-        )
-
-        execute_test(
-            executionEnvironment,
-            adaptationHandler,
-            moduleUnderTest.moduleName,
-        )
-
-        executionEnvironment.printResults()
-        executionEnvironment.saveResults(lassoIgniteClient)
-
-    df = lassoIgniteClient.getDataFrame()
-    print(df)
-
-    lassoIgniteClient.cache.destroy()
-    lassoIgniteClient.client.close()
+    # lassoIgniteClient.cache.destroy()
+    # lassoIgniteClient.client.close()
