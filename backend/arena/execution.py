@@ -13,14 +13,14 @@ repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
 from backend.constants import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
-from ignite import CellId, CellValue
-from adaptation_identification import (
+from backend.arena.ignite import CellId, CellValue
+from backend.arena.adaptation_identification import (
     InterfaceSpecification,
     Mapping,
     AdaptationHandler,
     AdaptationInstruction,
 )
-from sequence_specification import SequenceSpecification
+from backend.arena.sequence_specification import SequenceSpecification
 
 
 class SequenceExecutionRecord:
@@ -408,7 +408,7 @@ def execute_test(
     import_from_file_path: The path to a file that should be imported instead of the module name. This is only used for testing purposes.
     """
 
-    from adaptation_implementation import create_adapted_submodule
+    from backend.arena.adaptation_implementation import create_adapted_submodule
     sequence_spec = execution_environment.sequenceSpecification
     mappings = execution_environment.mappings
 

@@ -115,13 +115,16 @@ if __name__ == "__maind__":
 if __name__ == "__main__":
     llm_file = open("evaluation_sanitized-mbpp.json", 'r')
     tasks = json.load(llm_file)
+    
+    # Setup Ignite client
+    lassoIgniteClient = LassoIgniteClient()
 
     for index, task in enumerate(tasks):
 
         task_id = task["task_id"]
 
-        wip = [2, 3, 4, 6, 8, 9, 11, 12, 14, 16, 17, 18, 19, 20, 56, 57, 58, 59, 61, 62, 63, 64]
-        if task_id != 64:
+        wip = [2, 3, 4, 6, 8, 9, 11, 12, 14, 16, 17, 18, 19, 20, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 74, 75, 77, 79, 80]
+        if task_id not in wip:
             continue
 
         lql_string = create_lql(task)
@@ -177,14 +180,8 @@ if __name__ == "__main__":
             )
 
             executionEnvironment.printResults()
-
+            executionEnvironment.saveResults(lassoIgniteClient)
             break # TODO only use the first module
-            # executionEnvironment.saveResults(lassoIgniteClient)
-
-    # Setup Ignite client
-    # lassoIgniteClient = LassoIgniteClient()
-    # df = lassoIgniteClient.getDataFrame()
-    # print(df)
-
-    # lassoIgniteClient.cache.destroy()
-    # lassoIgniteClient.client.close()
+    
+    df = lassoIgniteClient.getDataFrame()
+    df.to_csv("evaluation_results.csv", index=False)
