@@ -477,6 +477,8 @@ def execute_test(
                             statement.output = tuple(statement.inputParams)
                         elif instance_param == "Set":
                             statement.output = set(statement.inputParams)
+                        elif instance_param == "Dict":
+                            statement.output = dict(zip(statement.inputParams[0::2], statement.inputParams[1::2]))
                         else:
                             print(f"Invalid python instance param: {instance_param}")
 
