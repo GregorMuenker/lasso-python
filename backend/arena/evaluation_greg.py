@@ -6,6 +6,7 @@ from execution import ExecutionEnvironment, execute_test
 from sequence_specification import SequenceSpecification
 from adaptation_implementation import create_adapted_module
 import os
+import uuid
 
 file = open('evaluation_sanitized-mbpp.json', 'r')
 data = json.load(file)  
@@ -46,7 +47,8 @@ adaptationHandler.generateMappings()
 executionEnvironment = ExecutionEnvironment(
     adaptationHandler.mappings,
     sequence_spec,
-    interface_spec
+    interface_spec,
+    executionId=uuid.uuid4(),
 )
 
 execute_test(

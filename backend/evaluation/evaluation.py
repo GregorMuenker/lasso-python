@@ -1,3 +1,4 @@
+import uuid
 import pandas as pd
 import git
 import sys
@@ -126,7 +127,9 @@ def create_lql(task):
 if __name__ == "__maind__":
     sequence_sheets = generate_sequence_sheets("evaluation_sanitized-mbpp.json")
     for task_id in sequence_sheets.keys():
-        pd.DataFrame(sequence_sheets[task_id]).to_excel(f"evaluation_sheets/llm_sequence_sheets/task{task_id}.xlsx", index=False, header=False)
+        if task_id <= 80 or task_id >= 100:
+            continue
+        pd.DataFrame(sequence_sheets[task_id]).to_excel(f"evaluation_sheets/llm_sequence_sheets/{task_id}.xlsx", index=False, header=False)
 
 
 if __name__ == "__main__":
@@ -140,7 +143,7 @@ if __name__ == "__main__":
 
         task_id = task["task_id"]
 
-        wip = [2, 3, 4, 6, 8, 9, 11, 12, 14, 16, 17, 18, 19, 20, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 74, 75, 77, 79, 80, 87]
+        wip = [2, 3, 4, 6, 8, 9, 11, 12, 14, 16, 17, 18, 19, 20, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 74, 75, 77, 79, 80, 83]
         if task_id not in wip:
             continue
 
@@ -187,6 +190,7 @@ if __name__ == "__main__":
                 adaptationHandler.mappings,
                 sequenceSpecification,
                 interfaceSpecification,
+                executionId=uuid.uuid4(),
                 recordMetrics=True,
             )
 

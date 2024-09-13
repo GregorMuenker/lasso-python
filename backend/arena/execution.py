@@ -271,13 +271,14 @@ class ExecutionEnvironment:
         mappings: list,
         sequenceSpecification: SequenceSpecification,
         interfaceSpecification: InterfaceSpecification,
+        executionId: uuid,
         recordMetrics: bool = True
     ) -> None:
         self.mappings = mappings
         self.interfaceSpecification = interfaceSpecification
         self.sequenceSpecification = sequenceSpecification
         self.recordMetrics = recordMetrics
-        self.uuid = uuid.uuid4() # Later used as execution id when saving observations in Ignite
+        self.executionId = executionId # Later used as execution id when saving observations in Ignite
 
         self.allSequenceExecutionRecords = []
 
@@ -286,7 +287,7 @@ class ExecutionEnvironment:
                 mapping=mapping,
                 interfaceSpecification=interfaceSpecification,
                 sequenceSpecification=sequenceSpecification,
-                executionId=self.uuid
+                executionId=self.executionId
             )
             self.allSequenceExecutionRecords.append(sequenceExecutionRecord)
 
@@ -421,7 +422,7 @@ def execute_test(
     )
     print(f"Module: {module_name}")
     print(f"Number of submodules: {len(mappings)}")
-    print(f"Execution Id: {execution_environment.uuid}")
+    print(f"Execution Id: {execution_environment.executionId}")
     print("Sequence sheet:")
     sequence_spec.printSequenceSheet()
 
