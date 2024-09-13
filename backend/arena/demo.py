@@ -25,7 +25,7 @@ For this demo to work you need to:
 if __name__ == "__main__":
     lql_string = """
     Matrix {
-        Matrix(arr)->None
+        Matrix(list)->None
         mean()->Any
     }
     """

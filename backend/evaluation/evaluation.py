@@ -127,7 +127,7 @@ def create_lql(task):
 if __name__ == "__maind__":
     sequence_sheets = generate_sequence_sheets("evaluation_sanitized-mbpp.json")
     for task_id in sequence_sheets.keys():
-        if task_id <= 80 or task_id >= 100:
+        if task_id <= 101 or task_id >= 120:
             continue
         pd.DataFrame(sequence_sheets[task_id]).to_excel(f"evaluation_sheets/llm_sequence_sheets/{task_id}.xlsx", index=False, header=False)
 
@@ -136,15 +136,16 @@ if __name__ == "__main__":
     llm_file = open("evaluation_sanitized-mbpp.json", 'r')
     tasks = json.load(llm_file)
     
-    # Setup Ignite client
     lassoIgniteClient = LassoIgniteClient()
+
+    executionId = uuid.uuid4()
 
     for index, task in enumerate(tasks):
 
         task_id = task["task_id"]
 
-        wip = [2, 3, 4, 6, 8, 9, 11, 12, 14, 16, 17, 18, 19, 20, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 74, 75, 77, 79, 80, 83]
-        if task_id not in wip:
+        wip = [2, 3, 4, 6, 8, 9, 11, 12, 14, 16, 17, 18, 19, 20, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 74, 75, 77, 79, 80, 83, 84, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 99]
+        if task_id != 99:
             continue
 
         lql_string = create_lql(task)
@@ -190,7 +191,7 @@ if __name__ == "__main__":
                 adaptationHandler.mappings,
                 sequenceSpecification,
                 interfaceSpecification,
-                executionId=uuid.uuid4(),
+                executionId=executionId,
                 recordMetrics=True,
             )
 
@@ -201,8 +202,8 @@ if __name__ == "__main__":
             )
 
             executionEnvironment.printResults()
-            executionEnvironment.saveResults(lassoIgniteClient)
-            break # TODO only use the first module
+            # executionEnvironment.saveResults(lassoIgniteClient)
+            break # NOTE only use the first module as the names perfectly match and the first search result is the one we want
     
-    df = lassoIgniteClient.getDataFrame()
-    df.to_csv("evaluation_results.csv", index=False)
+    # df = lassoIgniteClient.getDataFrame()
+    # df.to_csv("evaluation_results.csv", index=False)
