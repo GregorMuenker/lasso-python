@@ -35,7 +35,7 @@ class SequenceExecutionRecord:
         self.interfaceSpecification = interfaceSpecification
         self.mapping = mapping
         self.sequenceSpecification = sequenceSpecification
-        self.rowRecords = []  # List[RownRecord]
+        self.rowRecords = []  # List[RowRecord]
         self.executionId = executionId
 
     def toSheetCells(self) -> list:
@@ -43,14 +43,14 @@ class SequenceExecutionRecord:
         This method converts the sequence execution record into pairs of (CellId, CellValue) that can be put into the Ignite cache.
 
         Returns:
-        A list of (CellId, CellValue) tuples that represent the cells in the sequence sheet.
+        list: A list of (CellId, CellValue) tuples that represent the cells in the sequence sheet.
         """
         cells = []
-        serializedStrLength = 15
+        serializedStrLength = 30
         for rowRecord in self.rowRecords:
 
             originalFunctionName = rowRecord.originalFunctionName
-            adaptationId = str(rowRecord.adaptationInstruction.identifier)
+            adapterId = str(self.mapping.identifier) + str(rowRecord.adaptationInstruction.identifier)
             adaptationInstruction = str(rowRecord.adaptationInstruction.getDetailedInstructions())
 
             if rowRecord.metrics.executionTime == None:
@@ -58,7 +58,7 @@ class SequenceExecutionRecord:
             else:
                 executionTime = rowRecord.metrics.executionTime
 
-            systemId = str(self.mapping.identifier) # TODO change to id from Solr
+            systemId = str(rowRecord.solrId)
 
             # Return value
             ci1 = CellId(
@@ -69,7 +69,7 @@ class SequenceExecutionRecord:
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
                 VARIANTID="original",
-                ADAPTERID=adaptationId,
+                ADAPTERID=adapterId,
                 X=0,
                 Y=rowRecord.position,
                 TYPE="value",
@@ -116,7 +116,7 @@ class SequenceExecutionRecord:
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
                 VARIANTID="original",
-                ADAPTERID=adaptationId,
+                ADAPTERID=adapterId,
                 X=1,
                 Y=rowRecord.position,
                 TYPE="op",
@@ -139,7 +139,7 @@ class SequenceExecutionRecord:
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
                 VARIANTID="original",
-                ADAPTERID=adaptationId,
+                ADAPTERID=adapterId,
                 X=1,
                 Y=rowRecord.position,
                 TYPE="adaptation_instruction",
@@ -163,7 +163,7 @@ class SequenceExecutionRecord:
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
                 VARIANTID="original",
-                ADAPTERID=adaptationId,
+                ADAPTERID=adapterId,
                 X=1,
                 Y=rowRecord.position,
                 TYPE="error_message",
@@ -187,7 +187,7 @@ class SequenceExecutionRecord:
                     SHEETID=self.sequenceSpecification.name,
                     SYSTEMID=systemId,
                     VARIANTID="original",
-                    ADAPTERID=adaptationId,
+                    ADAPTERID=adapterId,
                     X=3 + xPosition,
                     Y=rowRecord.position,
                     TYPE="input_value",
@@ -210,7 +210,7 @@ class SequenceExecutionRecord:
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
                 VARIANTID="original",
-                ADAPTERID=adaptationId,
+                ADAPTERID=adapterId,
                 X=2,
                 Y=rowRecord.position,
                 TYPE="input_value",
@@ -238,7 +238,7 @@ class SequenceExecutionRecord:
                         SHEETID=self.sequenceSpecification.name,
                         SYSTEMID=systemId,
                         VARIANTID="original",
-                        ADAPTERID=adaptationId,
+                        ADAPTERID=adapterId,
                         X=-1,
                         Y=rowRecord.position,
                         TYPE=key,
@@ -301,9 +301,11 @@ class ExecutionEnvironment:
             print(sequenceExecutionRecord)
 
     def saveResults(self, igniteClient) -> None:
+        print("Saving results to Ignite...")
         for sequenceExecutionRecord in self.allSequenceExecutionRecords:
             cells = sequenceExecutionRecord.toSheetCells()
             igniteClient.putAll(cells)
+        print("Results saved to Ignite.")
 
 
 class RowRecord:
@@ -316,6 +318,7 @@ class RowRecord:
         instanceParam: object,
         adaptationInstruction: AdaptationInstruction,
         oracleValue=None,
+        solrId=None,
     ) -> None:
         self.position = position  # The y coordinate of the row in the sequence sheet
         self.methodName = methodName
@@ -324,6 +327,7 @@ class RowRecord:
         self.instanceParam = instanceParam
         self.adaptationInstruction = adaptationInstruction
         self.oracleValue = oracleValue
+        self.solrId = solrId
 
         self.returnValue = None
         self.metrics = None
@@ -546,6 +550,9 @@ def execute_test(
                 # If the function is a standalone function, the actual instance param is set to "-"
                 actual_instance = "-"
 
+            # Retrieve the id of the function from the Solr index
+            solr_id = mappings[i].functionSignatures[original_function_name].solrId
+
             rowRecord = RowRecord(
                 position=index,
                 methodName=statement.methodName,
@@ -554,6 +561,7 @@ def execute_test(
                 oracleValue=statement.oracleValue,
                 instanceParam=actual_instance,
                 adaptationInstruction=adaptationInstruction,
+                solrId=solr_id,
             )
 
             # Build the instruction string to output errors in a more readable way

@@ -60,12 +60,14 @@ class FunctionSignature:
         parameterTypes: list,
         parentClass: str,
         firstDefault: int,
+        solrId: str = None,
     ) -> None:
         self.functionName = functionName
         self.returnType = returnType
         self.parameterTypes = parameterTypes
         self.parentClass = parentClass
         self.firstDefault = firstDefault
+        self.solrId = solrId
         if self.parentClass:
             self.qualName = f"{self.parentClass}.{self.functionName}"
         else:
@@ -75,7 +77,7 @@ class FunctionSignature:
         return (
             f"FunctionSignature(functionName='{self.functionName}', returnType='{self.returnType}', "
             f"parameterTypes={self.parameterTypes}, parentClass='{self.parentClass}', "
-            f"firstDefault={self.firstDefault})"
+            f"firstDefault={self.firstDefault}), solrId={self.solrId}"
         )
 
 

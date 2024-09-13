@@ -1,8 +1,6 @@
+import pandas as pd
 import git
 import sys
-
-import pandas as pd
-from tqdm import tqdm
 
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
@@ -125,13 +123,13 @@ def create_lql(task):
     lql = lql.replace("<begin>", "{").replace("<end>", "}")
     return lql
 
-if __name__ == "__main__":
+if __name__ == "__maind__":
     sequence_sheets = generate_sequence_sheets("evaluation_sanitized-mbpp.json")
     for task_id in sequence_sheets.keys():
         pd.DataFrame(sequence_sheets[task_id]).to_excel(f"evaluation_sheets/llm_sequence_sheets/task{task_id}.xlsx", index=False, header=False)
 
 
-if __name__ == "__maind__":
+if __name__ == "__main__":
     llm_file = open("evaluation_sanitized-mbpp.json", 'r')
     tasks = json.load(llm_file)
     

@@ -1,5 +1,9 @@
 import pysolr
 import re
+import sys
+import git
+repo = git.Repo(search_parent_directories=True)
+sys.path.insert(0, repo.working_tree_dir)
 
 class LassoSolrConnector:
     def __init__(self, solr_url):
@@ -80,8 +84,10 @@ class LassoSolrConnector:
                 if parentClass not in classDict[moduleName]:
                     classDict[moduleName][parentClass] = []
 
+            solrId = doc.get("id", None)
+
             functionSignature = FunctionSignature(
-                functionName, returnType, parameterTypes, parentClass, firstDefault
+                functionName, returnType, parameterTypes, parentClass, firstDefault, solrId
             )
 
             if functionName == "__init__" or functionName == "__new__":
