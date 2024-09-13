@@ -43,14 +43,32 @@ def create_sequence_sheet_entries(test, element, cell_type):
             if type(arg) == ast.Call:
                 sequence_sheet += create_sequence_sheet_entries(test, arg, cell_type)
                 args.append(f"{cell_type}{cell_number - 1}")
+            elif type(arg) == ast.List or type(arg) == ast.Tuple:
+                sequence_sheet += create_sequence_sheet_entries(test, arg, cell_type)
+                args.append(f"{cell_type}{cell_number - 1}")
             else:
                 args.append(ast.get_source_segment(test, arg))
         function_name = element.func.id
         if function_name in dir(builtins):
-            function_name = "python." + function_name
+            function_name = "python." + function_name.capitalize()
             sequence_sheet.append([f"{cell_type}{cell_number}", "create", function_name] + args)
         else:
             sequence_sheet.append([f"{cell_type}{cell_number}", function_name, ""] + args)
+    elif type(element) == ast.List or type(element) == ast.Tuple:
+        elts = []
+        for elt in element.elts:
+            if type(elt) == ast.Call:
+                sequence_sheet += create_sequence_sheet_entries(test, elt, cell_type)
+                elts.append(f"{cell_type}{cell_number - 1}")
+            elif type(elt) == ast.List:
+                sequence_sheet += create_sequence_sheet_entries(test, elt, cell_type)
+                elts.append(f"{cell_type}{cell_number - 1}")
+            else:
+                elts.append(ast.get_source_segment(test, elt))
+        if type(element) == ast.List:
+            sequence_sheet.append([f"{cell_type}{cell_number}", "create", "python.List"] + elts)
+        else:
+            sequence_sheet.append([f"{cell_type}{cell_number}", "create", "python.Tuple"] + elts)
     else:
         sequence_sheet.append([f"result{cell_number}", ast.get_source_segment(test, element), ""])
     cell_number += 1
@@ -79,18 +97,19 @@ def generate_sequence_sheets(llm_file):
                     else:
                         left[-1][0] = "res_" + right[-1][0]
                     sequence_sheet += (right + left)
-                except Exception:
+                except Exception as e:
+                    print(e)
                     pass
         first_row = [x[0] for x in sequence_sheet]
         for i, element in enumerate(first_row):
             if "res_" in element:
-                sequence_sheet[i][0] = f"A{first_row.index(element[4:]) + 1}"
+                sequence_sheet[i][0] = f"A{first_row.index(element[4:]) + 2}"
             elif "lasso_comp" in element or "lasso_test" in element:
                 sequence_sheet[i][0] = ""
         for i_1, row in enumerate(sequence_sheet):
             for i_2, element in enumerate(row):
                 if "lasso_test" in element or "lasso_comp" in element:
-                    sequence_sheet[i_1][i_2] = f"A{first_row.index(element) + 1}"
+                    sequence_sheet[i_1][i_2] = f"A{first_row.index(element) + 2}"
         sequence_sheet = [["", "create", f"Task{task['task_id']}", ""]] + sequence_sheet
         sequence_sheets[task['task_id']] = sequence_sheet
     return sequence_sheets
@@ -106,13 +125,13 @@ def create_lql(task):
     lql = lql.replace("<begin>", "{").replace("<end>", "}")
     return lql
 
-if __name__ == "__maind__":
+if __name__ == "__main__":
     sequence_sheets = generate_sequence_sheets("evaluation_sanitized-mbpp.json")
     for task_id in sequence_sheets.keys():
         pd.DataFrame(sequence_sheets[task_id]).to_excel(f"evaluation_sheets/llm_sequence_sheets/task{task_id}.xlsx", index=False, header=False)
 
 
-if __name__ == "__main__":
+if __name__ == "__maind__":
     llm_file = open("evaluation_sanitized-mbpp.json", 'r')
     tasks = json.load(llm_file)
     
