@@ -60,7 +60,8 @@ The following code installs the 10 most downloaded packages:
 
 ```python
 if __name__ == "__main__":
+    nexus = Nexus()
     packages = get_most_downloaded()
-    installHandler = installHandler()
+    installHandler = installHandler(nexus)
     for package in packages[:10]:
         installHandler.install(package)
