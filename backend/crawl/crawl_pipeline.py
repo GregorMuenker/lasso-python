@@ -1,12 +1,11 @@
 import sys
-from pathlib import Path
-
 import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
 from backend.crawl import install, splitting, upload_index, import_helper
 from backend.crawl.nexus import Nexus, Package
+from pathlib import Path
 import json
 import os
 import uuid

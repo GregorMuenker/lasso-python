@@ -20,15 +20,6 @@ services:
       - ./backend/crawl/temp:/crawl/temp
       - ./nexus/corpus_docker.json:/nexus/corpus.json
       - ./arena/runtime:/arena/runtime
-  #app:
-  #  container_name: lasso_python
-  #  build:
-  #    context: ./backend
-  #  ports:
-  #    - "8000:8000"
-  #  environment:
-  #    - DOCKER=test
-  #    - SOLR_PATH=http://lasso_solr_quickstart:8983/solr/
   lasso_solr_quickstart:
     container_name: lasso_solr_quick
     image: solr:9.6.1

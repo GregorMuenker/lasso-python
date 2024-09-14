@@ -15,14 +15,17 @@ For this guide, we use the official docker image of Sonatype's Nexus OSS (see ht
 
 ```bash
 # start nexus in a container
-docker run -d -p 8081:8081 --name nexus sonatype/nexus3
+docker run -d -p 8081:8081 --name nexus-lasso sonatype/nexus3
 
 # NOTE: be patient (!), nexus takes some time to start
 
+#Setup repository and password
+sh ./setup.sh 
+
 # get password for user 'admin'
 # (you need to change in the dashboard after the first login)
-docker exec -it nexus bash
-cat sonatype-work/nexus3/admin.password
+#docker exec -it nexus bash
+#cat sonatype-work/nexus3/admin.password
 # terminate bash - ctrl-d
 ```
 
