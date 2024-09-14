@@ -10,7 +10,7 @@ if __name__ == "__main__":
     from backend.arena.module_parser import parse_code
     from backend.arena.sequence_specification import SequenceSpecification
     from backend.arena.adaptation_identification import AdaptationHandler
-    from backend.lql.antlr_parser import parse_interface_spec
+    from backend.arena.lql.antlr_parser import parse_interface_spec
     from backend.arena.ignite import LassoIgniteClient
 
     lql_string = """

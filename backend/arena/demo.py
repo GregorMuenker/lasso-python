@@ -12,7 +12,7 @@ from backend.arena.sequence_specification import SequenceSpecification
 from backend.arena.ignite import LassoIgniteClient
 from backend.arena.adaptation_identification import AdaptationHandler
 from backend.arena.execution import execute_test, ExecutionEnvironment
-from backend.lql.antlr_parser import parse_interface_spec
+from backend.arena.lql.antlr_parser import parse_interface_spec
 
 """
 For this demo to work you need to:
@@ -52,10 +52,6 @@ if __name__ == "__main__":
         pkg = Package(package_name, version)
         nexus.download(pkg)
         imp_helper.pre_load_package(package_name, version)
-        dependencies = import_helper.get_dependencies(package_name, version)
-        for dep_name in dependencies:
-            dep_version = dependencies[dep_name]['version']
-            imp_helper.pre_load_package(dep_name, dep_version)
     
     # Iterate through all modules under test
     for moduleUnderTest in allModulesUnderTest:

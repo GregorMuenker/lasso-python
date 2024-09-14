@@ -115,7 +115,7 @@ class LassoSolrConnector:
         return modules_under_test, required_packages
 
 if __name__ == "__main__":
-    from backend.lql.antlr_parser import parse_interface_spec
+    from backend.arena.lql.antlr_parser import parse_interface_spec
 
     lql_string = """
         Array {

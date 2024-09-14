@@ -45,7 +45,7 @@ class Nexus:
     def __new__(cls, nexus_host=NEXUS_HOST):
         with open(CORPUS, 'r') as file:
             corpus = json.load(file)
-        if cls.check_status(corpus["artifactRepository"]["url"]):
+        if cls.check_status(nexus_host):   #corpus["artifactRepository"]["url"]):
             return super(Nexus, cls).__new__(cls)
         else:
             print(f"Cannot reach Nexus server at {nexus_host}")
@@ -69,17 +69,17 @@ class Nexus:
             boolean: Depending on whether or not Nexus can be reached.
         """
         url = f"{nexus_host}/service/rest/v1/status"
-        try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                print("Nexus is up and running!")
-                return True
-            else:
-                print(f"Nexus returned status code {response.status_code}")
-                return False
-        except requests.ConnectionError:
-            print("Failed to connect to Nexus. The server might be down.")
+        #try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            print("Nexus is up and running!")
+            return True
+        else:
+            print(f"Nexus returned status code {response.status_code}")
             return False
+        #except requests.ConnectionError:
+        print("Failed to connect to Nexus. The server might be down.")
+        return False
     
     def upload(self, package: Package):
         """Uploads a compressed Package file to the Nexus Repository.

@@ -47,3 +47,5 @@ Or with:
 
 
 ```sh ./start.sh```
+
+```docker cp solr/data/lasso_python/conf/managed-schema.xml lasso_solr_quick:/var/solr/data/lasso_python/conf/managed-schema.xml```

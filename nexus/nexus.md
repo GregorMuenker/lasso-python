@@ -15,14 +15,17 @@ For this guide, we use the official docker image of Sonatype's Nexus OSS (see ht
 
 ```bash
 # start nexus in a container
-docker run -d -p 8081:8081 --name nexus sonatype/nexus3
+docker run -d -p 8081:8081 --name nexus-lasso sonatype/nexus3
 
 # NOTE: be patient (!), nexus takes some time to start
 
+#Setup repository and password
+sh ./setup.sh 
+
 # get password for user 'admin'
 # (you need to change in the dashboard after the first login)
-docker exec -it nexus bash
-cat sonatype-work/nexus3/admin.password
+#docker exec -it nexus bash
+#cat sonatype-work/nexus3/admin.password
 # terminate bash - ctrl-d
 ```
 
@@ -65,3 +68,5 @@ Change the deployment url, user and password in [corpus.json](corpus.json) (requ
 ```
 
 You have to restart LASSO with the updated `corpus.json` configuration file.
+
+docker cp solr/data/lasso_python/conf/managed-schema.xml lasso_solr_quick:/var/solr/data/lasso_python/conf/managed-schema.xml

@@ -11,9 +11,9 @@ import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.lql.LQLLexer import LQLLexer
-from backend.lql.LQLParser import LQLParser
-from backend.lql.LQLVisitor import LQLVisitor
+from backend.arena.lql.LQLLexer import LQLLexer
+from backend.arena.lql.LQLParser import LQLParser
+from backend.arena.lql.LQLVisitor import LQLVisitor
 from backend.arena.adaptation_identification import MethodSignature, InterfaceSpecification
 from backend.constants import RED, RESET
 

@@ -4,6 +4,7 @@ FROM python:3.12
 WORKDIR /app
 
 # Add the relevant directory contents into the container at /app
+ADD constants.py /app
 ADD app.py /app
 ADD requirements.txt /app
 ADD crawl_pipeline.py /app

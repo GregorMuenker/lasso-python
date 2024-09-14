@@ -7,4 +7,3 @@ packaging
 tqdm
 beautifulsoup4
 python-dotenv
-pathlib

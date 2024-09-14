@@ -1,29 +1,31 @@
-if __name__ == "__main__":
-    import uuid
-    import sys
-    import git
-    repo = git.Repo(search_parent_directories=True)
-    sys.path.insert(0, repo.working_tree_dir)
-    
-    from execution import execute_test, ExecutionEnvironment
-    from module_parser import parse_code
-    from sequence_specification import SequenceSpecification
-    from adaptation_identification import AdaptationHandler
-    from backend.arena.lql.antlr_parser import parse_interface_spec
-    from ignite import LassoIgniteClient
+"""app.py - This file contains REST API."""
 
-    lql_string = """
+import uvicorn
+from fastapi import FastAPI
+from execution import execute_test, ExecutionEnvironment
+from module_parser import parse_code
+from sequence_specification import SequenceSpecification
+from adaptation_identification import AdaptationHandler
+from ignite import LassoIgniteClient
+from backend.arena.lql.antlr_parser import parse_interface_spec
+
+app = FastAPI()
+
+@app.post("/arena/{execution_sheet}")
+def crawl(execution_sheet: str, request_body: dict):
+    
+    lql_string = request_body.get("lql_string", """
     Calculator {
         Calculator(int)->None
         addme(int)->int
         subme(int)->int
     }
-    """
+    """)
 
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
 
-    sequenceSpecification = SequenceSpecification("arena_development.xlsx")
+    sequenceSpecification = SequenceSpecification(execution_sheet)
     print(sequenceSpecification.sequenceSheet)
 
     # Read source code directly from a file. NOTE: This path can also be changed to a sitepackage file (e.g., numpy.lib.scimath.py).
@@ -52,7 +54,6 @@ if __name__ == "__main__":
         sequenceSpecification,
         interfaceSpecification,
         recordMetrics=True,
-        executionId=uuid.uuid4(),
     )
 
     execute_test(
@@ -75,3 +76,11 @@ if __name__ == "__main__":
 
     lassoIgniteClient.cache.destroy()
     lassoIgniteClient.client.close()
+    return "Done"
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
