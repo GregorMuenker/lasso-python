@@ -73,10 +73,6 @@ if __name__ == "__main__":
             pkg = Package(package_name, version)
             nexus.download(pkg)
             imp_helper.pre_load_package(package_name, version)
-            dependencies = import_helper.get_dependencies(package_name, version)
-            for dep_name in dependencies:
-                dep_version = dependencies[dep_name]['version']
-                imp_helper.pre_load_package(dep_name, dep_version)
 
         # Iterate through all modules under test
         for moduleUnderTest in allModulesUnderTest:
