@@ -1,3 +1,4 @@
+import os
 import uuid
 import pandas as pd
 import git
@@ -21,6 +22,7 @@ import json
 
 cell_number = 1
 
+
 def create_lql(task):
     task_ast = ast.parse(task["code"])
     lql = [f"Task{task['task_id']}"]
@@ -33,18 +35,18 @@ def create_lql(task):
     with open(f"./evaluation_sheets/llm_lql_scripts/task{task['task_id']}.lql", "w") as file:
         file.write(lql)
 
+
 def create_sequence_sheet_entries(test, element, cell_type):
     global cell_number
     sequence_sheet = []
     if type(element) == ast.Call:
         args = []
         for arg in element.args:
-            if type(arg) == ast.Call:
+            if type(arg) == ast.Call or type(arg) == ast.List or type(arg) == ast.Tuple or type(arg) == ast.Dict or type(arg) == ast.Set:
                 sequence_sheet += create_sequence_sheet_entries(test, arg, cell_type)
                 args.append(f"{cell_type}{cell_number - 1}")
-            elif type(arg) == ast.List or type(arg) == ast.Tuple:
-                sequence_sheet += create_sequence_sheet_entries(test, arg, cell_type)
-                args.append(f"{cell_type}{cell_number - 1}")
+            elif type(arg) != ast.Constant and type(arg) != ast.UnaryOp and type(arg) != ast.BinOp:
+                print(f"Not supported: {ast.get_source_segment(test, arg)}")
             else:
                 args.append(ast.get_source_segment(test, arg))
         function_name = element.func.id
@@ -53,21 +55,34 @@ def create_sequence_sheet_entries(test, element, cell_type):
             sequence_sheet.append([f"{cell_type}{cell_number}", "create", function_name] + args)
         else:
             sequence_sheet.append([f"{cell_type}{cell_number}", function_name, ""] + args)
-    elif type(element) == ast.List or type(element) == ast.Tuple:
+    elif type(element) == ast.List or type(element) == ast.Tuple or type(element) == ast.Set:
         elts = []
         for elt in element.elts:
-            if type(elt) == ast.Call:
+            if type(elt) == ast.Call or type(elt) == ast.List or type(elt) == ast.Tuple or type(elt) == ast.Dict or type(elt) == ast.Set:
                 sequence_sheet += create_sequence_sheet_entries(test, elt, cell_type)
                 elts.append(f"{cell_type}{cell_number - 1}")
-            elif type(elt) == ast.List:
-                sequence_sheet += create_sequence_sheet_entries(test, elt, cell_type)
-                elts.append(f"{cell_type}{cell_number - 1}")
+            elif type(elt) != ast.Constant and type(elt) != ast.UnaryOp and type(elt) != ast.BinOp:
+                print(f"Not supported: {ast.get_source_segment(test, elt)}")
             else:
                 elts.append(ast.get_source_segment(test, elt))
         if type(element) == ast.List:
             sequence_sheet.append([f"{cell_type}{cell_number}", "create", "python.List"] + elts)
+        elif type(element) == ast.Set:
+            sequence_sheet.append([f"{cell_type}{cell_number}", "create", "python.Set"] + elts)
         else:
             sequence_sheet.append([f"{cell_type}{cell_number}", "create", "python.Tuple"] + elts)
+    elif type(element) == ast.Dict:
+        key_value_list = [item for pair in zip(element.keys, element.values) for item in pair]
+        for i, entry in enumerate(key_value_list):
+            if type(entry) == ast.Call or type(entry) == ast.List or type(entry) == ast.Tuple or type(entry) == ast.Dict:
+                sequence_sheet += create_sequence_sheet_entries(test, entry, cell_type)
+                key_value_list[i] = f"{cell_type}{cell_number - 1}"
+            elif type(entry) != ast.Constant and type(entry) != ast.UnaryOp:
+                print(ast.get_source_segment(test, entry))
+            else:
+                key_value_list[i] = ast.get_source_segment(test, entry)
+        sequence_sheet.append([f"{cell_type}{cell_number}", "create", "python.Dict"] + key_value_list)
+
     else:
         sequence_sheet.append([f"result{cell_number}", ast.get_source_segment(test, element), ""])
     cell_number += 1
@@ -96,7 +111,7 @@ def generate_sequence_sheets(llm_file):
                     else:
                         left[-1][0] = "res_" + right[-1][0]
                     sequence_sheet += (right + left)
-                except Exception as e:
+                except AttributeError as e:
                     print(e)
                     pass
         first_row = [x[0] for x in sequence_sheet]
@@ -113,6 +128,7 @@ def generate_sequence_sheets(llm_file):
         sequence_sheets[task['task_id']] = sequence_sheet
     return sequence_sheets
 
+
 def create_lql(task):
     task_ast = ast.parse(task["code"])
     lql = [f"Task{task['task_id']}"]
@@ -124,18 +140,19 @@ def create_lql(task):
     lql = lql.replace("<begin>", "{").replace("<end>", "}")
     return lql
 
+
 if __name__ == "__maind__":
     sequence_sheets = generate_sequence_sheets("evaluation_sanitized-mbpp.json")
+    os.makedirs("evaluation_sheets/llm_sequence_sheets", exist_ok=True)
     for task_id in sequence_sheets.keys():
-        if task_id <= 101 or task_id >= 120:
-            continue
-        pd.DataFrame(sequence_sheets[task_id]).to_excel(f"evaluation_sheets/llm_sequence_sheets/{task_id}.xlsx", index=False, header=False)
+        pd.DataFrame(sequence_sheets[task_id]).to_excel(f"evaluation_sheets/llm_sequence_sheets/{task_id}.xlsx",
+                                                        index=False, header=False)
 
 
 if __name__ == "__main__":
     llm_file = open("evaluation_sanitized-mbpp.json", 'r')
     tasks = json.load(llm_file)
-    
+
     lassoIgniteClient = LassoIgniteClient()
 
     executionId = uuid.uuid4()
