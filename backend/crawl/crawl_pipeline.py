@@ -80,11 +80,12 @@ def index_package(package_name, llm_file=None):
             nexus.download(pkg, runtime=False)
         install_handler.dump_index()
     imp_help = import_helper.ImportHelper()
-    imp_help.pre_load_package(package_name, version)
+    # imp_help.pre_load_package(package_name, version)
     dependencies = import_helper.get_dependencies(package_name, version)
     for dep_name in dependencies:
         dep_version = dependencies[dep_name]['version']
         imp_help.pre_load_package(dep_name, dep_version)
+    imp_help.pre_load_package(package_name, version)
     package_name = import_helper.get_import_name(package_name, version)
     index = splitting.get_module_index(package_name, package_name, version)
     upload_index.upload_index(index)

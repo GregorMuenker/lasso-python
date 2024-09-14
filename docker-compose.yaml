@@ -21,12 +21,12 @@ services:
       - ./nexus/corpus_docker.json:/nexus/corpus.json
       - ./arena/runtime:/arena/runtime
   lasso_solr_quickstart:
-    container_name: lasso_solr_quick
+    container_name: lasso_solr_quickstart
     image: solr:9.6.1
     ports:
       - "8983:8983"
-    volumes:
-      - ./lassoindex:/var/solr
+    # volumes:
+    #   - ./lassoindex:/var/solr
     command:
       - solr-precreate
       - lasso_python
