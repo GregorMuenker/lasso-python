@@ -10,15 +10,15 @@ services:
       - INSTALLED=/crawl/installed
       - INDEX=/crawl/index.json
       - RUNTIME=/arena/runtime
-      - CORPUS=/nexus/corpus_docker.json
+      - CORPUS=/nexus/corpus.json
       - TYPE_INFERENCING_TEMP=/crawl/temp
       - SOLR_PATH=http://lasso_solr_quickstart:8983/solr/
-      - NEXUS_HOST=http://nexus:8081
+      - NEXUS_HOST=http://lasso-nexus:8081
     volumes:
       - ./backend/crawl/installed:/crawl/installed
       - ./backend/crawl/index.json:/crawl/index.json
       - ./backend/crawl/temp:/crawl/temp
-      - ./nexus/corpus.json:/nexus/corpus_docker.json
+      - ./nexus/corpus_docker.json:/nexus/corpus.json
       - ./arena/runtime:/arena/runtime
   #app:
   #  container_name: lasso_python
@@ -40,9 +40,8 @@ services:
       - solr-precreate
       - lasso_python
   nexus:
-    container_name: lasso_nexus
-    build:
-      context: ./nexus
+    container_name: lasso-nexus
+    image: sonatype/nexus3
     ports:
       - "8081:8081"
   ignite:
