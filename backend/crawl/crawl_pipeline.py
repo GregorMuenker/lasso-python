@@ -92,6 +92,6 @@ def index_package(package_name, llm_file=None):
 
 
 if __name__ == "__main__":
-    # index_package("numpy==2.0.2")
+    # index_package("numpy")
     index_package("lasso-llm", llm_file="../evaluation/evaluation_sanitized-mbpp.json")
 

@@ -68,3 +68,5 @@ Change the deployment url, user and password in [corpus.json](corpus.json) (requ
 ```
 
 You have to restart LASSO with the updated `corpus.json` configuration file.
+
+docker cp solr/data/lasso_python/conf/managed-schema.xml lasso_solr_quick:/var/solr/data/lasso_python/conf/managed-schema.xml
