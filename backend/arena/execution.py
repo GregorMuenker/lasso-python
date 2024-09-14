@@ -480,6 +480,8 @@ def execute_test(
                             statement.output = set(statement.inputParams)
                         elif instance_param == "Dict":
                             statement.output = dict(zip(statement.inputParams[0::2], statement.inputParams[1::2]))
+                        elif instance_param == "Complex":
+                            statement.output = complex(statement.inputParams[0], statement.inputParams[1])
                         else:
                             print(f"Invalid python instance param: {instance_param}")
 
