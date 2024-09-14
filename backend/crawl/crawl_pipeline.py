@@ -1,4 +1,6 @@
 import sys
+from pathlib import Path
+
 import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
@@ -29,7 +31,7 @@ def parse_llm_code(llm_file):
     # Define the folder and file structure
     version_folder = "lasso-llm-0.0.1"
     subfolder = "lasso-llm"
-    file_name = f"{uuid.uuid4()}.py"
+    file_name = f"{Path(llm_file).stem}.py"
 
     # Full path creation
     full_path = os.path.join(INSTALLED, version_folder, subfolder)
@@ -91,6 +93,6 @@ def index_package(package_name, llm_file=None):
 
 
 if __name__ == "__main__":
-    index_package("numpy==2.0.2")
+    # index_package("numpy==2.0.2")
     index_package("lasso-llm", llm_file="../evaluation/evaluation_sanitized-mbpp.json")
 

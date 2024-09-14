@@ -1,4 +1,5 @@
 if __name__ == "__main__":
+    import uuid
     import sys
     import git
     repo = git.Repo(search_parent_directories=True)
@@ -51,6 +52,7 @@ if __name__ == "__main__":
         sequenceSpecification,
         interfaceSpecification,
         recordMetrics=True,
+        executionId=uuid.uuid4(),
     )
 
     execute_test(

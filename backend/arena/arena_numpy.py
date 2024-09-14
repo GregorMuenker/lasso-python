@@ -1,9 +1,11 @@
 if __name__ == "__main__":
+    import uuid
     import sys
     import git
+
     repo = git.Repo(search_parent_directories=True)
     sys.path.insert(0, repo.working_tree_dir)
-    
+
     from backend.arena.execution import execute_test, ExecutionEnvironment
     from backend.arena.module_parser import parse_code
     from backend.arena.sequence_specification import SequenceSpecification
@@ -26,7 +28,7 @@ if __name__ == "__main__":
     print(sequenceSpecification.sequenceSheet)
 
     # Read source code directly from a file.
-    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py" # function_base #user_array #scimath
+    path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/lib/scimath.py"  # function_base #user_array #scimath
     path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/matrixlib/defmatrix.py"
     # path = "/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/site-packages/numpy/array_api/_array_object.py"
     with open(path, "r") as file:
@@ -49,9 +51,13 @@ if __name__ == "__main__":
     adaptationHandler.generateMappings()
 
     executionEnvironment = ExecutionEnvironment(
-        adaptationHandler.mappings, sequenceSpecification, interfaceSpecification
+        adaptationHandler.mappings,
+        sequenceSpecification,
+        interfaceSpecification,
+        executionId=uuid.uuid4(),
+        recordMetrics=True,
     )
-    
+
     execute_test(
         executionEnvironment,
         adaptationHandler,
@@ -59,7 +65,7 @@ if __name__ == "__main__":
     )
 
     executionEnvironment.printResults()
-    
+
     lassoIgniteClient = LassoIgniteClient()
     try:
         executionEnvironment.saveResults(lassoIgniteClient)

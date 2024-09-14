@@ -1,3 +1,4 @@
+import uuid
 import git
 import sys
 
@@ -24,18 +25,23 @@ For this demo to work you need to:
 if __name__ == "__main__":
     lql_string = """
     Matrix {
-        Matrix(arr)->None
+        Matrix(list)->None
         mean()->Any
     }
     """
 
+    executionId = uuid.uuid4()
+
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
 
-    sequenceSpecification = SequenceSpecification("calc7_greg.xlsx")
+    sequenceSpecifications = [SequenceSpecification("calc7_greg.xlsx"), SequenceSpecification("calc8.xlsx")]
 
     solr_url = "http://localhost:8983/solr/lasso_quickstart"
     solr_conn = LassoSolrConnector(solr_url)
+
+    # Setup Ignite client
+    lassoIgniteClient = LassoIgniteClient()
 
     allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
 
@@ -50,10 +56,6 @@ if __name__ == "__main__":
         for dep_name in dependencies:
             dep_version = dependencies[dep_name]['version']
             imp_helper.pre_load_package(dep_name, dep_version)
-
-
-    # Setup Ignite client
-    lassoIgniteClient = LassoIgniteClient()
     
     # Iterate through all modules under test
     for moduleUnderTest in allModulesUnderTest:
@@ -68,22 +70,23 @@ if __name__ == "__main__":
         adaptationHandler.visualizeAdaptations()
         adaptationHandler.generateMappings()
 
-        executionEnvironment = ExecutionEnvironment(
-            adaptationHandler.mappings,
-            sequenceSpecification,
-            interfaceSpecification,
-            recordMetrics=True,
-        )
+        for sequenceSpecification in sequenceSpecifications:
+            executionEnvironment = ExecutionEnvironment(
+                adaptationHandler.mappings,
+                sequenceSpecification,
+                interfaceSpecification,
+                executionId=executionId,
+                recordMetrics=True,
+            )
 
-        execute_test(
-            executionEnvironment,
-            adaptationHandler,
-            moduleUnderTest.moduleName,
-            # import_from_file_path = path,
-        )
+            execute_test(
+                executionEnvironment,
+                adaptationHandler,
+                moduleUnderTest.moduleName,
+            )
 
-        executionEnvironment.printResults()
-        executionEnvironment.saveResults(lassoIgniteClient)
+            executionEnvironment.printResults()
+            executionEnvironment.saveResults(lassoIgniteClient)
     
 
     df = lassoIgniteClient.getDataFrame()

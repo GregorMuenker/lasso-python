@@ -4,6 +4,7 @@ import importlib
 import inspect
 import pkgutil
 import time
+import uuid
 from _ast import *
 import ast
 from os import listdir
@@ -14,6 +15,7 @@ from backend.crawl.install import installHandler
 from backend.crawl import type_inference, import_helper
 from backend.crawl.nexus import Nexus, Package
 from dotenv import load_dotenv
+
 load_dotenv()
 if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
     INSTALLED = os.getenv("INSTALLED")
@@ -112,7 +114,6 @@ def get_return_type(element, source, prefix, sub_module_name, dependent_class, t
             return ["pt_Any"]
 
 
-
 def get_function_args(element, source, dependent_class, prefix, sub_module_name, type_inferencing_active):
     """Returns a list of all arguments and their characteristics of one target function.
 
@@ -206,32 +207,24 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
             args, default_index = get_function_args(element, source, depended_class, prefix, sub_module_name,
                                                     type_inferencing_active)
             method_signature_params_ordered = [f"{x['name']}_({','.join(x['datatype'])})" for x in args]
-            method_signature_params_ordered_nodefault = [f"{x['name']}_({','.join(x['datatype'])})" for x in args if not x["has_default_val"]]
+            method_signature_params_ordered_nodefault = [f"{x['name']}_({','.join(x['datatype'])})" for x in args if
+                                                         not x["has_default_val"]]
             method_signature_params_ordered_kwargs = [f"{x['name']}" for x in args if x["keyword_arg"]]
             #method_signature_params_ordered_default_values = [f"{x['name']}_{x['default_val']}" for x in args]
             method_signature_return_types = ",".join(
                 get_return_type(element, source, prefix, sub_module_name, depended_class,
                                 type_inferencing_active))
-            index_element = {
-                "packagename": prefix + sub_module_name,
-                "method": element.name,
-                "name": depended_class,
-                "methodSignatureParamsOrdered": "|".join(
-                    [str(len(method_signature_params_ordered))] + method_signature_params_ordered),
-                "methodSignatureParamsOrderedNodefault": "|".join(
-                    [str(len(method_signature_params_ordered_nodefault))] + method_signature_params_ordered_nodefault),
-                "methodSignatureParamsOrderedKwargs": "|".join(method_signature_params_ordered_kwargs),
-                "methodSignatureReturnTypes": method_signature_return_types,
-                "lang": "python",
-                "decorators": [ast.get_source_segment(source, x) for x in element.decorator_list],
-                # "methodSignatureParameters": args,
-                # "methodSignatureParamsOrderedDefaultValues": "|".join(method_signature_params_ordered_default_values),
-                # "content": source_code,
-                # "function_calls": get_function_calls(element),
-            }
-            index_element["id"] = hashlib.md5(
-                (str(index_element["packagename"]) + str(index_element["method"]) + str(index_element["name"])).encode(
-                    "utf-8")).hexdigest()
+            index_element = {"packagename": prefix + sub_module_name, "method": element.name, "name": depended_class,
+                             "methodSignatureParamsOrdered": "|".join(
+                                 [str(len(method_signature_params_ordered))] + method_signature_params_ordered),
+                             "methodSignatureParamsOrderedNodefault": "|".join(
+                                 [str(len(
+                                     method_signature_params_ordered_nodefault))] + method_signature_params_ordered_nodefault),
+                             "methodSignatureParamsOrderedKwargs": "|".join(method_signature_params_ordered_kwargs),
+                             "methodSignatureReturnTypes": method_signature_return_types, "lang": "python",
+                             "decorators": [ast.get_source_segment(source, x) for x in element.decorator_list],
+                             "id": str(uuid.uuid4())}
+            #index_element["id"] = hashlib.md5((str(index_element["packagename"]) + str(index_element["method"]) + str(index_element["name"])).encode("utf-8")).hexdigest()
             index.append(index_element)
         elif type(element) == ClassDef:
             index += get_functions_from_ast(element, source, prefix, sub_module_name, path=path,
@@ -321,7 +314,6 @@ def get_module_index(module_name, package_name, version, path=None, type_inferen
         index = [{"artifactId": package_name, "version": version} | entry for entry in index]
     print(f"{module_name} indexed")
     return index
-
 
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
