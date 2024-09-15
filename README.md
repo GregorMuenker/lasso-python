@@ -54,3 +54,6 @@ call to curl numpy package:
 call to execute sequence sheet arena_development on the lql query:
 ```curl -X POST -H "Content-Type: text/plain" -d $'Calculator {\n Calculator(int)->None\n addme(int)->int\n subme(int)->int\n }' localhost:8020/arena/arena_development.xlsx```
 
+## Frontend
+
+The frontend with the pages and functions for the arena and crawl part can then be found at the address: http://localhost:8501/
