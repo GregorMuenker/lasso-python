@@ -625,7 +625,6 @@ def execute_test(
         # After executing all statements for a mapping, reset the sequence sheet to remove output values and resolved references
         sequence_spec.reset()
 
-    sequenceExecutionRecord
 
 def execute_default_functions(statement):
     if statement.methodName == "__len__":
