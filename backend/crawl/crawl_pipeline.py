@@ -62,7 +62,7 @@ def parse_llm_code(llm_file):
     nexus.upload(pkg)
 
 
-def index_package(package_name, llm_file=None, type_inferencing_engine=None):
+def index_package(nexus_package_name, llm_file=None, type_inferencing_engine=None):
     """This function provides a pipeline for the steps of crawling and splitting a package. At the last step the
     created index will be uploaded to the solr index.
 
@@ -70,25 +70,26 @@ def index_package(package_name, llm_file=None, type_inferencing_engine=None):
         package_name(str): Name of requested pypi package
     """
 
-    if package_name == "lasso-llm" and llm_file:
+    if nexus_package_name == "lasso-llm" and llm_file:
         parse_llm_code(llm_file)
         version = "0.0.1"
+        package_name = "lasso-llm"
     else:
         nexus = Nexus()
         install_handler = install.installHandler(nexus)
-        package_name, version, already_installed = install_handler.install(package_name)
+        nexus_package_name, version, already_installed = install_handler.install(nexus_package_name)
         if already_installed:
-            pkg = Package(package_name, version)
+            pkg = Package(nexus_package_name, version)
             nexus.download(pkg, runtime=False)
         install_handler.dump_index()
     imp_help = import_helper.ImportHelper()
-    imp_help.pre_load_package(package_name, version)
+    imp_help.pre_load_package(nexus_package_name, version)
     if type_inferencing_engine=="HiTyper":
         if len([x for x in imp_help.loaded_packages if x[0] == "numpy" or x[0] == "scipy"]) > 0:
             type_inferencing_engine = None
             print("numpy/scipy and any package with numpy/scipy as dependency can not be inferenced with HiTyper")
-    package_name = import_helper.get_import_name(package_name, version)
-    index = splitting.get_module_index(package_name, package_name, version, type_inferencing_engine=type_inferencing_engine)
+    package_name = import_helper.get_import_name(nexus_package_name, version)
+    index = splitting.get_module_index(package_name, package_name, nexus_package_name, version, type_inferencing_engine=type_inferencing_engine)
     if type_inferencing_engine:
         type_inference.clear_type_inferences()
     upload_index.upload_index(index)
@@ -97,6 +98,7 @@ def index_package(package_name, llm_file=None, type_inferencing_engine=None):
 
 
 if __name__ == "__main__":
-    index_package("requests", type_inferencing_engine="HiTyper")
+    # index_package("requests", type_inferencing_engine="HiTyper")
+    index_package("python-dateutil")
     # index_package("lasso-llm", llm_file="../evaluation/evaluation_sanitized-mbpp.json")
 

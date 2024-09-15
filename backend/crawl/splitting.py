@@ -232,7 +232,7 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
 
 
 #
-def get_module_index(module_name, package_name, version, path=None, type_inferencing_engine=None, skip_missing_dependencies=False):
+def get_module_index(module_name, package_name, nexus_package_name, version, path=None, type_inferencing_engine=None, skip_missing_dependencies=False):
     """Creates an list of all function within the given module. Each element consists of a dictonary of the functions
     characteristics.
 
@@ -273,7 +273,7 @@ def get_module_index(module_name, package_name, version, path=None, type_inferen
                 # Subject to change
                 except (ModuleNotFoundError, ImportError):
                     if not skip_missing_dependencies:
-                        module_path = f"{os.path.join(INSTALLED, f'{package_name}-{version}')}/{(prefix + sub_module_name).replace('.', '/')}.py"
+                        module_path = f"{os.path.join(INSTALLED, f'{nexus_package_name}-{version}')}/{(prefix + sub_module_name).replace('.', '/')}.py"
                         source = open(module_path, "r").read()
                         tree = ast.parse(source)
                         index += get_functions_from_ast(tree, source, prefix, sub_module_name, module_path,
@@ -322,13 +322,13 @@ if __name__ == "__main__":
     package_name = "numpy==2.0.2"
     nexus = Nexus()
     installHandler = installHandler(nexus)
-    package_name, version, already_installed = installHandler.install(package_name)
+    nexus_package_name, version, already_installed = installHandler.install(package_name)
     if already_installed:
         pkg = Package(package_name, version)
         nexus.download(pkg, runtime=False)
     installHandler.dump_index()
     imp_help = import_helper.ImportHelper()
-    imp_help.pre_load_package(package_name, version)
+    imp_help.pre_load_package(nexus_package_name, version)
     dependencies = installHandler.index[f"{package_name}:{version}"]
     for dep_name in dependencies:
         dep_version = dependencies[dep_name]['version']
@@ -336,7 +336,7 @@ if __name__ == "__main__":
     package_name = import_helper.get_import_name(package_name, version)
     start = time.time()
     # index = get_module_index(package_name, package_name, version, type_inferencing_engine="HiTyper")
-    index = get_module_index(package_name, package_name, version)
+    index = get_module_index(package_name, package_name, nexus_package_name, version)
     type_inference.clear_type_inferences()
     imp_help.unload_package()
     print(f"Splitting {package_name} needed {round(time.time() - start, 2)} seconds")

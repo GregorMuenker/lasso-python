@@ -15,8 +15,7 @@ services:
       - solr-precreate
       - lasso_python
   nexus:
-    container_name: lasso_nexus
-    build:
-      context: ./nexus
+    container_name: lasso-nexus
+    image: sonatype/nexus3
     ports:
       - "8081:8081"
