@@ -8,8 +8,7 @@ app = FastAPI()
 
 @app.post("/crawl/{package_name}")
 def crawl(package_name: str, request: Request):
-    request.query_params.get('type_inferencing_engine', "None")
-    return index_package(package_name, type_inferencing_engine=type_inferencing_engine)
+    return index_package(package_name, type_inferencing_engine=request.query_params.get('type_inferencing_engine', None))
 
 @app.get("/health")
 def health():

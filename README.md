@@ -48,6 +48,9 @@ then when nexus is ready:
 call to curl numpy package:
 ```curl -X POST localhost:8010/crawl/numpy==2.0.2```
 
+call to curl requests package and type inference with HiTyper:
+```curl -X POST localhost:8010/crawl/requests?type_inferencing_engine='HiTyper'```
+
 call to execute sequence sheet arena_development on the lql query:
 ```curl -X POST -H "Content-Type: text/plain" -d $'Calculator {\n Calculator(int)->None\n addme(int)->int\n subme(int)->int\n }' localhost:8020/arena/arena_development.xlsx```
 

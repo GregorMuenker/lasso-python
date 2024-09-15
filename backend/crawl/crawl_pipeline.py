@@ -3,12 +3,13 @@ import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.crawl import install, splitting, upload_index, import_helper
+from backend.crawl import install, splitting, upload_index, import_helper, type_inference
 from backend.crawl.nexus import Nexus, Package
 from pathlib import Path
 import json
 import os
 import uuid
+import subprocess
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -68,6 +69,7 @@ def index_package(package_name, llm_file=None, type_inferencing_engine=None):
     Args:
         package_name(str): Name of requested pypi package
     """
+
     if package_name == "lasso-llm" and llm_file:
         parse_llm_code(llm_file)
         version = "0.0.1"
@@ -81,13 +83,24 @@ def index_package(package_name, llm_file=None, type_inferencing_engine=None):
         install_handler.dump_index()
     imp_help = import_helper.ImportHelper()
     imp_help.pre_load_package(package_name, version)
+    if type_inferencing_engine=="HiTyper":
+        if len([x for x in imp_help.loaded_packages if x[0] == "numpy"]) > 0:
+            type_inferencing_engine = None
+            print("numpy and any package with numpy as dependency can not be inferenced with HiTyper")
+        else:
+            subprocess.run(f"pip install numpy==1.26.0", shell=True)
     package_name = import_helper.get_import_name(package_name, version)
     index = splitting.get_module_index(package_name, package_name, version, type_inferencing_engine=type_inferencing_engine)
+    if type_inferencing_engine:
+        type_inference.clear_type_inferences()
     upload_index.upload_index(index)
+    if type_inferencing_engine == "HiTyper":
+        subprocess.run(f"pip install numpy==2.0.2", shell=True)
+
     # imp_help.unload_package()
 
 
 if __name__ == "__main__":
-    index_package("requests", type_inferencing_engine="HiTyper")
+    index_package("pandas", type_inferencing_engine="HiTyper")
     # index_package("lasso-llm", llm_file="../evaluation/evaluation_sanitized-mbpp.json")
 

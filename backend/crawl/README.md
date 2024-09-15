@@ -2,12 +2,11 @@
 
 `install.py` is a Python script designed to install Python packages along with their dependencies. The script retrieves package information from PyPI (Python Package Index) and installs the specified packages into a local directory, ensuring all dependencies are satisfied.
 
-## Features
+## Main Features
 
 - Retrieve all package names from PyPI.
 - Retrieve the 8000 most downloaded packages from PyPI.
 - Install packages and their dependencies locally.
-- Check for existing local versions before installing new ones.
 - Generate a JSON index of installed packages and their dependencies.
 
 ## Requirements
@@ -21,7 +20,7 @@
 ## Usage
 
 1. Clone or download this repository.
-2. Navigate to the `crawl` directory.
+2. Navigate to the `backend/crawl` directory.
 3. Run:
     ```bash
     python3 install.py
@@ -50,7 +49,7 @@ Retrieves the 8000 most downloaded package names from PyPI.
 Handles the installation of packages and their dependencies.
 
 **Methods:**
-- `__init__()`: Initializes the handler and loads the index.
+- `__new__(nexus: Nexus)`: Initializes the handler and loads the index.
 - `install(package)`: Installs a package and its dependencies.
 - `dump_index()`: Dumps the index to a JSON file.
 

@@ -19,9 +19,6 @@ docker run -d -p 8081:8081 --name nexus-lasso sonatype/nexus3
 
 # NOTE: be patient (!), nexus takes some time to start
 
-#Setup repository and password
-sh ./setup.sh 
-
 # get password for user 'admin'
 # (you need to change in the dashboard after the first login)
 #docker exec -it nexus bash
@@ -30,6 +27,13 @@ sh ./setup.sh
 ```
 
 Tested with _Sonatype Nexus OSS 3.71.0-06_.
+
+### Quick Setup
+
+```bash
+# This changes the password and sets up the repository automatically.
+sh ./setup.sh
+```
 
 ### Nexus configuration
 
