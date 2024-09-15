@@ -67,6 +67,7 @@ if __name__ == "__main__":
         interfaceSpecification,
         recordMetrics=True,
         executionId=executionId,
+        actionId="PLACEHOLDER",
     )
     execute_test(
         executionEnvironment,
