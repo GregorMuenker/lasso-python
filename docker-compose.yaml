@@ -64,3 +64,10 @@ services:
     image: sonatype/nexus3
     ports:
       - "8081:8081"
+  frontend:
+    container_name: lasso_frontend
+    build:
+      context: ./frontend
+    ports: 
+      - "8501:8501"
+    
