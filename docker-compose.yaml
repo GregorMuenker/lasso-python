@@ -71,6 +71,9 @@ services:
     container_name: lasso_frontend
     build:
       context: ./frontend
+    environment:
+      - CRAWL_URL=http://lasso_python_crawl:8000
+      - ARENA_URL=http://lasso_python_arena:8000
     ports: 
       - "8501:8501"
     

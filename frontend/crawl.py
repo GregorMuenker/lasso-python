@@ -1,8 +1,9 @@
 import requests
 import streamlit as st
+import os
 
 # Set up the API URL using the container name
-API_URL = "http://lasso_python_crawl:8000/crawl/{package_name}"
+API_URL = os.getenv("CRAWL_URL" , "http://localhost:8010")+"/crawl/{package_name}"
 
 
 def show_crawl_page():

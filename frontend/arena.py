@@ -1,8 +1,9 @@
 import pandas as pd
 import requests
 import streamlit as st
+import os
 
-API_URL = "http://localhost:8020/arena/{execution_sheet}"
+API_URL = os.getenv("ARENA_URL" , "http://localhost:8020")+"/arena/{execution_sheet}"
 
 
 def show_arena_page():
