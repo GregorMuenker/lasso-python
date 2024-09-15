@@ -13,7 +13,7 @@ also possible startup with ```sh ./setup.sh```
 
 watch out for ignite to start correctly
 
-## Maunal Setup
+## Manual Setup
 
 ### Solr persistent volume (optional)
 

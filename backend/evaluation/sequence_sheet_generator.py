@@ -5,19 +5,8 @@ import git
 import sys
 import re
 
-from tqdm import tqdm
-
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
-
-from backend.crawl import import_helper
-from backend.crawl.nexus import Nexus, Package
-from backend.arena.lasso_solr_connector import LassoSolrConnector
-from backend.arena.sequence_specification import SequenceSpecification
-from backend.arena.ignite import LassoIgniteClient
-from backend.arena.adaptation_identification import AdaptationHandler
-from backend.arena.execution import execute_test, ExecutionEnvironment
-from backend.arena.lql.antlr_parser import parse_interface_spec
 
 import builtins
 import ast
@@ -129,6 +118,7 @@ def generate_sequence_sheets(llm_file):
                 except AttributeError as e:
                     print(e)
                     pass
+        print(sequence_sheet)
         first_row = [x[0] for x in sequence_sheet]
         for i, element in enumerate(first_row):
             if type(element) == str:

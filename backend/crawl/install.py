@@ -24,6 +24,7 @@ if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
 else:
     from backend.constants import INSTALLED, INDEX
 from backend.crawl.nexus import Nexus, Package
+# from backend.crawl.log import log_exception
 
 def get_all_packages():
     """Retrieves all package names from PyPi.
@@ -318,11 +319,12 @@ def get_latest_version(package_name):
 
 class installHandler:
     def __new__(cls, nexus: Nexus):
-        if nexus.check_status(nexus.nexus_host):
-            return super(installHandler, cls).__new__(cls)
-        else:
-            print(f"Cannot reach Nexus server at {nexus.nexus_host}")
-            return None
+        if nexus:
+            if nexus.check_status(nexus.nexus_host):
+                return super(installHandler, cls).__new__(cls)
+            else:
+                print(f"Cannot reach Nexus server at {nexus.nexus_host}")
+                return None
     
     def __init__(self, nexus: Nexus):
         self.nexus = nexus
@@ -344,19 +346,19 @@ class installHandler:
         """
 
         name = get_package_name(package)
-        if not name:
-            # TODO: Exception or just print?
-            raise BaseException("Could not identify package name.")
-
-        print(package)
         requirements = reformat_dependency(package)
         satisfactory_versions = self.check_request(name, requirements)
 
         if not satisfactory_versions:
             path = f"{INSTALLED}/tmp"
-            # TODO: What to do when installation fails?
-            subprocess.check_call([sys.executable, "-m", "pip",
-                                   "install", package, "--no-deps", "-q", "-t", path])
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip",
+                                    "install", package, "--no-deps", "-q", "-t", path])
+            except Exception as e:
+                # log_exception(name, "unknown", e)
+                print(f"Installation of {name} failed!")
+                return
+            
             print(f"Installing {name}")
             local_path = f"tmp"
 
@@ -372,9 +374,9 @@ class installHandler:
 
             pkg = Package(name, version)
             pkg.compress()
-            # TODO: What to do if upload fails?
             if not self.nexus.upload(pkg):
-                pass
+                print(f"Could not upload artifact {name} {version}")
+                return
             
             deps = {}
             for dependency in dependencies:
@@ -385,19 +387,26 @@ class installHandler:
             
             for dependency in dependencies:
                 if short_dependency := satisfy_condition(dependency):
-                    dep_name, dep_version, _ = self.install(short_dependency)
-                    # print(dep_name, dep_version)
-                    self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
-                    self.dump_index()
+                    try:
+                        dep_name, dep_version, _ = self.install(short_dependency)
+                        # print(dep_name, dep_version)
+                        self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
+                        self.dump_index()
+                    except:
+                        print(f"Could not install dependency {dependency} of package {name} {version}!")
             already_installed = False
         else:
             print(f"{name} already installed!")
             version = satisfactory_versions[0]
+            # Checking if all dependencies are installed.
             for dep_name, dep_dict in self.index[f"{name}:{version}"].items():
                 if not dep_dict["version"]:
-                    _, dep_version, _  = self.install(dep_dict["requirements"])
-                    self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
-                    self.dump_index()
+                    try:
+                        _, dep_version, _  = self.install(dep_dict["requirements"])
+                        self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
+                        self.dump_index()
+                    except:
+                        print(f"Could not install dependency {dependency}!")
             already_installed = True
 
         self.dump_index()
@@ -415,13 +424,13 @@ class installHandler:
         """
         # local_versions = get_local_versions(project)
         local_versions = self.nexus.get_versions(project)
-        print(local_versions)
+        # print(local_versions)
 
         result = []
 
         if not requirements:
             latest = get_latest_version(project)
-            print(latest)
+            # print(latest)
             if latest in local_versions:
                 result = [latest]
         else:
@@ -444,12 +453,11 @@ class installHandler:
 
 if __name__ == "__main__":
     nexus = Nexus()
-    packages = get_most_downloaded()
+    # packages = get_most_downloaded()
     installHandler = installHandler(nexus)
-    # installHandler.install("google-api-core[grpc] !=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0dev,>=1.34.1")
-    for package in packages[:1]:
-        installHandler.install(package)
-    # installHandler.install("tb-nightly")
+    # for package in packages[:1]:
+    #     installHandler.install(package)
+    installHandler.install("numpy")
     # package = Package("boto3", "1.35.15")
     # nexus.download(package)
 

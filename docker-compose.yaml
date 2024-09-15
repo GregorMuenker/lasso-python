@@ -43,12 +43,15 @@ services:
       - SOLR_COLLECTION=lasso_python
       - NEXUS_HOST=http://lasso-nexus:8081
       - DOCKER_IGNITE_NAME=lasso_ignite
+      - ACTIONID=python_lasso
     volumes:
       - ./backend/crawl/installed:/crawl/installed
       - ./backend/crawl/index.json:/crawl/index.json
       - ./backend/crawl/temp:/crawl/temp
       - ./nexus/corpus_docker.json:/nexus/corpus.json
       - ./backend/arena/runtime:/arena/runtime
+      - ./backend/arena/results:/arena/results
+      - ./backend/arena/execution_sheets:/app/execution_sheets
   lasso_solr_quickstart:
     container_name: lasso_solr_quickstart
     image: solr:9.6.1

@@ -1,4 +1,9 @@
 services:
+  ignite:
+    image: apacheignite/ignite
+    container_name: lasso_ignite
+    ports:
+      - "10800:10800"
   lasso_solr_quickstart:
     image: solr:9.6.1
     container_name: lasso_solr_quickstart
@@ -15,8 +20,3 @@ services:
       context: ./nexus
     ports:
       - "8081:8081"
-  ignite:
-    image: apacheignite/ignite
-    container_name: lasso_ignite
-    ports:
-      - "10800:10800"
