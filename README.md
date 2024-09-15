@@ -62,9 +62,11 @@ call to curl requests package and type inference with HiTyper:
 call to execute sequence sheet arena_development on the lql query:
 ```curl -X POST -H "Content-Type: text/plain" -d $'Calculator {\n Calculator(int)->None\n addme(int)->int\n subme(int)->int\n }' localhost:8020/arena/arena_development.xlsx```
 
+Available sequence sheets have to be placed in the folder backend/arena/execution_sheets
+
 Multiple sequence sheets can be executed by appending ;sequence_sheet2.xlsx;sequence_sheet3 etc. to the query
 
-Parameters can be added to the query by appending ?parametername=value. The following parameters are available
+Parameters can be added to the query by appending ?parametername1=value1&parametername2=value2 etc. The following parameters are available:
 - maxParamPermutationTries (int, default=1)
 - typeStrictness (bool, default=False)
 - onlyKeepTopNMappings (int, default=10)
@@ -78,4 +80,4 @@ The frontend with the pages and functions for the arena and crawl part can then 
 
 ## Limitations
 - No other version than 1.26.4 of numpy can be crawled, analysed and used in the arena due to depedencies in the project.
-- When developing on arm-based macOS, please use klo2k/nexus3 instead of sonatype/nexus3 in the docker_compose files.
+- Using docker-compose (non-dev) can lead to errors while installing h5py at docker build time on macOS
