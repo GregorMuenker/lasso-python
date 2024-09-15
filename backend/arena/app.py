@@ -21,6 +21,13 @@ app = FastAPI()
 @app.post("/arena/{execution_sheets}")
 async def execute(execution_sheets: str, request: Request):
     
+    maxParamPermutationTries = request.query_params.get('maxParamPermutationTries', 1)
+    typeStrictness = request.query_params.get('typeStrictness', False)
+    onlyKeepTopNMappings = request.query_params.get('onlyKeepTopNMappings', 10)
+    allowStandardValueConstructorAdaptations = request.query_params.get('allowStandardValueConstructorAdaptations', True)
+    actionId = request.query_params.get('actionId', os.getenv("ACTIONID",'PLACEHOLDER') )
+    recordMetrics = request.query_params.get('recordMetrics', True)
+    
     # Get the LQL string from the request body
     body = await request.body()
     lql_string = body.decode("utf-8") or """
@@ -69,8 +76,10 @@ async def execute(execution_sheets: str, request: Request):
         adaptationHandler = AdaptationHandler(
             interfaceSpecification,
             moduleUnderTest,
-            maxParamPermutationTries=2,
-            onlyKeepTopNMappings=10,
+            maxParamPermutationTries=maxParamPermutationTries,
+            onlyKeepTopNMappings=onlyKeepTopNMappings,
+            typeStrictness=typeStrictness,
+            allowStandardValueConstructorAdaptations=allowStandardValueConstructorAdaptations
         )
         adaptationHandler.identifyAdaptations()
         adaptationHandler.identifyConstructorAdaptations()
@@ -84,8 +93,8 @@ async def execute(execution_sheets: str, request: Request):
                 sequenceSpecification,
                 interfaceSpecification,
                 executionId=executionId,
-                actionId=os.getenv("ACTIONID",'PLACEHOLDER'),
-                recordMetrics=True,
+                actionId=actionId,
+                recordMetrics=recordMetrics,
             )
 
             execute_test(
