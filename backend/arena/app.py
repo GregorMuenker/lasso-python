@@ -56,8 +56,8 @@ async def execute(execution_sheets: str, request: Request):
     
     # Generate all modules under test
     allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
-    
-    # Download all required packages and their dependencies
+
+    # Download and import all required packages from Nexus
     imp_helper = import_helper.ImportHelper(runtime=True)
     nexus = Nexus()
     for package in required_packages:
@@ -65,10 +65,6 @@ async def execute(execution_sheets: str, request: Request):
         pkg = Package(package_name, version)
         nexus.download(pkg)
         imp_helper.pre_load_package(package_name, version)
-        dependencies = import_helper.get_dependencies(package_name, version)
-        for dep_name in dependencies:
-            dep_version = dependencies[dep_name]['version']
-            imp_helper.pre_load_package(dep_name, dep_version)
     
     # Iterate through all modules under test
     for moduleUnderTest in allModulesUnderTest:

@@ -45,7 +45,11 @@ def show_arena_page():
                 try:
                     data = response.json()
                     df = pd.DataFrame(data)
-                    st.dataframe(df)
+                    value_df = df.query('TYPE == "value"')
+                    oracle_df = df.query('TYPE == "oracle"')
+
+                    merged_df = pd.merge(value_df, oracle_df, on=['EXECUTIONID', 'ABSTRACTIONID', 'SHEETID', 'X', 'Y'])
+                    st.dataframe(merged_df)
                 except ValueError:
                     st.text(response.text)
             else:

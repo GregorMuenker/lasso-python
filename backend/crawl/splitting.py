@@ -312,7 +312,7 @@ def get_module_index(module_name, package_name, nexus_package_name, version, pat
             elif isdir(join(path, element)):
                 index += get_module_index(prefix + element, package_name, version, join(path, element))
     if "." not in package_name:
-        index = [{"artifactId": package_name, "version": version} | entry for entry in index]
+        index = [{"artifactId": nexus_package_name, "version": version} | entry for entry in index]
     print(f"{module_name} indexed")
     return index
 
