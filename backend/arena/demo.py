@@ -24,8 +24,11 @@ For this demo to work you need to:
 
 
 if __name__ == "__main__":
+    # NOTE: Please install numpy version 1.26.4 locally on your machine:
+    # pip install --force-reinstall numpy==1.26.4
+
     # Crawl, analyize and index the numpy package
-    index_package("numpy", type_inferencing_engine="HiTyper")
+    index_package("numpy==1.26.4", type_inferencing_engine="HiTyper")
 
     # Manually generate an execution identifier that will be used when storing results in Ignite
     executionId = uuid.uuid4()
