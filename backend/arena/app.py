@@ -1,32 +1,32 @@
+"""app.py - This file contains REST API."""
+
+import os
+import uvicorn
+from fastapi import FastAPI, Request
 import uuid
-import git
-import sys
+from dotenv import load_dotenv
+load_dotenv()
 
-repo = git.Repo(search_parent_directories=True)
-sys.path.insert(0, repo.working_tree_dir)
+import import_helper
+from nexus import Nexus, Package
+from lasso_solr_connector import LassoSolrConnector
+from sequence_specification import SequenceSpecification
+from ignite import LassoIgniteClient
+from adaptation_identification import AdaptationHandler
+from execution import execute_test, ExecutionEnvironment
+from lql.antlr_parser import parse_interface_spec
 
-from backend.crawl import import_helper
-from backend.crawl.nexus import Nexus, Package
-from backend.arena.lasso_solr_connector import LassoSolrConnector
-from backend.arena.sequence_specification import SequenceSpecification
-from backend.arena.ignite import LassoIgniteClient
-from backend.arena.adaptation_identification import AdaptationHandler
-from backend.arena.execution import execute_test, ExecutionEnvironment
-from backend.arena.lql.antlr_parser import parse_interface_spec
+app = FastAPI()
 
-"""
-For this demo to work you need to:
-- have the Solr instance lasso_quickstart running on localhost:8983
-- have an Apache Ignite instance running on localhost:10800
-- have a Nexus instance running on localhost:8081
-"""
-
-
-if __name__ == "__main__":
-    lql_string = """
-    Matrix {
-        Matrix(list)->None
-        mean()->Any
+@app.post("/arena/{execution_sheet}")
+async def execute(execution_sheet: str, request: Request):
+    
+    body = await request.body()
+    lql_string = body.decode("utf-8") or """
+    Calculator {
+        Calculator(int)->None
+        addme(int)->int
+        subme(int)->int
     }
     """
 
@@ -35,9 +35,9 @@ if __name__ == "__main__":
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
 
-    sequenceSpecifications = [SequenceSpecification("calc7_greg.xlsx"), SequenceSpecification("calc8.xlsx")]
+    sequenceSpecifications = [SequenceSpecification('/app/execution_sheets/'+execution_sheet)]
 
-    solr_url = "http://localhost:8983/solr/lasso_quickstart"
+    solr_url = os.getenv("SOLR_URL", "http://localhost:8983/solr/") + os.getenv("SOLR_COLLECTION", "lasso_python")
     solr_conn = LassoSolrConnector(solr_url)
 
     # Setup Ignite client
@@ -52,6 +52,10 @@ if __name__ == "__main__":
         pkg = Package(package_name, version)
         nexus.download(pkg)
         imp_helper.pre_load_package(package_name, version)
+        dependencies = import_helper.get_dependencies(package_name, version)
+        for dep_name in dependencies:
+            dep_version = dependencies[dep_name]['version']
+            imp_helper.pre_load_package(dep_name, dep_version)
     
     # Iterate through all modules under test
     for moduleUnderTest in allModulesUnderTest:
@@ -63,7 +67,10 @@ if __name__ == "__main__":
         )
         adaptationHandler.identifyAdaptations()
         adaptationHandler.identifyConstructorAdaptations()
-        adaptationHandler.visualizeAdaptations()
+        try:
+            adaptationHandler.visualizeAdaptations()
+        except:
+            print("Could not visualize adaptations")
         adaptationHandler.generateMappings()
 
         for sequenceSpecification in sequenceSpecifications:
@@ -90,3 +97,11 @@ if __name__ == "__main__":
 
     lassoIgniteClient.cache.destroy()
     lassoIgniteClient.client.close()
+    return "Done"
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

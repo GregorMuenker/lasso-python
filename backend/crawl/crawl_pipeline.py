@@ -1,12 +1,11 @@
 import sys
-from pathlib import Path
-
 import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
 from backend.crawl import install, splitting, upload_index, import_helper
 from backend.crawl.nexus import Nexus, Package
+from pathlib import Path
 import json
 import os
 import uuid
@@ -82,10 +81,6 @@ def index_package(package_name, llm_file=None):
         install_handler.dump_index()
     imp_help = import_helper.ImportHelper()
     imp_help.pre_load_package(package_name, version)
-    dependencies = import_helper.get_dependencies(package_name, version)
-    for dep_name in dependencies:
-        dep_version = dependencies[dep_name]['version']
-        imp_help.pre_load_package(dep_name, dep_version)
     package_name = import_helper.get_import_name(package_name, version)
     index = splitting.get_module_index(package_name, package_name, version)
     upload_index.upload_index(index)
@@ -93,6 +88,6 @@ def index_package(package_name, llm_file=None):
 
 
 if __name__ == "__main__":
-    # index_package("numpy==2.0.2")
+    # index_package("pandas")
     index_package("lasso-llm", llm_file="../evaluation/evaluation_sanitized-mbpp.json")
 

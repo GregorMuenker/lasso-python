@@ -6,7 +6,7 @@
     {
       "type": "solr",
       "id": "lasso_quickstart",
-      "host": "http://localhost:8983/solr/lasso_quickstart",
+      "host": "http://localhost:8983/solr/lasso_python",
       "user": "",
       "pass": "",
       "name": "LASSO Quickstart",

@@ -1,4 +1,9 @@
 services:
+  ignite:
+    container_name: lasso_ignite
+    image: apacheignite/ignite
+    ports:
+      - "10800:10800"
   crawl:
     container_name: lasso_python_crawl
     build:
@@ -10,43 +15,52 @@ services:
       - INSTALLED=/crawl/installed
       - INDEX=/crawl/index.json
       - RUNTIME=/arena/runtime
-      - CORPUS=/nexus/corpus_docker.json
+      - CORPUS=/nexus/corpus.json
       - TYPE_INFERENCING_TEMP=/crawl/temp
       - SOLR_PATH=http://lasso_solr_quickstart:8983/solr/
-      - NEXUS_HOST=http://nexus:8081
+      - SOLR_COLLECTION=lasso_python
+      - NEXUS_HOST=http://lasso-nexus:8081
     volumes:
       - ./backend/crawl/installed:/crawl/installed
       - ./backend/crawl/index.json:/crawl/index.json
       - ./backend/crawl/temp:/crawl/temp
-      - ./nexus/corpus.json:/nexus/corpus_docker.json
-      - ./arena/runtime:/arena/runtime
-  #app:
-  #  container_name: lasso_python
-  #  build:
-  #    context: ./backend
-  #  ports:
-  #    - "8000:8000"
-  #  environment:
-  #    - DOCKER=test
-  #    - SOLR_PATH=http://lasso_solr_quickstart:8983/solr/
+      - ./nexus/corpus_docker.json:/nexus/corpus.json
+      - ./backend/arena/runtime:/arena/runtime
+  arena:
+    container_name: lasso_python_arena
+    build:
+      context: ./backend/arena
+    ports:
+      - "8020:8000"
+    environment:
+      - DOCKER=test
+      - INSTALLED=/crawl/installed
+      - INDEX=/crawl/index.json
+      - RUNTIME=/arena/runtime
+      - CORPUS=/nexus/corpus.json
+      - TYPE_INFERENCING_TEMP=/crawl/temp
+      - SOLR_URL=http://lasso_solr_quickstart:8983/solr/
+      - SOLR_COLLECTION=lasso_python
+      - NEXUS_HOST=http://lasso-nexus:8081
+      - DOCKER_IGNITE_NAME=lasso_ignite
+    volumes:
+      - ./backend/crawl/installed:/crawl/installed
+      - ./backend/crawl/index.json:/crawl/index.json
+      - ./backend/crawl/temp:/crawl/temp
+      - ./nexus/corpus_docker.json:/nexus/corpus.json
+      - ./backend/arena/runtime:/arena/runtime
   lasso_solr_quickstart:
-    container_name: lasso_solr_quick
+    container_name: lasso_solr_quickstart
     image: solr:9.6.1
     ports:
       - "8983:8983"
-    volumes:
-      - ./lassoindex:/var/solr
+    # volumes:
+    #   - ./lassoindex:/var/solr
     command:
       - solr-precreate
       - lasso_python
   nexus:
-    container_name: lasso_nexus
-    build:
-      context: ./nexus
+    container_name: lasso-nexus
+    image: sonatype/nexus3
     ports:
       - "8081:8081"
-  ignite:
-    container_name: lasso_ignite
-    image: apacheignite/ignite
-    ports:
-      - "10800:10800"

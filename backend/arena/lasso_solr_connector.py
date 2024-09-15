@@ -1,9 +1,5 @@
 import pysolr
 import re
-import sys
-import git
-repo = git.Repo(search_parent_directories=True)
-sys.path.insert(0, repo.working_tree_dir)
 
 class LassoSolrConnector:
     def __init__(self, solr_url):
@@ -115,7 +111,11 @@ class LassoSolrConnector:
         return modules_under_test, required_packages
 
 if __name__ == "__main__":
-    from backend.lql.antlr_parser import parse_interface_spec
+    from backend.arena.lql.antlr_parser import parse_interface_spec
+    import sys
+    import git
+    repo = git.Repo(search_parent_directories=True)
+    sys.path.insert(0, repo.working_tree_dir)
 
     lql_string = """
         Array {

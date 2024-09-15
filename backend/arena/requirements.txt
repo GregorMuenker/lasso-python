@@ -1,0 +1,12 @@
+uvicorn
+fastapi
+python-dotenv
+numpy==2.0.2
+setuptools
+pysolr
+openpyxl
+pyignite
+pandas
+python-Levenshtein
+coverage
+antlr4-python3-runtime

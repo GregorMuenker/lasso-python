@@ -14,16 +14,12 @@ from pyignite import Client, GenericObjectMeta
 from pyignite.datatypes import *
 from pyignite.datatypes.prop_codes import *
 import pandas as pd
-import sys
-import git
-repo = git.Repo(search_parent_directories=True)
-sys.path.insert(0, repo.working_tree_dir)
-
+import os
 
 class LassoIgniteClient:
     def __init__(self) -> None:
         self.client = Client(compact_footer=False)
-        self.client.connect("localhost", 10800)
+        self.client.connect(os.getenv("DOCKER_IGNITE_NAME","localhost"), 10800)
 
         self.cache = self.client.get_or_create_cache(
             {

@@ -56,10 +56,6 @@ class ImportHelper:
         self.loaded_packages = []
 
     def pre_load_package(self, package_name, version):
-        dependencies = get_dependencies(package_name, version)
-        for dep_name in dependencies:
-            dep_version = dependencies[dep_name]['version']
-            self.pre_load_package(dep_name, dep_version)
         if not self.runtime:
             package_path = os.path.join(INSTALLED, f"{package_name}-{version}")
             sys.path.insert(0, package_path)

@@ -11,8 +11,6 @@ import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.crawl.log import log_exception
-
 NEXUS_HOST="http://localhost:8081"
 from dotenv import load_dotenv
 load_dotenv()
@@ -107,7 +105,7 @@ class Nexus:
                 package.local_file_path = None
                 return True
             else:
-                # TODO: Log exception
+                # TODO: What to do if upload fails.
                 print(
                     f'Failed to upload {package.local_file_path}. HTTP Status Code: {response.status_code}')
                 # print('Response:', response.text)
@@ -160,7 +158,6 @@ class Nexus:
 
         else:
             # TODO: What to do if download fails.
-            # TODO: Log exception.
             print(
                 f'Failed to download file. HTTP Status Code: {response.status_code}')
             # print('Response:', response.text)

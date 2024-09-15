@@ -7,6 +7,7 @@ import json
 import uuid
 import warnings
 import importlib
+
 import sys
 import git
 repo = git.Repo(search_parent_directories=True)
@@ -31,12 +32,14 @@ class SequenceExecutionRecord:
         interfaceSpecification: InterfaceSpecification,
         sequenceSpecification: SequenceSpecification,
         executionId,
+        actionId,
     ) -> None:
         self.interfaceSpecification = interfaceSpecification
         self.mapping = mapping
         self.sequenceSpecification = sequenceSpecification
         self.rowRecords = []  # List[RowRecord]
         self.executionId = executionId
+        self.actionId = actionId
 
     def toSheetCells(self) -> list:
         """
@@ -64,7 +67,7 @@ class SequenceExecutionRecord:
             ci1 = CellId(
                 EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
-                ACTIONID="",
+                ACTIONID=self.actionId,
                 ARENAID="execute",
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
@@ -88,7 +91,7 @@ class SequenceExecutionRecord:
                 ci2 = CellId(
                     EXECUTIONID=str(self.executionId),
                     ABSTRACTIONID=self.interfaceSpecification.className,
-                    ACTIONID="",
+                    ACTIONID=self.actionId,
                     ARENAID="execute",
                     SHEETID=self.sequenceSpecification.name,
                     SYSTEMID="oracle",
@@ -111,7 +114,7 @@ class SequenceExecutionRecord:
             ci3 = CellId(
                 EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
-                ACTIONID="",
+                ACTIONID=self.actionId,
                 ARENAID="execute",
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
@@ -134,7 +137,7 @@ class SequenceExecutionRecord:
             ci4 = CellId(
                 EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
-                ACTIONID="",
+                ACTIONID=self.actionId,
                 ARENAID="execute",
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
@@ -158,7 +161,7 @@ class SequenceExecutionRecord:
                 ci5 = CellId(
                 EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
-                ACTIONID="",
+                ACTIONID=self.actionId,
                 ARENAID="execute",
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
@@ -182,7 +185,7 @@ class SequenceExecutionRecord:
                 ci6 = CellId(
                     EXECUTIONID=str(self.executionId),
                     ABSTRACTIONID=self.interfaceSpecification.className,
-                    ACTIONID="",
+                    ACTIONID=self.actionId,
                     ARENAID="execute",
                     SHEETID=self.sequenceSpecification.name,
                     SYSTEMID=systemId,
@@ -205,7 +208,7 @@ class SequenceExecutionRecord:
             ci7 = CellId(
                 EXECUTIONID=str(self.executionId),
                 ABSTRACTIONID=self.interfaceSpecification.className,
-                ACTIONID="",
+                ACTIONID=self.actionId,
                 ARENAID="execute",
                 SHEETID=self.sequenceSpecification.name,
                 SYSTEMID=systemId,
@@ -272,6 +275,7 @@ class ExecutionEnvironment:
         sequenceSpecification: SequenceSpecification,
         interfaceSpecification: InterfaceSpecification,
         executionId: uuid,
+        actionId: str = "PLACEHOLDER",
         recordMetrics: bool = True
     ) -> None:
         self.mappings = mappings
@@ -279,6 +283,7 @@ class ExecutionEnvironment:
         self.sequenceSpecification = sequenceSpecification
         self.recordMetrics = recordMetrics
         self.executionId = executionId # Later used as execution id when saving observations in Ignite
+        self.actionId = actionId
 
         self.allSequenceExecutionRecords = []
 
@@ -287,7 +292,8 @@ class ExecutionEnvironment:
                 mapping=mapping,
                 interfaceSpecification=interfaceSpecification,
                 sequenceSpecification=sequenceSpecification,
-                executionId=self.executionId
+                executionId=self.executionId,
+                actionId=self.actionId,
             )
             self.allSequenceExecutionRecords.append(sequenceExecutionRecord)
 

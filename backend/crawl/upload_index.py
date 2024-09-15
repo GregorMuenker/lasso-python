@@ -3,6 +3,7 @@ import os
 
 def upload_index(index):
     if os.environ.get('SOLR_PATH'):
-        requests.post(f'{os.environ.get("SOLR_PATH")}/update/json/docs', json=index)
+        requests.post(f'{os.environ.get("SOLR_PATH")}{os.environ.get("SOLR_COLLECTION")}/update/json/docs', json=index)
     else:
-        requests.post('http://localhost:8983/solr/lasso_quickstart/update/json/docs', json=index)
+        response = requests.post('http://localhost:8983/solr/lasso_python/update/json/docs', json=index)
+        print(response.text)
