@@ -10,3 +10,5 @@ python-dotenv
 pathlib
 hityper
 pycg==0.0.6
+urllib3==1.26.20
+tensorflow
