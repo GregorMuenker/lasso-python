@@ -1,7 +1,6 @@
 uvicorn
 fastapi
 Levenshtein
-gitpython
 requests
 packaging
 tqdm

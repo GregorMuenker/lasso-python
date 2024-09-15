@@ -1,12 +1,6 @@
 import os
 import openpyxl as px
 
-import sys
-import git
-repo = git.Repo(search_parent_directories=True)
-sys.path.insert(0, repo.working_tree_dir)
-
-
 class SequenceSpecification:
     def __init__(self, filePath) -> None:
         self.name = os.path.basename(filePath)

@@ -1,4 +1,0 @@
-(methodSignatureParamsOrderedNodefault:1) OR (methodSignatureParamsOrderedNodefault:*pt_list*) OR 
-((method:mean) AND (methodSignatureParamsOrderedNodefault:1))^2 OR ((method:mean) AND 
-(methodSignatureParamsOrderedNodefault:*pt_list*))^2 OR ((method:mean) AND 
-(methodSignatureParamsOrderedNodefault:*pt_list*) AND (methodSignatureParamsOrderedNodefault:1))^3

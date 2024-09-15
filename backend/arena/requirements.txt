@@ -1,9 +1,11 @@
 uvicorn
 fastapi
-Levenshtein
-gitpython
-requests
-packaging
-tqdm
-beautifulsoup4
 python-dotenv
+setuptools
+pysolr
+openpyxl
+pyignite
+pandas
+python-Levenshtein
+coverage
+antlr4-python3-runtime

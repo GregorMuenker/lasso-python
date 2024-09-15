@@ -2,10 +2,17 @@
 
 import os
 from dotenv import load_dotenv
+
 import git
+repo = git.Repo(search_parent_directories=True)
+REPOSITORY = repo.working_tree_dir
+INSTALLED = f"{REPOSITORY}/backend/crawl/installed"
+INDEX = f"{REPOSITORY}/backend/crawl/index.json"
+RUNTIME = f"{REPOSITORY}/backend/arena/runtime"
+CORPUS = f"{REPOSITORY}/nexus/corpus.json"
+TYPE_INFERENCING_TEMP = f"{REPOSITORY}/backend/crawl/temp"
 
 load_dotenv()
-
 
 # ANSI escape codes for colored output
 RED = "\033[91m"
@@ -18,14 +25,6 @@ RESET = "\033[0m"
 
 USERNAME = os.getenv("USERNAME")
 PASSWORD = os.getenv("PASSWORD")
-
-repo = git.Repo(search_parent_directories=True)
-REPOSITORY = repo.working_tree_dir
-INSTALLED = f"{REPOSITORY}/backend/crawl/installed"
-INDEX = f"{REPOSITORY}/backend/crawl/index.json"
-RUNTIME = f"{REPOSITORY}/backend/arena/runtime"
-CORPUS = f"{REPOSITORY}/nexus/corpus.json"
-TYPE_INFERENCING_TEMP = f"{REPOSITORY}/backend/crawl/temp"
 
 STANDARD_CONSTRUCTOR_VALUES = {
     "str": "",

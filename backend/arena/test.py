@@ -1,15 +1,15 @@
-import json
+#import json
 
 
-from sequence_specification import SequenceSpecification
+#from sequence_specification import SequenceSpecification
 
 #sequenceSpecification = SequenceSpecification("calc4_demo.xlsx")
 #print(sequenceSpecification.statements)
 #print(sequenceSpecification.resolve_reference("A2"))
 
-sequence_spec = SequenceSpecification("calc6_greg.xlsx")
-print(sequence_spec.statements, flush=True)
-print(sequence_spec.resolve_reference("A2"), flush=True)
+#sequence_spec = SequenceSpecification("calc6_greg.xlsx")
+#print(sequence_spec.statements, flush=True)
+#print(sequence_spec.resolve_reference("A2"), flush=True)
 
 # Open the evaluation sanitized JSON file
 # with open('./evaluation_sanitized-mbpp.json') as file:
@@ -33,3 +33,9 @@ print(sequence_spec.resolve_reference("A2"), flush=True)
 #     print("Element with 'max_Product' in code:", element_with_max_product)
 # else:
 #     print("No element with 'max_Product' found in code.")
+
+
+from pyignite import Client
+
+client = Client(compact_footer=False)
+client.connect('localhost', 10800)
