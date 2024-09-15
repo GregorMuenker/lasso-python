@@ -62,6 +62,16 @@ call to curl requests package and type inference with HiTyper:
 call to execute sequence sheet arena_development on the lql query:
 ```curl -X POST -H "Content-Type: text/plain" -d $'Calculator {\n Calculator(int)->None\n addme(int)->int\n subme(int)->int\n }' localhost:8020/arena/arena_development.xlsx```
 
+Multiple sequence sheets can be executed by appending ;sequence_sheet2.xlsx;sequence_sheet3 etc. to the query
+
+Parameters can be added to the query by appending ?parametername=value. The following parameters are available
+- maxParamPermutationTries (int, default=1)
+- typeStrictness (bool, default=False)
+- onlyKeepTopNMappings (int, default=10)
+- allowStandardValueConstructorAdaptations (int, default=True)
+- actionId (str, default="PLACEHOLDER")
+- recordMetrics (bool, default=True)
+
 ## Frontend
 
 The frontend with the pages and functions for the arena and crawl part can then be found at the address: http://localhost:8501/
