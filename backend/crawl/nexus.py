@@ -11,8 +11,6 @@ import git
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
-from backend.crawl.log import log_exception
-
 NEXUS_HOST="http://localhost:8081"
 from dotenv import load_dotenv
 load_dotenv()
