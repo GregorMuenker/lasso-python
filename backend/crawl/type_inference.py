@@ -13,6 +13,13 @@ from backend.crawl.inference_engines import hityper
 
 
 def infer_datatypes_module(module_name_with_prefix, module_path, type_inference_engine):
+    """
+    Infers all datatypes of all variables of a given module
+
+    :param module_name_with_prefix: import trace of the target module
+    :param module_path: filepath of the module
+    :param type_inference_engine: string of the
+    """
     package_path = "/".join(module_path.split("/")[:-len(module_name_with_prefix.split("."))+1])
     if type_inference_engine == "HiTyper":
         hityper.infer_datatypes_module(module_path, package_path, module_name_with_prefix)

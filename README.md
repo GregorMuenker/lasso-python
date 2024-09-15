@@ -49,7 +49,7 @@ then when nexus is ready:
 
 ## Calls to the containers
 call to curl numpy package:
-```curl -X POST localhost:8010/crawl/numpy==2.0.2```
+```curl -X POST localhost:8010/crawl/numpy==1.26.4```
 
 call to execute sequence sheet arena_development on the lql query:
 ```curl -X POST -H "Content-Type: text/plain" -d $'Calculator {\n Calculator(int)->None\n addme(int)->int\n subme(int)->int\n }' localhost:8020/arena/arena_development.xlsx```
@@ -57,3 +57,6 @@ call to execute sequence sheet arena_development on the lql query:
 ## Frontend
 
 The frontend with the pages and functions for the arena and crawl part can then be found at the address: http://localhost:8501/
+
+## Limitations
+- No other version than 1.26.4 of numpy can be crawled, analysed and used in the arena due to depedencies in the project. 
