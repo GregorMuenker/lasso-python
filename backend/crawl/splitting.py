@@ -233,7 +233,7 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
 
 
 #
-def get_module_index(module_name, package_name, version, path=None, type_inferencing_engine=None):
+def get_module_index(module_name, package_name, version, path=None, type_inferencing_engine=None, skip_missing_dependencies=False):
     """Creates an list of all function within the given module. Each element consists of a dictonary of the functions
     characteristics.
 
@@ -272,12 +272,13 @@ def get_module_index(module_name, package_name, version, path=None, type_inferen
                     index += get_functions_from_ast(tree, source, prefix, sub_module_name, module_path,
                                                     type_inferencing_engine=type_inferencing_engine)
                 # Subject to change
-                except ModuleNotFoundError:
-                    module_path = f"{os.path.join(INSTALLED, f'{package_name}-{version}')}/{(prefix + sub_module_name).replace('.', '/')}.py"
-                    source = open(module_path, "r").read()
-                    tree = ast.parse(source)
-                    index += get_functions_from_ast(tree, source, prefix, sub_module_name, module_path,
-                                                    type_inferencing_engine=type_inferencing_engine)
+                except (ModuleNotFoundError, ImportError):
+                    if not skip_missing_dependencies:
+                        module_path = f"{os.path.join(INSTALLED, f'{package_name}-{version}')}/{(prefix + sub_module_name).replace('.', '/')}.py"
+                        source = open(module_path, "r").read()
+                        tree = ast.parse(source)
+                        index += get_functions_from_ast(tree, source, prefix, sub_module_name, module_path,
+                                                        type_inferencing_engine=type_inferencing_engine)
                 except OSError as e:
                     if str(e) == "source code not available":
                         print(prefix + sub_module_name, "CPython Function")
@@ -293,10 +294,11 @@ def get_module_index(module_name, package_name, version, path=None, type_inferen
                     index += get_module_index(prefix + sub_module_name, package_name, version,
                                               type_inferencing_engine=type_inferencing_engine)
                 # Subject to change
-                except ModuleNotFoundError:
-                    index += get_module_index(prefix + sub_module_name, package_name, version,
-                                              path=f"{os.path.join(INSTALLED, f'{package_name}-{version}')}/{(prefix + sub_module_name).replace('.', '/')}",
-                                              type_inferencing_engine=type_inferencing_engine)
+                except (ModuleNotFoundError, ImportError):
+                    if not skip_missing_dependencies:
+                        index += get_module_index(prefix + sub_module_name, package_name, version,
+                                                  path=f"{os.path.join(INSTALLED, f'{package_name}-{version}')}/{(prefix + sub_module_name).replace('.', '/')}",
+                                                  type_inferencing_engine=type_inferencing_engine)
                 #except Exception as e:
                 #   print(sub_module_name, e)
                 #  pass

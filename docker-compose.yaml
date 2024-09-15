@@ -54,8 +54,8 @@ services:
     image: solr:9.6.1
     ports:
       - "8983:8983"
-    volumes:
-      - ./lassoindex:/var/solr
+    # volumes:
+    #   - ./lassoindex:/var/solr
     command:
       - solr-precreate
       - lasso_python
