@@ -68,4 +68,4 @@ The frontend with the pages and functions for the arena and crawl part can then 
 
 ## Limitations
 - No other version than 1.26.4 of numpy can be crawled, analysed and used in the arena due to depedencies in the project.
-- Using docker-compose (non-dev) can lead to errors while installing h5py at docker build time on macOS
+- When developing on arm-based macOS, please use klo2k/nexus3 instead of sonatype/nexus3 in the docker_compose files.
