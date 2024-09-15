@@ -24,7 +24,7 @@ if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
 else:
     from backend.constants import INSTALLED, INDEX
 from backend.crawl.nexus import Nexus, Package
-from backend.crawl.log import log_exception, log_dependencyexception, log_uploadexception
+from backend.crawl.log import log_exception
 
 def get_all_packages():
     """Retrieves all package names from PyPi.
