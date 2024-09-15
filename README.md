@@ -2,6 +2,11 @@
 
 a python extension for the LASSO Plattform
 
+## Requirements
+- Docker
+- Only tested on Ubuntu Server
+- Dev set-up also tested on Windows and macOS (ARM)
+
 ## Docs
 [Link to Docs](./docs/structure.md)
 
@@ -51,6 +56,9 @@ then when nexus is ready:
 call to curl numpy package:
 ```curl -X POST localhost:8010/crawl/numpy==1.26.4```
 
+call to curl requests package and type inference with HiTyper:
+ ```curl -X POST localhost:8010/crawl/requests?type_inferencing_engine='HiTyper'```
+
 call to execute sequence sheet arena_development on the lql query:
 ```curl -X POST -H "Content-Type: text/plain" -d $'Calculator {\n Calculator(int)->None\n addme(int)->int\n subme(int)->int\n }' localhost:8020/arena/arena_development.xlsx```
 
@@ -59,4 +67,5 @@ call to execute sequence sheet arena_development on the lql query:
 The frontend with the pages and functions for the arena and crawl part can then be found at the address: http://localhost:8501/
 
 ## Limitations
-- No other version than 1.26.4 of numpy can be crawled, analysed and used in the arena due to depedencies in the project. 
+- No other version than 1.26.4 of numpy can be crawled, analysed and used in the arena due to depedencies in the project.
+- Using docker-compose (non-dev) can lead to errors while installing h5py at docker build time on macOS

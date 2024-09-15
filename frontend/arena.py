@@ -10,10 +10,10 @@ def show_arena_page():
     st.title("Lasso Execution Interface - Arena")
 
     # Arena Hauptinterface
-    execution_sheet = st.text_input("Execution Sheet", value="default_sheet")
+    execution_sheet = st.text_input("Execution Sheet", value="calc7.xlsx")
     lql_string = st.text_area(
         "LQL String",
-        value="""Calculator {\n    Calculator(int)->None\n    addme(int)->int\n    subme(int)->int\n}""",
+        value="""Matrix {\n      Matrix(list)->None\n        mean()->Any\n}""",
     )
     max_param_permutation_tries = st.number_input(
         "Max Param Permutation Tries", min_value=1, value=1
@@ -45,11 +45,8 @@ def show_arena_page():
                 try:
                     data = response.json()
                     df = pd.DataFrame(data)
-                    value_df = df.query('TYPE == "value"')
-                    oracle_df = df.query('TYPE == "oracle"')
-
-                    merged_df = pd.merge(value_df, oracle_df, on=['EXECUTIONID', 'ABSTRACTIONID', 'SHEETID', 'X', 'Y'])
-                    st.dataframe(merged_df)
+                    df['LASTMODIFIED'] = df['LASTMODIFIED'].astype(str)
+                    st.dataframe(df)
                 except ValueError:
                     st.text(response.text)
             else:

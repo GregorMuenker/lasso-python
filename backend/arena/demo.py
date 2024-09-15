@@ -44,7 +44,7 @@ if __name__ == "__main__":
     print(interfaceSpecification)
 
     # Define a set of sequence sheets
-    sequenceSpecifications = [SequenceSpecification("execution_sheets/calc7_greg.xlsx"), SequenceSpecification("execution_sheets/calc8.xlsx")]
+    sequenceSpecifications = [SequenceSpecification("execution_sheets/calc7.xlsx"), SequenceSpecification("execution_sheets/calc8.xlsx")]
 
     # Setup Ignite client for storing results
     lassoIgniteClient = LassoIgniteClient()
