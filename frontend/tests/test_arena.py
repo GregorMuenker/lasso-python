@@ -5,11 +5,11 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import streamlit as st
 
-# Import the relevant functions from app.py
-from app import check_containers, retry_check
+# Import the relevant functions from arena.py
+from arena import check_containers, retry_check, show_arena_page
 
 
-class TestStreamlitApp(unittest.TestCase):
+class TestArenaStreamlitApp(unittest.TestCase):
 
     @patch("docker.from_env")
     def test_check_containers_all_running(self, mock_docker):
@@ -50,7 +50,7 @@ class TestStreamlitApp(unittest.TestCase):
     @patch(
         "time.sleep", return_value=None
     )  # Mock time.sleep to avoid real waiting during tests
-    @patch("app.check_containers")
+    @patch("arena.check_containers")
     def test_retry_check_success(self, mock_check_containers, mock_sleep):
         """Test that `retry_check` succeeds if containers start running before max retries."""
 
@@ -67,7 +67,7 @@ class TestStreamlitApp(unittest.TestCase):
     @patch(
         "time.sleep", return_value=None
     )  # Mock time.sleep to avoid real waiting during tests
-    @patch("app.check_containers")
+    @patch("arena.check_containers")
     def test_retry_check_failure(self, mock_check_containers, mock_sleep):
         """Test that `retry_check` fails after max retries if containers are not running."""
 
@@ -93,7 +93,7 @@ class TestStreamlitApp(unittest.TestCase):
         mock_post.return_value = mock_response
 
         # Mock Streamlit's dataframe display function
-        with patch("app.pd.DataFrame") as mock_pandas_df:
+        with patch("arena.pd.DataFrame") as mock_pandas_df:
             df = pd.DataFrame(mock_response.json())
             st.dataframe(df)
             mock_pandas_df.assert_called_once_with(mock_response.json())
@@ -111,7 +111,7 @@ class TestStreamlitApp(unittest.TestCase):
         mock_post.return_value = mock_response
 
         # Simulate a request to the FastAPI endpoint
-        with patch("app.st.error") as mock_error:
+        with patch("arena.st.error") as mock_error:
             st.text(mock_response.text)
             mock_error.assert_called_once_with("Error: 400")
             mock_text.assert_called_once_with("Some error occurred")
@@ -124,7 +124,7 @@ class TestStreamlitApp(unittest.TestCase):
         # Mock the POST request to raise an exception
         mock_post.side_effect = Exception("Connection error")
 
-        with patch("app.st.error") as mock_streamlit_error:
+        with patch("arena.st.error") as mock_streamlit_error:
             st.error("An error occurred: Connection error")
             mock_streamlit_error.assert_called_once_with(
                 "An error occurred: Connection error"
