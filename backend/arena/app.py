@@ -18,9 +18,10 @@ from lql.antlr_parser import parse_interface_spec
 
 app = FastAPI()
 
-@app.post("/arena/{execution_sheet}")
-async def execute(execution_sheet: str, request: Request):
+@app.post("/arena/{execution_sheets}")
+async def execute(execution_sheets: str, request: Request):
     
+    # Get the LQL string from the request body
     body = await request.body()
     lql_string = body.decode("utf-8") or """
     Calculator {
@@ -29,22 +30,27 @@ async def execute(execution_sheet: str, request: Request):
         subme(int)->int
     }
     """
-
+    
+    # Generate a unique execution ID
     executionId = uuid.uuid4()
-
+    
+    # Parse the LQL string to get the interface specification
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
-
-    sequenceSpecifications = [SequenceSpecification('/app/execution_sheets/'+execution_sheet)]
-
+    # Get the sequence specifications from the execution sheets
+    sequenceSpecifications = [SequenceSpecification('/app/execution_sheets/'+execution_sheet) for execution_sheet in execution_sheets.split(";")]
+    
+    # Setup Solr connection
     solr_url = os.getenv("SOLR_URL", "http://localhost:8983/solr/") + os.getenv("SOLR_COLLECTION", "lasso_python")
     solr_conn = LassoSolrConnector(solr_url)
 
     # Setup Ignite client
     lassoIgniteClient = LassoIgniteClient()
-
+    
+    # Generate all modules under test
     allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
-
+    
+    # Download all required packages and their dependencies
     imp_helper = import_helper.ImportHelper(runtime=True)
     nexus = Nexus()
     for package in required_packages:
@@ -59,6 +65,7 @@ async def execute(execution_sheet: str, request: Request):
     
     # Iterate through all modules under test
     for moduleUnderTest in allModulesUnderTest:
+        # Identify adaptations
         adaptationHandler = AdaptationHandler(
             interfaceSpecification,
             moduleUnderTest,
@@ -67,18 +74,17 @@ async def execute(execution_sheet: str, request: Request):
         )
         adaptationHandler.identifyAdaptations()
         adaptationHandler.identifyConstructorAdaptations()
-        try:
-            adaptationHandler.visualizeAdaptations()
-        except:
-            print("Could not visualize adaptations")
+        adaptationHandler.visualizeAdaptations()
         adaptationHandler.generateMappings()
-
+        
+        # Iterate through all sequence specifications and execute tests
         for sequenceSpecification in sequenceSpecifications:
             executionEnvironment = ExecutionEnvironment(
                 adaptationHandler.mappings,
                 sequenceSpecification,
                 interfaceSpecification,
                 executionId=executionId,
+                actionId=os.getenv("ACTIONID",'PLACEHOLDER'),
                 recordMetrics=True,
             )
 
@@ -87,17 +93,19 @@ async def execute(execution_sheet: str, request: Request):
                 adaptationHandler,
                 moduleUnderTest.moduleName,
             )
-
+            
+            # Print and save results
             executionEnvironment.printResults()
             executionEnvironment.saveResults(lassoIgniteClient)
     
-
+    # Get the results from Ignite for further analysis
     df = lassoIgniteClient.getDataFrame()
     print(df)
+    df.to_csv(f"/arena/results/{executionId}.csv")
 
     lassoIgniteClient.cache.destroy()
     lassoIgniteClient.client.close()
-    return "Done"
+    return df.to_dict(orient="records")
 
 @app.get("/health")
 def health():
