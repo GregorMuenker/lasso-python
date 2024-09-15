@@ -1,7 +1,7 @@
 uvicorn
 fastapi
+numpy==2.0.2
 Levenshtein
-gitpython
 requests
 packaging
 tqdm

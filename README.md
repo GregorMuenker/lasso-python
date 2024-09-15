@@ -7,13 +7,15 @@ a python extension for the LASSO Plattform
 
 ## Automatic Setup
 
-### Execute ```docker-compose up -d```
+### Execute ```sh ./setup.sh```
 lassoindex folder has to be set up already ```lassoindex_setup.sh```
-also possible startup with ```sh ./start.sh```
+also possible startup with ```sh ./setup.sh```
 
-## Maunal Setup
+watch out for ignite to start correctly
 
-### Solr
+## Manual Setup
+
+### Solr persistent volume (optional)
 
 create a directory to store the server/solr directory <br>
 ```mkdir lassoindex```
@@ -31,21 +33,21 @@ copy LASSO document schema to your index
 make sure its host owner matches the container's solr user
 ```sudo chown -R 8983:8983 lassoindex/data/lasso_python/conf/```
 
-### Build Docker container
+### Build and Run Docker containers
 
-```docker build -t backend .```
-
-### Run the Container
-
-Either with: <br>
-```docker run -p 8000:8000 -e DOCKER=test -e SOLR_PATH=http://solr:8983/solr/ --link lasso_solr_quickstart:solr --name py-app app```
-
-Or with:
 ```docker-compose up -d```
 
-
-
-
-```sh ./start.sh```
-
+### Add managed Schema manually
 ```docker cp solr/data/lasso_python/conf/managed-schema.xml lasso_solr_quick:/var/solr/data/lasso_python/conf/managed-schema.xml```
+
+### Set up Nexus
+then when nexus is ready:
+```sh ./nexus/setup.sh```
+
+## Calls to the containers
+call to curl numpy package:
+```curl -X POST localhost:8010/crawl/numpy==2.0.2```
+
+call to execute sequence sheet arena_development on the lql query:
+```curl -X POST -H "Content-Type: text/plain" -d $'Calculator {\n Calculator(int)->None\n addme(int)->int\n subme(int)->int\n }' localhost:8020/arena/arena_development.xlsx```
+

@@ -1,78 +1,99 @@
 """app.py - This file contains REST API."""
 
+import os
 import uvicorn
-from fastapi import FastAPI
-from execution import execute_test, ExecutionEnvironment
-from module_parser import parse_code
+from fastapi import FastAPI, Request
+import uuid
+from dotenv import load_dotenv
+load_dotenv()
+
+import import_helper
+from nexus import Nexus, Package
+from lasso_solr_connector import LassoSolrConnector
 from sequence_specification import SequenceSpecification
-from adaptation_identification import AdaptationHandler
 from ignite import LassoIgniteClient
-from backend.arena.lql.antlr_parser import parse_interface_spec
+from adaptation_identification import AdaptationHandler
+from execution import execute_test, ExecutionEnvironment
+from lql.antlr_parser import parse_interface_spec
 
 app = FastAPI()
 
 @app.post("/arena/{execution_sheet}")
-def crawl(execution_sheet: str, request_body: dict):
+async def execute(execution_sheet: str, request: Request):
     
-    lql_string = request_body.get("lql_string", """
+    body = await request.body()
+    lql_string = body.decode("utf-8") or """
     Calculator {
         Calculator(int)->None
         addme(int)->int
         subme(int)->int
     }
-    """)
+    """
+
+    executionId = uuid.uuid4()
 
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
 
-    sequenceSpecification = SequenceSpecification(execution_sheet)
-    print(sequenceSpecification.sequenceSheet)
+    sequenceSpecifications = [SequenceSpecification('/app/execution_sheets/'+execution_sheet)]
 
-    # Read source code directly from a file. NOTE: This path can also be changed to a sitepackage file (e.g., numpy.lib.scimath.py).
-    path = "./test_data_file.py"
-    with open(path, "r") as file:
-        file_content = file.read()
-        moduleUnderTest = parse_code(file_content, "Test")
+    solr_url = os.getenv("SOLR_URL", "http://localhost:8983/solr/") + os.getenv("SOLR_COLLECTION", "lasso_python")
+    solr_conn = LassoSolrConnector(solr_url)
 
-    adaptationHandler = AdaptationHandler(
-        interfaceSpecification,
-        moduleUnderTest,
-        excludeClasses=False,
-        useFunctionDefaultValues=False,
-        maxParamPermutationTries=2,
-        typeStrictness=False,
-        onlyKeepTopNMappings=5,
-        allowStandardValueConstructorAdaptations=True,
-    )
-    adaptationHandler.identifyAdaptations()
-    adaptationHandler.identifyConstructorAdaptations()
-    adaptationHandler.visualizeAdaptations()
-    adaptationHandler.generateMappings()
-
-    executionEnvironment = ExecutionEnvironment(
-        adaptationHandler.mappings,
-        sequenceSpecification,
-        interfaceSpecification,
-        recordMetrics=True,
-    )
-
-    execute_test(
-        executionEnvironment,
-        adaptationHandler,
-        moduleUnderTest.moduleName,
-        import_from_file_path=path,
-    )
-
-    executionEnvironment.printResults()
-
+    # Setup Ignite client
     lassoIgniteClient = LassoIgniteClient()
-    try:
-        executionEnvironment.saveResults(lassoIgniteClient)
-        df = lassoIgniteClient.getDataFrame()
-        print(df)
-        # df.to_csv("arena_development.csv", index=False)
-    except Exception as e:
-        print(f"Error with Ignite: {e}")
+
+    allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
+
+    imp_helper = import_helper.ImportHelper(runtime=True)
+    nexus = Nexus()
+    for package in required_packages:
+        package_name, version = package.split("==")
+        pkg = Package(package_name, version)
+        nexus.download(pkg)
+        imp_helper.pre_load_package(package_name, version)
+        dependencies = import_helper.get_dependencies(package_name, version)
+        for dep_name in dependencies:
+            dep_version = dependencies[dep_name]['version']
+            imp_helper.pre_load_package(dep_name, dep_version)
+    
+    # Iterate through all modules under test
+    for moduleUnderTest in allModulesUnderTest:
+        adaptationHandler = AdaptationHandler(
+            interfaceSpecification,
+            moduleUnderTest,
+            maxParamPermutationTries=2,
+            onlyKeepTopNMappings=10,
+        )
+        adaptationHandler.identifyAdaptations()
+        adaptationHandler.identifyConstructorAdaptations()
+        try:
+            adaptationHandler.visualizeAdaptations()
+        except:
+            print("Could not visualize adaptations")
+        adaptationHandler.generateMappings()
+
+        for sequenceSpecification in sequenceSpecifications:
+            executionEnvironment = ExecutionEnvironment(
+                adaptationHandler.mappings,
+                sequenceSpecification,
+                interfaceSpecification,
+                executionId=executionId,
+                recordMetrics=True,
+            )
+
+            execute_test(
+                executionEnvironment,
+                adaptationHandler,
+                moduleUnderTest.moduleName,
+            )
+
+            executionEnvironment.printResults()
+            executionEnvironment.saveResults(lassoIgniteClient)
+    
+
+    df = lassoIgniteClient.getDataFrame()
+    print(df)
 
     lassoIgniteClient.cache.destroy()
     lassoIgniteClient.client.close()

@@ -9,7 +9,8 @@ from antlr4 import *
 import sys
 import git
 repo = git.Repo(search_parent_directories=True)
-sys.path.insert(0, repo.working_tree_dir)
+
+sys.path.insert(0, repo.working_tree_dir)#'/app')
 
 from backend.arena.lql.LQLLexer import LQLLexer
 from backend.arena.lql.LQLParser import LQLParser

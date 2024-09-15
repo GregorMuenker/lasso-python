@@ -3,7 +3,7 @@ import traceback
 
 # Configure logging
 logging.basicConfig(
-    filename='pypi_crawler.log',  # Log file name
+    filename='crawler.log',  # Log file name
     level=logging.DEBUG,  # Log level
     format='%(asctime)s - %(levelname)s - %(module)s - %(message)s'
 )
@@ -26,12 +26,3 @@ def log_exception(package_name, package_version, exception):
         str(exception),
         traceback.format_exc()
     )
-
-# Example usage
-try:
-    # Simulate package processing
-    package_name = "example_package"
-    package_version = "1.0.0"
-    raise ValueError("Simulated error")
-except Exception as e:
-    log_exception(package_name, package_version, e)
