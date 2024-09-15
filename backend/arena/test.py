@@ -7,7 +7,7 @@
 #print(sequenceSpecification.statements)
 #print(sequenceSpecification.resolve_reference("A2"))
 
-#sequence_spec = SequenceSpecification("calc6_greg.xlsx")
+#sequence_spec = SequenceSpecification("calc6.xlsx")
 #print(sequence_spec.statements, flush=True)
 #print(sequence_spec.resolve_reference("A2"), flush=True)
 

@@ -103,7 +103,8 @@ def index_package(nexus_package_name, llm_file=None, type_inferencing_engine=Non
 
 
 if __name__ == "__main__":
-    # index_package("requests", type_inferencing_engine="HiTyper")
-    index_package("python-dateutil")
+    index_package("requests", type_inferencing_engine="HiTyper")
+    #index_package("numpy==1.26.4")
+    #index_package("python-dateutil")
     # index_package("lasso-llm", llm_file="../evaluation/evaluation_sanitized-mbpp.json")
 
