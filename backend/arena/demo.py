@@ -13,6 +13,7 @@ from backend.arena.ignite import LassoIgniteClient
 from backend.arena.adaptation_identification import AdaptationHandler
 from backend.arena.execution import execute_test, ExecutionEnvironment
 from backend.arena.lql.antlr_parser import parse_interface_spec
+from backend.crawl.crawl_pipeline import index_package
 
 """
 For this demo to work you need to:
@@ -23,28 +24,36 @@ For this demo to work you need to:
 
 
 if __name__ == "__main__":
+    # Crawl, analyize and index the numpy package
+    index_package("numpy", type_inferencing_engine="HiTyper")
+
+    # Manually generate an execution identifier that will be used when storing results in Ignite
+    executionId = uuid.uuid4()
+    
+    # Define an LQL interface specification
     lql_string = """
     Matrix {
         Matrix(list)->None
         mean()->Any
     }
     """
-
-    executionId = uuid.uuid4()
-
     interfaceSpecification = parse_interface_spec(lql_string)
     print(interfaceSpecification)
 
-    sequenceSpecifications = [SequenceSpecification("calc7_greg.xlsx"), SequenceSpecification("calc8.xlsx")]
+    # Define a set of sequence sheets
+    sequenceSpecifications = [SequenceSpecification("execution_sheets/calc7_greg.xlsx"), SequenceSpecification("execution_sheets/calc8.xlsx")]
 
-    solr_url = "http://localhost:8983/solr/lasso_quickstart"
-    solr_conn = LassoSolrConnector(solr_url)
-
-    # Setup Ignite client
+    # Setup Ignite client for storing results
     lassoIgniteClient = LassoIgniteClient()
 
+    # Connect to Solr
+    solr_url = "http://localhost:8983/solr/lasso_python"
+    solr_conn = LassoSolrConnector(solr_url)
+
+    # Retrieve all modules that meet the interface specification from Solr
     allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
 
+    # Download and import all required packages from Nexus
     imp_helper = import_helper.ImportHelper(runtime=True)
     nexus = Nexus()
     for package in required_packages:
@@ -66,6 +75,7 @@ if __name__ == "__main__":
         adaptationHandler.visualizeAdaptations()
         adaptationHandler.generateMappings()
 
+        # Iterate through all sequence sheets
         for sequenceSpecification in sequenceSpecifications:
             executionEnvironment = ExecutionEnvironment(
                 adaptationHandler.mappings,
@@ -85,8 +95,6 @@ if __name__ == "__main__":
             executionEnvironment.saveResults(lassoIgniteClient)
     
 
+    # Finally, print the results stored in Ignite
     df = lassoIgniteClient.getDataFrame()
     print(df)
-
-    lassoIgniteClient.cache.destroy()
-    lassoIgniteClient.client.close()
