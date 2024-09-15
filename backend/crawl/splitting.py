@@ -106,12 +106,11 @@ def get_return_type(element, source, prefix, sub_module_name, dependent_class, t
             inferred_datatypes_function_dict = type_inference.get_inferred_datatypes_function(prefix + sub_module_name,
                                                                                               element.name,
                                                                                               dependent_class)
-            if len(inferred_datatypes_function_dict) != 0:
+            if len(inferred_datatypes_function_dict.keys()) != 0:
                 return_type = inferred_datatypes_function_dict["return"]
                 if return_type != []:
                     return [f"pt_{x}" for x in return_type]
-        else:
-            return ["pt_Any"]
+    return ["pt_Any"]
 
 
 def get_function_args(element, source, dependent_class, prefix, sub_module_name, type_inferencing_active):
@@ -211,9 +210,9 @@ def get_functions_from_ast(tree, source, prefix, sub_module_name, path, depended
                                                          not x["has_default_val"]]
             method_signature_params_ordered_kwargs = [f"{x['name']}" for x in args if x["keyword_arg"]]
             #method_signature_params_ordered_default_values = [f"{x['name']}_{x['default_val']}" for x in args]
-            method_signature_return_types = ",".join(
-                get_return_type(element, source, prefix, sub_module_name, depended_class,
-                                type_inferencing_active))
+            return_types = get_return_type(element, source, prefix, sub_module_name, depended_class,
+                                type_inferencing_active)
+            method_signature_return_types = ",".join(return_types)
             index_element = {"packagename": prefix + sub_module_name, "method": element.name, "name": depended_class,
                              "methodSignatureParamsOrdered": "|".join(
                                  [str(len(method_signature_params_ordered))] + method_signature_params_ordered),
