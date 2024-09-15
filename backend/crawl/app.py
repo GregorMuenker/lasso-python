@@ -7,8 +7,9 @@ from crawl_pipeline import index_package
 app = FastAPI()
 
 @app.post("/crawl/{package_name}")
-def crawl(package_name: str):
-    return index_package(package_name)
+def crawl(package_name: str, type_inference: str = None):
+    type_inference_param = type_inference == "True"
+    return index_package(package_name, type_inference_param)
 
 @app.get("/health")
 def health():
