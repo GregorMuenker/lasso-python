@@ -67,10 +67,10 @@ async def execute(execution_sheet: str, request: Request):
         )
         adaptationHandler.identifyAdaptations()
         adaptationHandler.identifyConstructorAdaptations()
-        #try:
-        #    adaptationHandler.visualizeAdaptations()
-        #except:
-        #    print("Could not visualize adaptations")
+        try:
+            adaptationHandler.visualizeAdaptations()
+        except:
+            print("Could not visualize adaptations")
         adaptationHandler.generateMappings()
 
         for sequenceSpecification in sequenceSpecifications:
