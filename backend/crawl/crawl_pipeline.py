@@ -87,15 +87,11 @@ def index_package(package_name, llm_file=None, type_inferencing_engine=None):
         if len([x for x in imp_help.loaded_packages if x[0] == "numpy" or x[0] == "scipy"]) > 0:
             type_inferencing_engine = None
             print("numpy/scipy and any package with numpy/scipy as dependency can not be inferenced with HiTyper")
-        else:
-            subprocess.run(f"pip install numpy==1.26.0 scipy==1.10.1", shell=True)
     package_name = import_helper.get_import_name(package_name, version)
     index = splitting.get_module_index(package_name, package_name, version, type_inferencing_engine=type_inferencing_engine)
     if type_inferencing_engine:
         type_inference.clear_type_inferences()
     upload_index.upload_index(index)
-    if type_inferencing_engine == "HiTyper":
-        subprocess.run(f"pip install numpy==2.0.2 scipy", shell=True)
 
     # imp_help.unload_package()
 
