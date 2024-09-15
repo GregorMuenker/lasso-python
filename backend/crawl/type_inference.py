@@ -26,6 +26,9 @@ def infer_datatypes_module(module_name_with_prefix, module_path, type_inference_
 
 
 def get_inferred_datatypes_function(module_name_with_prefix, function_name, dependent_class):
+    """
+    Gets the inferred datatypes from the respective .json file
+    """
     try:
         if dependent_class is None:
             dependent_class = "global"

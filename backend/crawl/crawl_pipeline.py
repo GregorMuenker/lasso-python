@@ -21,6 +21,11 @@ else:
 
 
 def parse_llm_code(llm_file):
+    """
+    Parses an llm benchmark file into a python package, analyses it and uploads it to Nexus and Solr.
+
+    :param llm_file: path to the llm benchmark file
+    """
     file = open(llm_file, 'r')
     tasks = json.load(file)
 

@@ -290,12 +290,12 @@ def get_module_index(module_name, package_name, nexus_package_name, version, pat
             elif ispkg:
                 try:
                     importlib.import_module(prefix + sub_module_name)
-                    index += get_module_index(prefix + sub_module_name, package_name, version,
+                    index += get_module_index(prefix + sub_module_name, package_name, nexus_package_name, version,
                                               type_inferencing_engine=type_inferencing_engine)
                 # Subject to change
                 except (ModuleNotFoundError, ImportError):
                     if not skip_missing_dependencies:
-                        index += get_module_index(prefix + sub_module_name, package_name, version,
+                        index += get_module_index(prefix + sub_module_name, package_name, nexus_package_name, version,
                                                   path=f"{os.path.join(INSTALLED, f'{package_name}-{version}')}/{(prefix + sub_module_name).replace('.', '/')}",
                                                   type_inferencing_engine=type_inferencing_engine)
                 #except Exception as e:
@@ -319,7 +319,7 @@ def get_module_index(module_name, package_name, nexus_package_name, version, pat
 
 # index = get_module_index("calculator", "test_packages/calculator-0.0.1/calculator")
 if __name__ == "__main__":
-    package_name = "numpy==2.0.2"
+    package_name = "numpy==1.26.4"
     nexus = Nexus()
     installHandler = installHandler(nexus)
     nexus_package_name, version, already_installed = installHandler.install(package_name)
