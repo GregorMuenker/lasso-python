@@ -21,12 +21,12 @@ app = FastAPI()
 @app.post("/arena/{execution_sheets}")
 async def execute(execution_sheets: str, request: Request):
     
-    maxParamPermutationTries = request.query_params.get('maxParamPermutationTries', 1)
-    typeStrictness = request.query_params.get('typeStrictness', False)
-    onlyKeepTopNMappings = request.query_params.get('onlyKeepTopNMappings', 10)
-    allowStandardValueConstructorAdaptations = request.query_params.get('allowStandardValueConstructorAdaptations', True)
+    maxParamPermutationTries = int(request.query_params.get('maxParamPermutationTries', 1))
+    typeStrictness = bool(request.query_params.get('typeStrictness', False))
+    onlyKeepTopNMappings = int(request.query_params.get('onlyKeepTopNMappings', 10))
+    allowStandardValueConstructorAdaptations = bool(request.query_params.get('allowStandardValueConstructorAdaptations', True))
     actionId = request.query_params.get('actionId', os.getenv("ACTIONID",'PLACEHOLDER') )
-    recordMetrics = request.query_params.get('recordMetrics', True)
+    recordMetrics = bool(request.query_params.get('recordMetrics', True))
     
     # Get the LQL string from the request body
     body = await request.body()
