@@ -1,6 +1,7 @@
 import time
 
 import docker
+import pandas as pd  # Import pandas to handle DataFrame
 import requests
 import streamlit as st
 
@@ -99,12 +100,13 @@ if containers_running:
             if response.status_code == 200:
                 st.success("Execution completed successfully.")
 
-                # Try to parse the response as JSON
+                # Try to parse the response as JSON and convert to DataFrame
                 try:
-                    output = response.json()
-                    st.json(output)
+                    data = response.json()
+                    df = pd.DataFrame(data)  # Convert the JSON response to a DataFrame
+                    st.dataframe(df)  # Display the DataFrame in Streamlit
                 except ValueError:
-                    # If response is not JSON, display as text
+                    # If the response is not JSON, display as text
                     st.text(response.text)
             else:
                 st.error(f"Error: {response.status_code}")
@@ -112,4 +114,5 @@ if containers_running:
         except Exception as e:
             st.error(f"An error occurred: {e}")
 else:
+    st.stop()  # Stop the script if containers are not running
     st.stop()  # Stop the script if containers are not running

@@ -2,6 +2,9 @@ import time  # Importing time to mock time.sleep
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
+import streamlit as st
+
 # Import the relevant functions from app.py
 from app import check_containers, retry_check
 
@@ -74,6 +77,29 @@ class TestStreamlitApp(unittest.TestCase):
         result = retry_check()
         self.assertFalse(result)
 
+    @patch("requests.post")
+    @patch("streamlit.dataframe")
+    def test_display_dataframe(self, mock_data_frame, mock_post):
+        """Test that the response is converted to a DataFrame and displayed correctly."""
+
+        # Mock the API response from FastAPI
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "Name": ["Alice", "Bob", "Charlie"],
+            "Age": [24, 27, 22],
+            "City": ["New York", "San Francisco", "Los Angeles"],
+        }
+        mock_post.return_value = mock_response
+
+        # Mock Streamlit's dataframe display function
+        with patch("app.pd.DataFrame") as mock_pandas_df:
+            df = pd.DataFrame(mock_response.json())
+            st.dataframe(df)
+            mock_pandas_df.assert_called_once_with(mock_response.json())
+            mock_data_frame.assert_called_once_with(df)
+
 
 if __name__ == "__main__":
+    unittest.main()
     unittest.main()
