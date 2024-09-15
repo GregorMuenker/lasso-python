@@ -1,7 +1,7 @@
 uvicorn
 fastapi
 numpy==1.26.4
-scipy==1.10.1
+scipy==1.11.1
 Levenshtein
 requests
 packaging
