@@ -9,17 +9,10 @@ from crawl import show_crawl_page
 class TestCrawlPage(unittest.TestCase):
 
     @patch("requests.post")
-    @patch("requests.get")
-    def test_crawl_package_success(self, mock_get, mock_post):
-        # Mock the SOLR ping response
-        mock_get.return_value.status_code = 200
-
+    def test_crawl_package_success(self, mock_post):
         # Mock the API response for the crawling request
         mock_post.return_value.status_code = 200
         mock_post.return_value.text = "Crawling success"
-
-        # Create a Streamlit session for testing
-        st.session_state.solr_online = True
 
         # Test the crawl page
         show_crawl_page()
@@ -32,19 +25,20 @@ class TestCrawlPage(unittest.TestCase):
             params={"type_inferencing_engine": None},
         )
 
-    @patch("requests.get")
-    def test_solr_offline(self, mock_get):
-        # Mock the SOLR ping response as failed
-        mock_get.return_value.status_code = 500
+    @patch("requests.post")
+    @patch("streamlit.error")
+    def test_display_error_on_exception(self, mock_error, mock_post):
+        """Test that an error message is displayed when an exception occurs during execution."""
+
+        # Mock the POST request to raise an exception
+        mock_post.side_effect = Exception("Connection error")
 
         # Test the crawl page
         show_crawl_page()
 
-        # Check if SOLR was correctly marked as offline
-        self.assertFalse(st.session_state.get("solr_online", True))
+        # Check if the error was displayed in Streamlit
+        mock_error.assert_called_once_with("An error occurred: Connection error")
 
 
-if __name__ == "__main__":
-    unittest.main()
 if __name__ == "__main__":
     unittest.main()

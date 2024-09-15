@@ -8,25 +8,12 @@ API_URL = "http://lasso_python_crawl:8000/crawl/{package_name}"
 def show_crawl_page():
     st.title("Crawl into SOLR Index")
 
-    # Try to connect to the SOLR instance using the container name
-    try:
-        solr_url = "http://lasso_solr_quickstart:8983/solr/lasso_quickstart"
-        ping_response = requests.get(solr_url + "/admin/ping")
-        if ping_response.status_code == 200:
-            st.sidebar.success("SOLR online")
-            st.session_state.solr_online = True
-        else:
-            raise Exception("Ping failed")
-    except Exception:
-        st.sidebar.error("SOLR offline")
-        st.session_state.solr_online = False
-
     # User input fields
     package_name = st.text_input("Package Name", key="package_name")
     type_inferencing_engine = st.selectbox("Type Inferencing Engine", (None, "HiTyper"))
 
     # Button to initiate crawling
-    if st.button("Crawl Package", disabled=not st.session_state.solr_online):
+    if st.button("Crawl Package"):
         with st.spinner(f"Crawling {package_name}..."):
             params = {"type_inferencing_engine": type_inferencing_engine}
             url = API_URL.format(package_name=package_name)
