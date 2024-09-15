@@ -21,7 +21,6 @@ def check_containers():
             "lasso_python_arena",
             "lasso_solr_quickstart",
             "lasso-nexus",
-            "lasso_frontend",
         ]
         running_containers = client.containers.list()
         running_names = [container.name for container in running_containers]

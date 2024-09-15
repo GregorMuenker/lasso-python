@@ -10,6 +10,7 @@ from tqdm import tqdm
 repo = git.Repo(search_parent_directories=True)
 sys.path.insert(0, repo.working_tree_dir)
 
+from backend.crawl.crawl_pipeline import index_package
 from backend.crawl import import_helper
 from backend.crawl.nexus import Nexus, Package
 from backend.arena.lasso_solr_connector import LassoSolrConnector
@@ -38,19 +39,25 @@ def create_lql(task):
 
 if __name__ == "__main__":
     llm_file = open("evaluation_sanitized-mbpp.json", 'r')
+
+    index_package("lasso-llm", llm_file="evaluation_sanitized-mbpp.json")
+
     tasks = json.load(llm_file)
 
     lassoIgniteClient = LassoIgniteClient()
 
     executionId = uuid.uuid4()
 
+    imp_helper = import_helper.ImportHelper(runtime=True)
+    nexus = Nexus()
+    package_name, version = ("lasso-llm", "0.0.1")
+    pkg = Package(package_name, version)
+    nexus.download(pkg)
+    imp_helper.pre_load_package(package_name, version)
+
     for index, task in enumerate(tqdm(tasks)):
 
         task_id = task["task_id"]
-
-        #wip = [2, 3, 4, 6, 8, 9, 11, 12, 14, 16, 17, 18, 19, 20, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 74, 75, 77, 79, 80, 83, 84, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 99, 102, 103, 104, 105, 106, 108, 109, 111, 113, 115, 116, 118, 119]
-        #if task_id not in wip:
-        #    continue
 
         lql_string = create_lql(task)
         print(lql_string)
@@ -59,23 +66,15 @@ if __name__ == "__main__":
 
         sequenceSpecification = SequenceSpecification(f"./evaluation_sheets/llm_sequence_sheets/{task_id}.xlsx")
 
-        solr_url = "http://localhost:8983/solr/lasso_quickstart"
+        solr_url = "http://localhost:8983/solr/lasso_python"
         solr_conn = LassoSolrConnector(solr_url)
 
         allModulesUnderTest, required_packages = solr_conn.generate_modules_under_test(interfaceSpecification)
 
-        print(required_packages)
 
-        imp_helper = import_helper.ImportHelper(runtime=True)
-        nexus = Nexus()
-        for package in required_packages:
-            package_name, version = package.split("==")
-            pkg = Package(package_name, version)
-            nexus.download(pkg)
-            imp_helper.pre_load_package(package_name, version)
 
         # Iterate through all modules under test
-        for moduleUnderTest in allModulesUnderTest:
+        for moduleUnderTest in [x for x in allModulesUnderTest if "lasso-llm" in x.moduleName]:
             adaptationHandler = AdaptationHandler(
                 interfaceSpecification,
                 moduleUnderTest,

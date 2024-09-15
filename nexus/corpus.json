@@ -17,8 +17,8 @@
     "id": "lasso_quickstart_nexus",
     "name": "Quickstart nexus",
     "url": "http://localhost:8081",
-    "repoName": "lasso-deploy",
-    "deploymentUrl": "http://localhost:8081/repository/lasso-deploy",
+    "repoName": "pypi-raw",
+    "deploymentUrl": "http://localhost:8081/repository/pypi-raw",
     "user": "admin",
     "pass": "9Fa4tLiZKnRJnUm",
     "description": "quickstart repository of LASSO"
