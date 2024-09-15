@@ -236,7 +236,7 @@ class SequenceExecutionRecord:
                     ci8 = CellId(
                         EXECUTIONID=str(self.executionId),
                         ABSTRACTIONID=self.interfaceSpecification.className,
-                        ACTIONID="",
+                        ACTIONID=self.actionId,
                         ARENAID="execute",
                         SHEETID=self.sequenceSpecification.name,
                         SYSTEMID=systemId,
