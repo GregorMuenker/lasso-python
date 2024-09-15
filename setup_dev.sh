@@ -1,6 +1,6 @@
 pip install -r ./backend/crawl/requirements.txt
 pip install -r ./backend/arena/requirements.txt
-pip install GitPython
+pip install GitPython jupyter
 sh lassoindex_setup.sh
 echo {} > backend/crawl/index.json
 docker-compose -f docker-compose-dev.yaml up -d
