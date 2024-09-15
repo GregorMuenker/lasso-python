@@ -151,10 +151,6 @@ class Nexus:
                 if dep_version:
                     pkg = Package(dep_name, dep_version)
                     self.download(pkg)
-                else:
-                    # TODO: What if dependency is missing. Handle at the start?
-                    pass
-
         else:
             print(
                 f'Failed to download {package.name} {package.version}. HTTP Status Code: {response.status_code}')
