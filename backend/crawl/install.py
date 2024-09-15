@@ -24,7 +24,7 @@ if os.getenv("RUNTIME_ENVIRONMENT") == "docker":
 else:
     from backend.constants import INSTALLED, INDEX
 from backend.crawl.nexus import Nexus, Package
-from backend.crawl.log import log_exception
+# from backend.crawl.log import log_exception
 
 def get_all_packages():
     """Retrieves all package names from PyPi.
@@ -355,8 +355,8 @@ class installHandler:
                 subprocess.check_call([sys.executable, "-m", "pip",
                                     "install", package, "--no-deps", "-q", "-t", path])
             except Exception as e:
-                log_exception(name, "unknown", e)
-                print("Installation failed!")
+                # log_exception(name, "unknown", e)
+                print(f"Installation of {name} failed!")
                 return
             
             print(f"Installing {name}")
