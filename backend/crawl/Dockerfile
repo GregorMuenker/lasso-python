@@ -25,6 +25,15 @@ RUN mv /app/type_inference.py.bak /app/type_inference.py
 ADD inference_engines/hityper.py /app/inference_engines/hityper.py
 ADD upload_index.py /app
 
+# Update pip
+RUN pip install --upgrade pip
+
+# Install HDF5 using apt
+RUN apt-get update && apt-get install -y libhdf5-dev
+
+# Install h5py with no-binary flag
+RUN pip install --no-binary h5py h5py
+
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
