@@ -375,7 +375,6 @@ class installHandler:
             pkg = Package(name, version)
             pkg.compress()
             if not self.nexus.upload(pkg):
-                #TODO: Log exception
                 print(f"Could not upload artifact {name} {version}")
                 return
             
@@ -394,7 +393,6 @@ class installHandler:
                         self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
                         self.dump_index()
                     except:
-                        # TODO: Log exception
                         print(f"Could not install dependency {dependency} of package {name} {version}!")
             already_installed = False
         else:
@@ -408,7 +406,6 @@ class installHandler:
                         self.index[f"{name}:{version}"][dep_name]["version"] = dep_version
                         self.dump_index()
                     except:
-                        # TODO: Log exception
                         print(f"Could not install dependency {dependency}!")
             already_installed = True
 

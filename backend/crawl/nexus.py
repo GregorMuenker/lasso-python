@@ -107,7 +107,6 @@ class Nexus:
                 package.local_file_path = None
                 return True
             else:
-                # TODO: Log exception
                 print(
                     f'Failed to upload {package.local_file_path}. HTTP Status Code: {response.status_code}')
                 # print('Response:', response.text)
@@ -159,10 +158,8 @@ class Nexus:
                     pass
 
         else:
-            # TODO: What to do if download fails.
-            # TODO: Log exception.
             print(
-                f'Failed to download file. HTTP Status Code: {response.status_code}')
+                f'Failed to download {package.name} {package.version}. HTTP Status Code: {response.status_code}')
             # print('Response:', response.text)
 
     def get_versions(self, package):
