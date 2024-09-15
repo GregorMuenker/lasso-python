@@ -2,6 +2,9 @@ import streamlit as st
 from arena import show_arena_page
 from crawl import show_crawl_page
 
+# Set the title of the app
+st.set_page_config(page_title="LASSO PYTHON", page_icon=":snake:")
+
 # Dictionary to hold the pages
 pages = {"Home": "show_home_page", "Arena": show_arena_page, "Crawl": show_crawl_page}
 
