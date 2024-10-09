@@ -429,7 +429,7 @@ def adapt_function(
             result = func(*adapted_args, **kwargs)
 
             # Adapt return type
-            if new_return_type != None and new_return_type != "Any":
+            if new_return_type != None and new_return_type != "None" and new_return_type != "Any":
                 conversion_type = TYPE_MAPPING.get(new_return_type, None)
 
                 if conversion_type == None:

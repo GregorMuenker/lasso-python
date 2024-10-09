@@ -7,7 +7,7 @@ class Stack(deque):
     def appendleft(self, x)->None:
         super().appendleft(x)
 
-    def clear(self) -> None:
+    def clear(self)->None:
         return super().clear()
 
     def copy(self) -> 'Stack':

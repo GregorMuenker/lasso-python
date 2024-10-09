@@ -23,9 +23,11 @@ if __name__ == "__main__":
     # NOTE: collections.deque has no peek method (realized via __getitem__(-1)) and no length method (realized via __len__())
     lql_string = """
     Stack {
-        append(Any)->Any
-        appendleft(Any)->Any
+        Stack()->None
+        append(Any)->None
+        appendleft(Any)->None
         pop()->Any
+        clear()->None
     }
     """
     interfaceSpecification = parse_interface_spec(lql_string)
