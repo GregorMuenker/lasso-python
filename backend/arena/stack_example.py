@@ -20,7 +20,7 @@ if __name__ == "__main__":
     executionId = uuid.uuid4()
     
     # Define an LQL interface specification
-    # NOTE: collections.deque has no peek method (realized via __getitem__(-1)) and no length method (realized via __len__())
+    # NOTE: peek of deque is realized via builtin __getitem__(-1) and length via builtin __len__()
     lql_string = """
     Stack {
         Stack()->None

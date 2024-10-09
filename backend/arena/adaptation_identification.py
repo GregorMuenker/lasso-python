@@ -339,9 +339,10 @@ class AdaptationHandler:
                         ] = None
                         continue
 
-                    adaptationInstruction.returnTypeAdaptation = (
-                        interfaceMethod.returnType
-                    )
+                    if interfaceMethod.returnType != "Any" and interfaceMethod.returnType != "None": 
+                        adaptationInstruction.returnTypeAdaptation = (
+                            interfaceMethod.returnType
+                        )
 
                 # Create a copy that can be used as a base for blind parameter permutations
                 adaptationInstructionCopy = copy.deepcopy(adaptationInstruction)
