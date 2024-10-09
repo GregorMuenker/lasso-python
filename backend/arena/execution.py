@@ -332,6 +332,7 @@ class RowRecord:
         self.originalFunctionName = originalFunctionName
         self.inputParams = inputParams
         self.instanceParam = instanceParam
+        self.instanceParamPrintOut = str(instanceParam)
         self.adaptationInstruction = adaptationInstruction
         self.oracleValue = oracleValue
         self.solrId = solrId
@@ -342,7 +343,7 @@ class RowRecord:
 
     def __repr__(self) -> str:
         inputParamsString = ", ".join(map(str, self.inputParams))
-        instruction = f"{str(self.instanceParam)[:15]}.{self.methodName}({inputParamsString})"
+        instruction = f"{self.instanceParamPrintOut[:15]}.{self.methodName}({inputParamsString})"
         result = f"{CYAN}[{self.position}] {instruction}: {self.returnValue}{RESET} (expected: {self.oracleValue}), {self.metrics}"
         
         if self.errorMessage != None:
